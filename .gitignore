@@ -1,0 +1,19 @@
+.env
+*.env
+# Ignore appsettings files that may contain secrets
+**/appsettings*.json
+# Build artifacts
+**/bin/
+**/obj/
+# VS/IDE
+.vs/
+.vscode/
+*.user
+.idea/
+# Node
+node_modules/
+# Publish output
+publish/
+
+# Logs
+*.log
