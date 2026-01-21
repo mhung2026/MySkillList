@@ -27,6 +27,7 @@ import TakeTest from './pages/assessments/TakeTest';
 import TestResult from './pages/assessments/TestResult';
 import Login from './pages/auth/Login';
 import Dashboard from './pages/dashboard/Dashboard';
+import SystemEnumManagement from './pages/admin/SystemEnumManagement';
 import { UserRole } from './types';
 
 const { Header, Sider, Content } = Layout;
@@ -131,6 +132,22 @@ function AppLayout() {
     );
   }
 
+  // Admin only - System Configuration
+  if (user?.role === UserRole.Admin) {
+    menuItems.push({
+      key: 'admin',
+      icon: <SettingOutlined />,
+      label: 'Administration',
+      children: [
+        {
+          key: '/admin/enums',
+          icon: <OrderedListOutlined />,
+          label: <Link to="/admin/enums">System Enums</Link>,
+        },
+      ],
+    });
+  }
+
   // All users can access assessments
   menuItems.push({
     key: 'assessments',
@@ -185,7 +202,7 @@ function AppLayout() {
         <Menu
           theme="dark"
           defaultSelectedKeys={[location.pathname]}
-          defaultOpenKeys={['taxonomy', 'tests', 'assessments']}
+          defaultOpenKeys={['taxonomy', 'tests', 'assessments', 'admin']}
           mode="inline"
           items={menuItems}
           selectedKeys={[location.pathname]}
@@ -236,6 +253,7 @@ function AppLayout() {
               <Route path="/assessments" element={<AvailableTests />} />
               <Route path="/assessments/take/:assessmentId" element={<TakeTest />} />
               <Route path="/assessments/result/:assessmentId" element={<TestResult />} />
+              <Route path="/admin/enums" element={<SystemEnumManagement />} />
             </Routes>
           </div>
         </Content>

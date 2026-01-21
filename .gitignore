@@ -1,7 +1,15 @@
+# Environment files (contain secrets)
 .env
 *.env
+.env.*
+!.env.example
+
 # Ignore appsettings files that may contain secrets
-**/appsettings*.json
+**/appsettings.json
+**/appsettings.Development.json
+**/appsettings.Production.json
+# But keep example files
+!**/appsettings.json.example
 # Build artifacts
 **/bin/
 **/obj/

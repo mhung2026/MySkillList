@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SkillMatrix.Domain.Entities.Assessment;
+using SkillMatrix.Domain.Entities.Configuration;
 using SkillMatrix.Domain.Entities.Learning;
 using SkillMatrix.Domain.Entities.Organization;
 using SkillMatrix.Domain.Entities.Taxonomy;
@@ -40,6 +41,9 @@ public class SkillMatrixDbContext : DbContext
     public DbSet<Question> Questions => Set<Question>();
     public DbSet<QuestionOption> QuestionOptions => Set<QuestionOption>();
     public DbSet<AssessmentResponse> AssessmentResponses => Set<AssessmentResponse>();
+
+    // Configuration
+    public DbSet<SystemEnumValue> SystemEnumValues => Set<SystemEnumValue>();
 
     // Learning
     public DbSet<SkillGap> SkillGaps => Set<SkillGap>();
@@ -85,6 +89,15 @@ public class SkillMatrixDbContext : DbContext
         modelBuilder.Entity<LearningResourceSkill>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<EmployeeLearningPath>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<LearningPathItem>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<SystemEnumValue>().HasQueryFilter(e => !e.IsDeleted);
+
+        // SystemEnumValue configuration
+        modelBuilder.Entity<SystemEnumValue>(entity =>
+        {
+            entity.HasIndex(e => new { e.EnumType, e.Value }).IsUnique();
+            entity.HasIndex(e => new { e.EnumType, e.Code }).IsUnique();
+            entity.HasIndex(e => e.EnumType);
+        });
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

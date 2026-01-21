@@ -275,18 +275,18 @@ public class QuestionService : IQuestionService
         var questions = aiResponse.Questions.Select((q, index) => new Question
         {
             SectionId = sectionId,
-            SkillId = request.SkillId,
-            TargetLevel = request.TargetLevel,
-            Type = q.Type,
+            SkillId = q.SkillId ?? request.SkillId ?? Guid.Empty,
+            TargetLevel = q.TargetLevel ?? request.TargetLevel ?? ProficiencyLevel.Apply,
+            Type = q.QuestionType,
             Content = q.Content,
             CodeSnippet = q.CodeSnippet,
             Points = q.SuggestedPoints,
             TimeLimitSeconds = q.SuggestedTimeSeconds,
-            Difficulty = q.Difficulty,
+            Difficulty = q.Difficulty ?? DifficultyLevel.Medium,
             Tags = q.Tags.Any() ? JsonSerializer.Serialize(q.Tags) : null,
             GradingRubric = q.GradingRubric,
             IsAiGenerated = true,
-            AiPromptUsed = aiResponse.Metadata.PromptUsed,
+            AiPromptUsed = aiResponse.Metadata?.PromptUsed,
             IsActive = true,
             Options = q.Options.Select((o, i) => new QuestionOption
             {

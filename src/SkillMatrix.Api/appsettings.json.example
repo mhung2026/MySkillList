@@ -1,0 +1,19 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Database=SkillMatrix;Username=postgres;Password=YOUR_PASSWORD_HERE;Maximum Pool Size=100"
+  },
+  "AiService": {
+    "UseMock": true,
+    "ApiKey": "YOUR_AI_API_KEY_HERE",
+    "BaseUrl": "https://api.anthropic.com",
+    "ModelName": "claude-3-sonnet-20240229",
+    "TimeoutSeconds": 60
+  }
+}

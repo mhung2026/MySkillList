@@ -789,3 +789,68 @@ export interface OptionResultDto {
   wasSelected: boolean;
   explanation?: string;
 }
+
+// System Enum Configuration
+export interface SystemEnumValueDto {
+  id: string;
+  enumType: string;
+  value: number;
+  code: string;
+  name: string;
+  nameVi?: string;
+  description?: string;
+  descriptionVi?: string;
+  color?: string;
+  icon?: string;
+  displayOrder: number;
+  isActive: boolean;
+  isSystem: boolean;
+  metadata?: string;
+}
+
+export interface CreateSystemEnumValueDto {
+  enumType: string;
+  value: number;
+  code: string;
+  name: string;
+  nameVi?: string;
+  description?: string;
+  descriptionVi?: string;
+  color?: string;
+  icon?: string;
+  displayOrder?: number;
+  metadata?: string;
+}
+
+export interface UpdateSystemEnumValueDto {
+  name: string;
+  nameVi?: string;
+  description?: string;
+  descriptionVi?: string;
+  color?: string;
+  icon?: string;
+  displayOrder?: number;
+  metadata?: string;
+}
+
+export interface EnumTypeDto {
+  enumType: string;
+  displayName: string;
+  description?: string;
+  valueCount: number;
+  values: SystemEnumValueDto[];
+}
+
+export interface EnumDropdownItemDto {
+  value: number;
+  code: string;
+  label: string;
+  labelVi?: string;
+  color?: string;
+  icon?: string;
+}
+
+export interface ReorderEnumValuesDto {
+  enumType: string;
+  orderedIds: string[];
+}

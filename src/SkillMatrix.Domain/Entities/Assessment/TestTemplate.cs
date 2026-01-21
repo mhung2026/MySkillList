@@ -127,11 +127,3 @@ public class AssessmentResponse : BaseEntity
     public Assessment Assessment { get; set; } = null!;
     public Question Question { get; set; } = null!;
 }
-
-public enum DifficultyLevel
-{
-    Easy = 1,
-    Medium = 2,
-    Hard = 3,
-    Expert = 4
-}

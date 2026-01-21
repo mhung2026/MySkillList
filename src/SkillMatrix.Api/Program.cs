@@ -14,9 +14,9 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "Skill Matrix API", Version = "v1" });
 });
 
-// Database
+// Database - Connection string from appsettings.json or environment variable
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Host=192.168.0.21;Database=MySkillList_NGE_DEV;Username=postgres;Password=@ll1@nceP@ss2o21;Maximum Pool Size=1000";
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found. Please configure it in appsettings.json or environment variables.");
 
 builder.Services.AddDbContext<SkillMatrixDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -41,6 +41,9 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Dashboard Services
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+
+// Configuration Services
+builder.Services.AddScoped<SystemEnumService>();
 
 // Database Seeder
 builder.Services.AddScoped<DatabaseSeeder>();
@@ -78,6 +81,9 @@ using (var scope = app.Services.CreateScope())
 
     var levelDefinitionService = scope.ServiceProvider.GetRequiredService<IProficiencyLevelDefinitionService>();
     await levelDefinitionService.SeedDefaultLevelsAsync();
+
+    var systemEnumService = scope.ServiceProvider.GetRequiredService<SystemEnumService>();
+    await systemEnumService.SeedDefaultValuesAsync();
 }
 
 // Configure the HTTP request pipeline

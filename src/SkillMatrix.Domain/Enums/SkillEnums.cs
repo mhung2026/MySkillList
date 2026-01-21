@@ -78,18 +78,29 @@ public enum AssessmentStatus
 }
 
 /// <summary>
-/// Question types for assessments
+/// Question types within an assessment
 /// </summary>
 public enum QuestionType
 {
-    MultipleChoice = 1,
-    MultipleAnswer = 2,
+    MultipleChoice = 1,      // Single correct answer
+    MultipleAnswer = 2,      // Multiple correct answers
     TrueFalse = 3,
-    ShortAnswer = 4,
-    LongAnswer = 5,
-    CodingChallenge = 6,
-    CaseStudy = 7,
-    BehavioralAnchored = 8  // BARS - Level descriptions
+    ShortAnswer = 4,         // Brief text response
+    LongAnswer = 5,          // Extended text response
+    CodingChallenge = 6,     // Code writing/completion
+    Scenario = 7,            // Scenario-based question
+    SituationalJudgment = 8  // SJT - rank/rate response options
+}
+
+/// <summary>
+/// SJT Response effectiveness levels
+/// </summary>
+public enum SjtEffectiveness
+{
+    MostEffective = 1,
+    Effective = 2,
+    Ineffective = 3,
+    CounterProductive = 4
 }
 
 /// <summary>
@@ -152,4 +163,15 @@ public enum GapPriority
     Medium = 2,
     High = 3,
     Critical = 4
+}
+
+/// <summary>
+/// Difficulty level for questions/assessments
+/// </summary>
+public enum DifficultyLevel
+{
+    Easy = 1,
+    Medium = 2,
+    Hard = 3,
+    Expert = 4
 }

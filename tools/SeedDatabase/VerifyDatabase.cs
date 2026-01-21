@@ -6,7 +6,10 @@ public static class VerifyDatabase
 {
     public static async Task RunAsync()
     {
-        var connectionString = "Host=192.168.0.21;Database=MySkillList_NGE_DEV;Username=postgres;Password=@ll1@nceP@ss2o21;Maximum Pool Size=1000";
+        // Read connection string from environment variable
+        var connectionString = Environment.GetEnvironmentVariable("SKILLMATRIX_CONNECTION_STRING")
+            ?? throw new InvalidOperationException(
+                "Connection string not found. Set SKILLMATRIX_CONNECTION_STRING environment variable.");
 
         var optionsBuilder = new DbContextOptionsBuilder<SkillMatrixDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

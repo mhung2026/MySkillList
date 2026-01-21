@@ -112,18 +112,17 @@ public class QuestionsController : ControllerBase
         if (request.SectionId == Guid.Empty)
             return BadRequest("SectionId is required");
 
-        if (request.SkillId == Guid.Empty)
-            return BadRequest("SkillId is required");
-
         var aiRequest = new AiGenerateQuestionsRequest
         {
             SkillId = request.SkillId,
+            SkillName = request.SkillName,
             TargetLevel = request.TargetLevel,
             QuestionCount = request.QuestionCount,
-            QuestionTypes = request.QuestionTypes,
+            AssessmentType = request.AssessmentType,
             Difficulty = request.Difficulty,
             Language = request.Language,
             AdditionalContext = request.AdditionalContext,
+            JobRole = request.JobRole,
             SectionId = request.SectionId
         };
 

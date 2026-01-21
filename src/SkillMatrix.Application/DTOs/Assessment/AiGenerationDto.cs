@@ -1,4 +1,3 @@
-using SkillMatrix.Domain.Entities.Assessment;
 using SkillMatrix.Domain.Enums;
 
 namespace SkillMatrix.Application.DTOs.Assessment;
@@ -9,14 +8,19 @@ namespace SkillMatrix.Application.DTOs.Assessment;
 public class AiGenerateQuestionsRequest
 {
     /// <summary>
-    /// Skill ID cần generate câu hỏi
+    /// Skill ID cần generate câu hỏi (optional)
     /// </summary>
-    public Guid SkillId { get; set; }
+    public Guid? SkillId { get; set; }
 
     /// <summary>
-    /// Level cần đánh giá (1-7)
+    /// Skill name - dùng khi không có SkillId (optional)
     /// </summary>
-    public ProficiencyLevel TargetLevel { get; set; }
+    public string? SkillName { get; set; }
+
+    /// <summary>
+    /// Level cần đánh giá (1-7) - optional
+    /// </summary>
+    public ProficiencyLevel? TargetLevel { get; set; }
 
     /// <summary>
     /// Số lượng câu hỏi cần generate
@@ -24,12 +28,12 @@ public class AiGenerateQuestionsRequest
     public int QuestionCount { get; set; } = 5;
 
     /// <summary>
-    /// Loại câu hỏi cần generate
+    /// Loại assessment: Quiz, CodingTest, CaseStudy, RoleBasedTest, SituationalJudgment
     /// </summary>
-    public List<QuestionType> QuestionTypes { get; set; } = new() { QuestionType.MultipleChoice };
+    public AssessmentType AssessmentType { get; set; } = AssessmentType.Quiz;
 
     /// <summary>
-    /// Độ khó mong muốn
+    /// Độ khó mong muốn (optional)
     /// </summary>
     public DifficultyLevel? Difficulty { get; set; }
 
@@ -42,6 +46,11 @@ public class AiGenerateQuestionsRequest
     /// Context bổ sung cho AI (vd: focus vào .NET Core 8)
     /// </summary>
     public string? AdditionalContext { get; set; }
+
+    /// <summary>
+    /// Job role - dùng cho Role-based Test
+    /// </summary>
+    public string? JobRole { get; set; }
 
     /// <summary>
     /// Section ID nếu muốn add vào section cụ thể
@@ -58,7 +67,7 @@ public class AiGenerateQuestionsResponse
     public string? Message { get; set; }
     public string? Error { get; set; }
     public List<AiGeneratedQuestion> Questions { get; set; } = new();
-    public AiGenerationMetadata Metadata { get; set; } = new();
+    public AiGenerationMetadata? Metadata { get; set; }
 }
 
 /// <summary>
@@ -66,18 +75,125 @@ public class AiGenerateQuestionsResponse
 /// </summary>
 public class AiGeneratedQuestion
 {
+    /// <summary>
+    /// Nội dung câu hỏi
+    /// </summary>
     public string Content { get; set; } = string.Empty;
-    public string? CodeSnippet { get; set; }
-    public QuestionType Type { get; set; }
-    public DifficultyLevel Difficulty { get; set; }
+
+    /// <summary>
+    /// Loại assessment
+    /// </summary>
+    public AssessmentType AssessmentType { get; set; }
+
+    /// <summary>
+    /// Loại câu hỏi cụ thể trong assessment
+    /// </summary>
+    public QuestionType QuestionType { get; set; }
+
+    /// <summary>
+    /// Độ khó (optional)
+    /// </summary>
+    public DifficultyLevel? Difficulty { get; set; }
+
+    /// <summary>
+    /// Level gợi ý phù hợp (optional)
+    /// </summary>
+    public ProficiencyLevel? TargetLevel { get; set; }
+
+    /// <summary>
+    /// Skill ID liên quan (optional)
+    /// </summary>
+    public Guid? SkillId { get; set; }
+
+    /// <summary>
+    /// Skill name liên quan (optional)
+    /// </summary>
+    public string? SkillName { get; set; }
+
+    /// <summary>
+    /// Điểm gợi ý
+    /// </summary>
     public int SuggestedPoints { get; set; }
+
+    /// <summary>
+    /// Thời gian gợi ý (giây)
+    /// </summary>
     public int? SuggestedTimeSeconds { get; set; }
-    public List<AiGeneratedOption> Options { get; set; } = new();
-    public string? Explanation { get; set; }
+
+    /// <summary>
+    /// Tags cho câu hỏi
+    /// </summary>
     public List<string> Tags { get; set; } = new();
 
-    // For non-multiple choice
+    /// <summary>
+    /// Giải thích đáp án
+    /// </summary>
+    public string? Explanation { get; set; }
+
+    // === Cho Quiz (trắc nghiệm) ===
+    /// <summary>
+    /// Các lựa chọn cho câu trắc nghiệm
+    /// </summary>
+    public List<AiGeneratedOption> Options { get; set; } = new();
+
+    // === Cho Coding Test ===
+    /// <summary>
+    /// Code snippet/template
+    /// </summary>
+    public string? CodeSnippet { get; set; }
+
+    /// <summary>
+    /// Output mong đợi
+    /// </summary>
+    public string? ExpectedOutput { get; set; }
+
+    /// <summary>
+    /// Test cases cho coding
+    /// </summary>
+    public List<AiTestCase> TestCases { get; set; } = new();
+
+    // === Cho Case Study ===
+    /// <summary>
+    /// Mô tả tình huống chi tiết
+    /// </summary>
+    public string? Scenario { get; set; }
+
+    /// <summary>
+    /// Tài liệu bổ sung
+    /// </summary>
+    public List<string> Documents { get; set; } = new();
+
+    // === Cho Role-based Test ===
+    /// <summary>
+    /// Context về vai trò
+    /// </summary>
+    public string? RoleContext { get; set; }
+
+    /// <summary>
+    /// Trách nhiệm của vai trò
+    /// </summary>
+    public List<string> Responsibilities { get; set; } = new();
+
+    // === Cho SJT ===
+    /// <summary>
+    /// Mô tả tình huống SJT
+    /// </summary>
+    public string? Situation { get; set; }
+
+    /// <summary>
+    /// Các phương án xử lý cho SJT
+    /// </summary>
+    public List<AiSjtResponseOption> ResponseOptions { get; set; } = new();
+
+    // === Chung cho tự luận ===
+    /// <summary>
+    /// Câu trả lời mong đợi
+    /// </summary>
     public string? ExpectedAnswer { get; set; }
+
+    /// <summary>
+    /// Rubric chấm điểm
+    /// </summary>
     public string? GradingRubric { get; set; }
 }
 
@@ -92,6 +208,27 @@ public class AiGeneratedOption
 }
 
 /// <summary>
+/// Test case cho coding challenge
+/// </summary>
+public class AiTestCase
+{
+    public string Input { get; set; } = string.Empty;
+    public string ExpectedOutput { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsHidden { get; set; }  // Hidden test cases for grading
+}
+
+/// <summary>
+/// Response option cho SJT
+/// </summary>
+public class AiSjtResponseOption
+{
+    public string Content { get; set; } = string.Empty;
+    public SjtEffectiveness Effectiveness { get; set; }
+    public string? Explanation { get; set; }
+}
+
+/// <summary>
 /// Metadata về quá trình generate
 /// </summary>
 public class AiGenerationMetadata
@@ -99,7 +236,7 @@ public class AiGenerationMetadata
     public string Model { get; set; } = string.Empty;
     public int TokensUsed { get; set; }
     public double GenerationTimeMs { get; set; }
-    public string PromptUsed { get; set; } = string.Empty;
+    public string? PromptUsed { get; set; }
     public DateTime GeneratedAt { get; set; }
 }
 
