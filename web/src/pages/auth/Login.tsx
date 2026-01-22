@@ -20,10 +20,10 @@ export default function Login() {
     setLoading(false);
 
     if (result.success) {
-      message.success('Đăng nhập thành công!');
+      message.success('Login successful!');
       navigate('/assessments');
     } else {
-      message.error(result.message || 'Đăng nhập thất bại');
+      message.error(result.message || 'Login failed');
     }
   };
 
@@ -31,9 +31,9 @@ export default function Login() {
     setSeeding(true);
     try {
       await seedUsers();
-      message.success('Đã tạo users mặc định');
+      message.success('Default users created');
     } catch {
-      message.info('Users đã tồn tại');
+      message.info('Users already exist');
     }
     setSeeding(false);
   };
@@ -53,15 +53,15 @@ export default function Login() {
           <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
             Skill Matrix
           </Title>
-          <Text type="secondary">Hệ thống quản lý kỹ năng</Text>
+          <Text type="secondary">Skill Management System</Text>
         </div>
 
         <Form name="login" onFinish={onFinish} layout="vertical" size="large">
           <Form.Item
             name="email"
             rules={[
-              { required: true, message: 'Vui lòng nhập email' },
-              { type: 'email', message: 'Email không hợp lệ' },
+              { required: true, message: 'Please enter your email' },
+              { type: 'email', message: 'Invalid email format' },
             ]}
           >
             <Input prefix={<UserOutlined />} placeholder="Email" />
@@ -69,23 +69,23 @@ export default function Login() {
 
           <Form.Item
             name="password"
-            rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }]}
+            rules={[{ required: true, message: 'Please enter your password' }]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Mật khẩu" />
+            <Input.Password prefix={<LockOutlined />} placeholder="Password" />
           </Form.Item>
 
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} block icon={<LoginOutlined />}>
-              Đăng nhập
+              Login
             </Button>
           </Form.Item>
         </Form>
 
-        <Divider>Tài khoản demo</Divider>
+        <Divider>Demo Accounts</Divider>
 
         <Alert
           type="info"
-          message="Tài khoản có sẵn"
+          message="Available Accounts"
           description={
             <Space direction="vertical" size={4} style={{ fontSize: 12 }}>
               <Text code>admin@skillmatrix.com / admin123</Text>
@@ -98,7 +98,7 @@ export default function Login() {
         />
 
         <Button block onClick={handleSeedUsers} loading={seeding}>
-          Tạo users demo (nếu chưa có)
+          Create demo users (if not exists)
         </Button>
       </Card>
     </div>

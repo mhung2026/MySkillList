@@ -72,12 +72,12 @@ export default function AvailableTests() {
   const startMutation = useMutation({
     mutationFn: startAssessment,
     onSuccess: (data) => {
-      message.success('Bắt đầu làm bài thành công!');
+      message.success('Test started successfully!');
       setStartModalVisible(false);
       navigate(`/assessments/take/${data.assessmentId}`);
     },
     onError: (error: Error) => {
-      message.error(error.message || 'Không thể bắt đầu bài test');
+      message.error(error.message || 'Failed to start test');
     },
   });
 
@@ -88,7 +88,7 @@ export default function AvailableTests() {
       navigate(`/assessments/take/${data.assessmentId}`);
     },
     onError: (error: Error) => {
-      message.error(error.message || 'Không thể tiếp tục bài test');
+      message.error(error.message || 'Failed to continue test');
     },
   });
 
@@ -129,7 +129,7 @@ export default function AvailableTests() {
   // Columns for available tests
   const availableColumns: ColumnsType<AvailableTestDto> = [
     {
-      title: 'Tên bài test',
+      title: 'Test Name',
       dataIndex: 'title',
       key: 'title',
       render: (text, record) => (
@@ -144,20 +144,20 @@ export default function AvailableTests() {
       ),
     },
     {
-      title: 'Loại',
+      title: 'Type',
       dataIndex: 'typeName',
       key: 'typeName',
       render: (text) => <Tag color="blue">{text}</Tag>,
     },
     {
-      title: 'Số câu hỏi',
+      title: 'Questions',
       dataIndex: 'questionCount',
       key: 'questionCount',
       align: 'center',
       render: (value) => <Text strong>{value}</Text>,
     },
     {
-      title: 'Thời gian',
+      title: 'Duration',
       dataIndex: 'timeLimitMinutes',
       key: 'timeLimitMinutes',
       align: 'center',
@@ -165,34 +165,34 @@ export default function AvailableTests() {
         value ? (
           <Space>
             <ClockCircleOutlined />
-            {value} phút
+            {value} min
           </Space>
         ) : (
-          <Text type="secondary">Không giới hạn</Text>
+          <Text type="secondary">No limit</Text>
         ),
     },
     {
-      title: 'Điểm đạt',
+      title: 'Passing Score',
       dataIndex: 'passingScore',
       key: 'passingScore',
       align: 'center',
       render: (value) => <Text>{value}%</Text>,
     },
     {
-      title: 'Đã làm',
+      title: 'Attempts',
       key: 'attempts',
       align: 'center',
       render: (_, record) => (
         <Space direction="vertical" size={0}>
-          <Text>{record.attemptCount} lần</Text>
+          <Text>{record.attemptCount} times</Text>
           {record.bestScore !== undefined && (
-            <Text type="secondary">Tốt nhất: {record.bestScore}%</Text>
+            <Text type="secondary">Best: {record.bestScore}%</Text>
           )}
         </Space>
       ),
     },
     {
-      title: 'Thao tác',
+      title: 'Action',
       key: 'actions',
       align: 'center',
       render: (_, record) => (
@@ -204,7 +204,7 @@ export default function AvailableTests() {
             setStartModalVisible(true);
           }}
         >
-          Bắt đầu
+          Start
         </Button>
       ),
     },
@@ -213,26 +213,26 @@ export default function AvailableTests() {
   // Columns for history
   const historyColumns: ColumnsType<AssessmentListDto> = [
     {
-      title: 'Bài test',
+      title: 'Test',
       dataIndex: 'testTemplateTitle',
       key: 'testTemplateTitle',
       render: (text, record) => (
         <Space direction="vertical" size={0}>
           <Text strong>{text || record.title}</Text>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            {record.startedAt && new Date(record.startedAt).toLocaleString('vi-VN')}
+            {record.startedAt && new Date(record.startedAt).toLocaleString('en-US')}
           </Text>
         </Space>
       ),
     },
     {
-      title: 'Trạng thái',
+      title: 'Status',
       dataIndex: 'status',
       key: 'status',
       render: (status) => getStatusTag(status),
     },
     {
-      title: 'Điểm số',
+      title: 'Score',
       key: 'score',
       align: 'center',
       render: (_, record) => {
@@ -250,17 +250,17 @@ export default function AvailableTests() {
       },
     },
     {
-      title: 'Thời gian hoàn thành',
+      title: 'Completed At',
       key: 'completedAt',
       render: (_, record) => {
         if (!record.completedAt) {
-          return <Text type="secondary">Chưa hoàn thành</Text>;
+          return <Text type="secondary">Not completed</Text>;
         }
-        return new Date(record.completedAt).toLocaleString('vi-VN');
+        return new Date(record.completedAt).toLocaleString('en-US');
       },
     },
     {
-      title: 'Thao tác',
+      title: 'Action',
       key: 'actions',
       align: 'center',
       render: (_, record) => {
@@ -272,7 +272,7 @@ export default function AvailableTests() {
               icon={<PlayCircleOutlined />}
               onClick={() => handleContinueTest(record.id)}
             >
-              Tiếp tục
+              Continue
             </Button>
           );
         }
@@ -280,7 +280,7 @@ export default function AvailableTests() {
           // Completed or later
           return (
             <Button icon={<FileTextOutlined />} onClick={() => handleViewResult(record.id)}>
-              Xem kết quả
+              View Result
             </Button>
           );
         }
@@ -294,7 +294,7 @@ export default function AvailableTests() {
   return (
     <div>
       <Title level={3}>
-        <FileTextOutlined /> Bài kiểm tra kỹ năng
+        <FileTextOutlined /> Skill Assessment Tests
       </Title>
 
       {/* In Progress Alert */}
@@ -308,7 +308,7 @@ export default function AvailableTests() {
         >
           <Space direction="vertical" style={{ width: '100%' }}>
             <Text strong style={{ color: '#d46b08' }}>
-              <SyncOutlined spin /> Bạn có {inProgressAssessments.length} bài test đang làm dở
+              <SyncOutlined spin /> You have {inProgressAssessments.length} test(s) in progress
             </Text>
             <Space wrap>
               {inProgressAssessments.map((assessment) => (
@@ -319,7 +319,7 @@ export default function AvailableTests() {
                   icon={<PlayCircleOutlined />}
                   onClick={() => handleContinueTest(assessment.id)}
                 >
-                  Tiếp tục: {assessment.testTemplateTitle || assessment.title}
+                  Continue: {assessment.testTemplateTitle || assessment.title}
                 </Button>
               ))}
             </Space>
@@ -334,7 +334,7 @@ export default function AvailableTests() {
             key: 'available',
             label: (
               <span>
-                <PlayCircleOutlined /> Bài test có thể làm
+                <PlayCircleOutlined /> Available Tests
               </span>
             ),
             children: (
@@ -351,7 +351,7 @@ export default function AvailableTests() {
                     pagination={false}
                   />
                 ) : (
-                  <Empty description="Không có bài test nào" />
+                  <Empty description="No tests available" />
                 )}
               </Card>
             ),
@@ -360,7 +360,7 @@ export default function AvailableTests() {
             key: 'history',
             label: (
               <span>
-                <HistoryOutlined /> Lịch sử làm bài
+                <HistoryOutlined /> Test History
               </span>
             ),
             children: (
@@ -378,11 +378,11 @@ export default function AvailableTests() {
                       total: historyData.totalCount,
                       pageSize: historyData.pageSize,
                       current: historyData.pageNumber,
-                      showTotal: (total) => `Tổng ${total} bài`,
+                      showTotal: (total) => `Total ${total} tests`,
                     }}
                   />
                 ) : (
-                  <Empty description="Chưa có lịch sử làm bài" />
+                  <Empty description="No test history" />
                 )}
               </Card>
             ),
@@ -392,29 +392,29 @@ export default function AvailableTests() {
 
       {/* Start Test Modal */}
       <Modal
-        title="Bắt đầu làm bài test"
+        title="Start Test"
         open={startModalVisible}
         onCancel={() => setStartModalVisible(false)}
         onOk={handleStartTest}
-        okText="Bắt đầu làm bài"
-        cancelText="Hủy"
+        okText="Start Test"
+        cancelText="Cancel"
         confirmLoading={startMutation.isPending}
         width={600}
       >
         {selectedTest && (
           <div>
             <Descriptions column={1} bordered size="small">
-              <Descriptions.Item label="Tên bài test">
+              <Descriptions.Item label="Test Name">
                 <Text strong>{selectedTest.title}</Text>
               </Descriptions.Item>
               {selectedTest.description && (
-                <Descriptions.Item label="Mô tả">{selectedTest.description}</Descriptions.Item>
+                <Descriptions.Item label="Description">{selectedTest.description}</Descriptions.Item>
               )}
-              <Descriptions.Item label="Loại">
+              <Descriptions.Item label="Type">
                 <Tag color="blue">{selectedTest.typeName}</Tag>
               </Descriptions.Item>
               {selectedTest.targetSkillName && (
-                <Descriptions.Item label="Kỹ năng">
+                <Descriptions.Item label="Skill">
                   {selectedTest.targetSkillName}
                 </Descriptions.Item>
               )}
@@ -423,22 +423,22 @@ export default function AvailableTests() {
             <Row gutter={16} style={{ marginTop: 16 }}>
               <Col span={8}>
                 <Statistic
-                  title="Số câu hỏi"
+                  title="Questions"
                   value={selectedTest.questionCount}
                   prefix={<FileTextOutlined />}
                 />
               </Col>
               <Col span={8}>
                 <Statistic
-                  title="Thời gian"
-                  value={selectedTest.timeLimitMinutes || 'Không giới hạn'}
-                  suffix={selectedTest.timeLimitMinutes ? 'phút' : ''}
+                  title="Duration"
+                  value={selectedTest.timeLimitMinutes || 'No limit'}
+                  suffix={selectedTest.timeLimitMinutes ? 'min' : ''}
                   prefix={<ClockCircleOutlined />}
                 />
               </Col>
               <Col span={8}>
                 <Statistic
-                  title="Điểm đạt"
+                  title="Passing Score"
                   value={selectedTest.passingScore}
                   suffix="%"
                   prefix={<TrophyOutlined />}
@@ -457,9 +457,9 @@ export default function AvailableTests() {
             >
               <Text type="secondary">
                 <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
-                Sau khi bắt đầu, bạn có thể tạm dừng và tiếp tục làm bài sau.
+                After starting, you can pause and continue the test later.
                 {selectedTest.timeLimitMinutes &&
-                  ` Thời gian làm bài tối đa là ${selectedTest.timeLimitMinutes} phút.`}
+                  ` Maximum time limit is ${selectedTest.timeLimitMinutes} minutes.`}
               </Text>
             </div>
           </div>

@@ -155,7 +155,7 @@ public class QuestionConfiguration : IEntityTypeConfiguration<Question>
             .HasMaxLength(500);
 
         builder.Property(e => e.GradingRubric)
-            .HasColumnType("jsonb");
+            .HasMaxLength(4000);
 
         builder.Property(e => e.AiPromptUsed)
             .HasMaxLength(4000);

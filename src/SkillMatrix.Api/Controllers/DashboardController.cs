@@ -16,7 +16,7 @@ public class DashboardController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy tổng quan dashboard
+    /// Get dashboard overview
     /// </summary>
     [HttpGet("overview")]
     public async Task<ActionResult<DashboardOverviewDto>> GetOverview()
@@ -26,7 +26,7 @@ public class DashboardController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy danh sách skills của tất cả nhân viên
+    /// Get skills list for all employees
     /// </summary>
     [HttpGet("employees/skills")]
     public async Task<ActionResult<List<EmployeeSkillSummaryDto>>> GetEmployeeSkills([FromQuery] Guid? teamId)
@@ -36,7 +36,7 @@ public class DashboardController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy chi tiết skills của một nhân viên
+    /// Get skill details for an employee
     /// </summary>
     [HttpGet("employees/{employeeId}/skills")]
     public async Task<ActionResult<EmployeeSkillSummaryDto>> GetEmployeeSkillDetail(Guid employeeId)
@@ -48,7 +48,7 @@ public class DashboardController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy skill matrix của team
+    /// Get team skill matrix
     /// </summary>
     [HttpGet("skill-matrix")]
     public async Task<ActionResult<TeamSkillMatrixDto>> GetSkillMatrix([FromQuery] Guid? teamId)

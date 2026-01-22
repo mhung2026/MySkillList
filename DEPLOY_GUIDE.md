@@ -1,24 +1,24 @@
-# Hướng dẫn Deploy SkillMatrix lên IIS
+# SkillMatrix Deployment Guide for IIS
 
 ## Domain Configuration
 - **Frontend (UI):** https://myskilllist-ngeteam-ad.allianceitsc.com
 - **Backend (API):** https://myskilllist-ngeteam-api.allianceitsc.com
 
-## Yêu cầu hệ thống
+## System Requirements
 
 ### Server Requirements
-- Windows Server 2016/2019/2022 hoặc Windows 10/11
+- Windows Server 2016/2019/2022 or Windows 10/11
 - IIS 10.0+
 - .NET 8.0 Runtime (ASP.NET Core Hosting Bundle)
-- PostgreSQL Server (có thể ở máy khác)
+- PostgreSQL Server (can be on a different machine)
 
-### Cài đặt .NET 8.0 Hosting Bundle
-1. Tải từ: https://dotnet.microsoft.com/download/dotnet/8.0
-2. Chọn **ASP.NET Core Runtime** → **Hosting Bundle**
-3. Cài đặt và restart IIS
+### Installing .NET 8.0 Hosting Bundle
+1. Download from: https://dotnet.microsoft.com/download/dotnet/8.0
+2. Select **ASP.NET Core Runtime** → **Hosting Bundle**
+3. Install and restart IIS
 
-### Bật IIS Features
-Vào **Control Panel** → **Programs** → **Turn Windows features on or off**:
+### Enable IIS Features
+Go to **Control Panel** → **Programs** → **Turn Windows features on or off**:
 - Internet Information Services
   - Web Management Tools
     - IIS Management Console
@@ -37,21 +37,21 @@ Vào **Control Panel** → **Programs** → **Turn Windows features on or off**:
       - Request Filtering
       - URL Authorization
 
-### Cài đặt URL Rewrite Module (cho Frontend)
-1. Tải từ: https://www.iis.net/downloads/microsoft/url-rewrite
-2. Cài đặt URL Rewrite 2.1
+### Installing URL Rewrite Module (for Frontend)
+1. Download from: https://www.iis.net/downloads/microsoft/url-rewrite
+2. Install URL Rewrite 2.1
 
 ---
 
-## Bước 1: Build ứng dụng
+## Step 1: Build the Application
 
-### Cách 1: Sử dụng script tự động
+### Option 1: Using automated script
 ```batch
 cd "e:\Ngệ Team\SkillMatrix"
 publish.bat
 ```
 
-### Cách 2: Build thủ công
+### Option 2: Manual build
 
 **Build Backend API:**
 ```batch
@@ -65,22 +65,22 @@ cd web
 npm install
 npm run build
 ```
-Copy thư mục `dist\*` và `web.config` vào `C:\publish\skillmatrix-web`
+Copy the `dist\*` folder and `web.config` to `C:\publish\skillmatrix-web`
 
 ---
 
-## Bước 2: Cấu hình trước khi deploy
+## Step 2: Pre-deployment Configuration
 
-### 2.1 Cập nhật API URL cho Frontend
+### 2.1 Update API URL for Frontend
 
-File `web\.env.production` đã được cấu hình sẵn:
+The file `web\.env.production` is already configured:
 ```env
 VITE_API_URL=https://myskilllist-ngeteam-api.allianceitsc.com/api
 ```
 
-### 2.2 Cập nhật Connection String cho Backend
+### 2.2 Update Connection String for Backend
 
-Sửa file `src\SkillMatrix.Api\appsettings.Production.json`:
+Edit file `src\SkillMatrix.Api\appsettings.Production.json`:
 ```json
 {
   "ConnectionStrings": {
@@ -91,32 +91,32 @@ Sửa file `src\SkillMatrix.Api\appsettings.Production.json`:
 
 ---
 
-## Bước 3: Tạo IIS Sites
+## Step 3: Create IIS Sites
 
-### 3.1 Tạo Application Pool
+### 3.1 Create Application Pool
 
-**Cho Backend API:**
-1. Mở **IIS Manager**
-2. Click phải **Application Pools** → **Add Application Pool**
+**For Backend API:**
+1. Open **IIS Manager**
+2. Right-click **Application Pools** → **Add Application Pool**
 3. Name: `SkillMatrixAPI`
 4. .NET CLR Version: **No Managed Code**
 5. Managed Pipeline Mode: **Integrated**
 6. Click **OK**
-7. Click phải pool vừa tạo → **Advanced Settings**
+7. Right-click the newly created pool → **Advanced Settings**
    - Start Mode: `AlwaysRunning`
-   - Identity: `ApplicationPoolIdentity` (hoặc user có quyền)
+   - Identity: `ApplicationPoolIdentity` (or a user with appropriate permissions)
 
-**Cho Frontend:**
-1. Tạo pool mới: `SkillMatrixWeb`
+**For Frontend:**
+1. Create new pool: `SkillMatrixWeb`
 2. .NET CLR Version: **No Managed Code**
 3. Managed Pipeline Mode: **Integrated**
 
-### 3.2 Tạo Website/Application
+### 3.2 Create Website/Application
 
-**Cách A: Dùng 2 Sites riêng biệt (khuyến nghị)**
+**Option A: Using 2 separate Sites (recommended)**
 
 **Site 1 - Backend API:**
-1. Click phải **Sites** → **Add Website**
+1. Right-click **Sites** → **Add Website**
 2. Site name: `SkillMatrixAPI`
 3. Application pool: `SkillMatrixAPI`
 4. Physical path: `C:\inetpub\skillmatrix-api`
@@ -125,10 +125,10 @@ Sửa file `src\SkillMatrix.Api\appsettings.Production.json`:
    - IP: All Unassigned
    - Port: 443
    - Host name: `myskilllist-ngeteam-api.allianceitsc.com`
-   - SSL Certificate: Chọn certificate phù hợp
+   - SSL Certificate: Select appropriate certificate
 
 **Site 2 - Frontend:**
-1. Click phải **Sites** → **Add Website**
+1. Right-click **Sites** → **Add Website**
 2. Site name: `SkillMatrixWeb`
 3. Application pool: `SkillMatrixWeb`
 4. Physical path: `C:\inetpub\skillmatrix-web`
@@ -136,25 +136,25 @@ Sửa file `src\SkillMatrix.Api\appsettings.Production.json`:
    - Type: https
    - Port: 443
    - Host name: `myskilllist-ngeteam-ad.allianceitsc.com`
-   - SSL Certificate: Chọn certificate phù hợp
+   - SSL Certificate: Select appropriate certificate
 
 ---
 
-**Cách B: Dùng 1 Site với Virtual Directory**
+**Option B: Using 1 Site with Virtual Directory**
 
-1. Tạo site chính cho Frontend ở port 80
-2. Click phải site → **Add Application**
+1. Create main site for Frontend on port 80
+2. Right-click site → **Add Application**
    - Alias: `api`
    - Application pool: `SkillMatrixAPI`
    - Physical path: `C:\inetpub\skillmatrix-api`
 
-URL sẽ là:
+URLs will be:
 - Frontend: `http://your-server/`
 - API: `http://your-server/api/`
 
 ---
 
-## Bước 4: Copy files
+## Step 4: Copy Files
 
 ```batch
 :: Copy API
@@ -164,12 +164,12 @@ xcopy /s /e /y "publish\api\*" "C:\inetpub\skillmatrix-api\"
 xcopy /s /e /y "publish\web\*" "C:\inetpub\skillmatrix-web\"
 ```
 
-### Tạo thư mục logs cho API
+### Create logs folder for API
 ```batch
 mkdir C:\inetpub\skillmatrix-api\logs
 ```
 
-### Cấp quyền cho IIS
+### Grant permissions for IIS
 ```batch
 icacls "C:\inetpub\skillmatrix-api" /grant "IIS AppPool\SkillMatrixAPI":(OI)(CI)M
 icacls "C:\inetpub\skillmatrix-web" /grant "IIS AppPool\SkillMatrixWeb":(OI)(CI)R
@@ -177,9 +177,9 @@ icacls "C:\inetpub\skillmatrix-web" /grant "IIS AppPool\SkillMatrixWeb":(OI)(CI)
 
 ---
 
-## Bước 5: Cấu hình CORS (Backend)
+## Step 5: Configure CORS (Backend)
 
-Nếu Frontend và API ở khác domain/port, cần cấu hình CORS trong `Program.cs`:
+If Frontend and API are on different domains/ports, configure CORS in `Program.cs`:
 
 ```csharp
 builder.Services.AddCors(options =>
@@ -196,19 +196,19 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Thêm trước app.MapControllers()
+// Add before app.MapControllers()
 app.UseCors();
 ```
 
 ---
 
-## Bước 6: Test
+## Step 6: Test
 
-1. Mở browser, truy cập Frontend URL
-2. Đăng nhập với: `admin@skillmatrix.com` / `admin123`
-3. Kiểm tra Dashboard hiển thị đúng
+1. Open browser, access Frontend URL
+2. Login with: `admin@skillmatrix.com` / `admin123`
+3. Verify Dashboard displays correctly
 
-### Kiểm tra API trực tiếp
+### Test API directly
 ```
 https://myskilllist-ngeteam-api.allianceitsc.com/api/dashboard/overview
 https://myskilllist-ngeteam-api.allianceitsc.com/swagger
@@ -218,25 +218,25 @@ https://myskilllist-ngeteam-api.allianceitsc.com/swagger
 
 ## Troubleshooting
 
-### Lỗi 500.19 - Configuration Error
-- Kiểm tra URL Rewrite Module đã cài chưa
-- Kiểm tra file web.config đúng format
+### Error 500.19 - Configuration Error
+- Check if URL Rewrite Module is installed
+- Verify web.config format is correct
 
-### Lỗi 502.5 - ANCM Out-Of-Process Startup Failure
-- Kiểm tra .NET 8.0 Hosting Bundle đã cài
+### Error 502.5 - ANCM Out-Of-Process Startup Failure
+- Verify .NET 8.0 Hosting Bundle is installed
 - Restart IIS: `iisreset`
-- Xem log trong `C:\inetpub\skillmatrix-api\logs\`
+- Check logs in `C:\inetpub\skillmatrix-api\logs\`
 
-### Lỗi 404 khi refresh trang React
-- Kiểm tra URL Rewrite đã cấu hình trong web.config
-- Kiểm tra URL Rewrite Module đã cài
+### Error 404 when refreshing React page
+- Verify URL Rewrite is configured in web.config
+- Verify URL Rewrite Module is installed
 
-### Không kết nối được Database
-- Kiểm tra firewall PostgreSQL port 5432
-- Kiểm tra connection string đúng
-- Test kết nối từ server đến DB
+### Cannot connect to Database
+- Check PostgreSQL firewall port 5432
+- Verify connection string is correct
+- Test connection from server to DB
 
-### Xem logs
+### View logs
 ```batch
 :: API logs
 type C:\inetpub\skillmatrix-api\logs\stdout*.log
@@ -248,7 +248,7 @@ eventvwr.msc
 
 ---
 
-## Cấu trúc thư mục sau khi deploy
+## Directory Structure After Deployment
 
 ```
 C:\inetpub\
@@ -271,14 +271,14 @@ C:\inetpub\
 
 ---
 
-## Cập nhật ứng dụng
+## Updating the Application
 
-1. Build mới: `publish.bat`
-2. Stop site trong IIS
-3. Copy files mới
+1. Build new version: `publish.bat`
+2. Stop site in IIS
+3. Copy new files
 4. Start site
 
-Hoặc dùng script:
+Or use script:
 ```batch
 @echo off
 iisreset /stop
@@ -290,12 +290,12 @@ echo Done!
 
 ---
 
-## HTTPS (Khuyến nghị cho Production)
+## HTTPS (Recommended for Production)
 
-1. Mua SSL certificate hoặc dùng Let's Encrypt
-2. Trong IIS, thêm HTTPS binding với certificate
-3. Cập nhật `.env.production`:
+1. Purchase SSL certificate or use Let's Encrypt
+2. In IIS, add HTTPS binding with certificate
+3. Update `.env.production`:
    ```env
    VITE_API_URL=https://your-domain.com/api
    ```
-4. Redirect HTTP to HTTPS trong web.config
+4. Redirect HTTP to HTTPS in web.config

@@ -10,9 +10,7 @@ public class SystemEnumValueDto
     public int Value { get; set; }
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string? NameVi { get; set; }
     public string? Description { get; set; }
-    public string? DescriptionVi { get; set; }
     public string? Color { get; set; }
     public string? Icon { get; set; }
     public int DisplayOrder { get; set; }
@@ -30,9 +28,7 @@ public class CreateSystemEnumValueDto
     public int Value { get; set; }
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string? NameVi { get; set; }
     public string? Description { get; set; }
-    public string? DescriptionVi { get; set; }
     public string? Color { get; set; }
     public string? Icon { get; set; }
     public int? DisplayOrder { get; set; }
@@ -45,9 +41,7 @@ public class CreateSystemEnumValueDto
 public class UpdateSystemEnumValueDto
 {
     public string Name { get; set; } = string.Empty;
-    public string? NameVi { get; set; }
     public string? Description { get; set; }
-    public string? DescriptionVi { get; set; }
     public string? Color { get; set; }
     public string? Icon { get; set; }
     public int? DisplayOrder { get; set; }
@@ -74,7 +68,6 @@ public class EnumDropdownItemDto
     public int Value { get; set; }
     public string Code { get; set; } = string.Empty;
     public string Label { get; set; } = string.Empty;
-    public string? LabelVi { get; set; }
     public string? Color { get; set; }
     public string? Icon { get; set; }
 }

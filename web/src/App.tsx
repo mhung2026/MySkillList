@@ -152,12 +152,12 @@ function AppLayout() {
   menuItems.push({
     key: 'assessments',
     icon: <FormOutlined />,
-    label: 'Làm bài test',
+    label: 'Assessments',
     children: [
       {
         key: '/assessments',
         icon: <UserOutlined />,
-        label: <Link to="/assessments">Bài test của tôi</Link>,
+        label: <Link to="/assessments">My Tests</Link>,
       },
     ],
   });
@@ -167,7 +167,7 @@ function AppLayout() {
       {
         key: 'profile',
         icon: <UserOutlined />,
-        label: 'Thông tin cá nhân',
+        label: 'Profile',
       },
       {
         type: 'divider' as const,
@@ -175,7 +175,7 @@ function AppLayout() {
       {
         key: 'logout',
         icon: <LogoutOutlined />,
-        label: 'Đăng xuất',
+        label: 'Logout',
         onClick: handleLogout,
       },
     ],

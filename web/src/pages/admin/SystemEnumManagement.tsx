@@ -131,9 +131,7 @@ export default function SystemEnumManagement() {
       value: nextValue,
       code: '',
       name: '',
-      nameVi: '',
       description: '',
-      descriptionVi: '',
       color: '#1890ff',
       icon: null,
       displayOrder: nextOrder,
@@ -145,9 +143,7 @@ export default function SystemEnumManagement() {
     setEditingValue(record);
     form.setFieldsValue({
       name: record.name,
-      nameVi: record.nameVi || '',
       description: record.description || '',
-      descriptionVi: record.descriptionVi || '',
       color: record.color || '#1890ff',
       icon: record.icon,
       displayOrder: record.displayOrder,
@@ -170,9 +166,7 @@ export default function SystemEnumManagement() {
         // Update
         const updateData: UpdateSystemEnumValueDto = {
           name: values.name,
-          nameVi: values.nameVi || undefined,
           description: values.description || undefined,
-          descriptionVi: values.descriptionVi || undefined,
           color: colorValue || undefined,
           icon: values.icon || undefined,
           displayOrder: values.displayOrder,
@@ -185,9 +179,7 @@ export default function SystemEnumManagement() {
           value: values.value,
           code: values.code,
           name: values.name,
-          nameVi: values.nameVi || undefined,
           description: values.description || undefined,
-          descriptionVi: values.descriptionVi || undefined,
           color: colorValue || undefined,
           icon: values.icon || undefined,
           displayOrder: values.displayOrder,
@@ -224,7 +216,7 @@ export default function SystemEnumManagement() {
       ),
     },
     {
-      title: 'Name (EN)',
+      title: 'Name',
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record) => (
@@ -243,12 +235,6 @@ export default function SystemEnumManagement() {
           <span>{name}</span>
         </Space>
       ),
-    },
-    {
-      title: 'Name (VI)',
-      dataIndex: 'nameVi',
-      key: 'nameVi',
-      render: (nameVi?: string) => nameVi || <Text type="secondary">-</Text>,
     },
     {
       title: 'Order',
@@ -425,27 +411,16 @@ export default function SystemEnumManagement() {
             </>
           )}
 
-          <Space style={{ width: '100%' }} align="start">
-            <Form.Item
-              name="name"
-              label="Name (English)"
-              rules={[{ required: true, message: 'Please enter name' }]}
-              style={{ flex: 1 }}
-            >
-              <Input placeholder="Display name in English" />
-            </Form.Item>
-
-            <Form.Item name="nameVi" label="Name (Vietnamese)" style={{ flex: 1 }}>
-              <Input placeholder="Tên hiển thị tiếng Việt" />
-            </Form.Item>
-          </Space>
-
-          <Form.Item name="description" label="Description (English)">
-            <TextArea rows={2} placeholder="Description in English" />
+          <Form.Item
+            name="name"
+            label="Name"
+            rules={[{ required: true, message: 'Please enter name' }]}
+          >
+            <Input placeholder="Display name" />
           </Form.Item>
 
-          <Form.Item name="descriptionVi" label="Description (Vietnamese)">
-            <TextArea rows={2} placeholder="Mô tả tiếng Việt" />
+          <Form.Item name="description" label="Description">
+            <TextArea rows={2} placeholder="Description" />
           </Form.Item>
 
           <Space style={{ width: '100%' }} align="start">

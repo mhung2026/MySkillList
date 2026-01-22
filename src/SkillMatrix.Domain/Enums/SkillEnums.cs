@@ -89,7 +89,8 @@ public enum QuestionType
     LongAnswer = 5,          // Extended text response
     CodingChallenge = 6,     // Code writing/completion
     Scenario = 7,            // Scenario-based question
-    SituationalJudgment = 8  // SJT - rank/rate response options
+    SituationalJudgment = 8, // SJT - rank/rate response options
+    Rating = 9               // Rating scale (1-5 stars)
 }
 
 /// <summary>

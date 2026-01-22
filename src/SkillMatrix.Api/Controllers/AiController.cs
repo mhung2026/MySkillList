@@ -5,7 +5,7 @@ using SkillMatrix.Application.Interfaces;
 namespace SkillMatrix.Api.Controllers;
 
 /// <summary>
-/// API endpoints cho AI services (generate questions, analyze skills)
+/// API endpoints for AI services (generate questions, analyze skills)
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -23,7 +23,7 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
-    /// Generate câu hỏi cho một skill cụ thể
+    /// Generate questions for a specific skill
     /// </summary>
     [HttpPost("generate-questions")]
     public async Task<ActionResult<AiGenerateQuestionsResponse>> GenerateQuestions(
@@ -58,7 +58,7 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
-    /// Chấm điểm câu trả lời tự luận/coding
+    /// Grade essay/coding answer
     /// </summary>
     [HttpPost("grade-answer")]
     public async Task<ActionResult<AiGradeAnswerResponse>> GradeAnswer(
@@ -78,7 +78,7 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
-    /// Phân tích skill gaps của employee
+    /// Analyze employee skill gaps
     /// </summary>
     [HttpPost("analyze-skill-gaps")]
     public async Task<ActionResult<AiAnalyzeSkillGapResponse>> AnalyzeSkillGaps(

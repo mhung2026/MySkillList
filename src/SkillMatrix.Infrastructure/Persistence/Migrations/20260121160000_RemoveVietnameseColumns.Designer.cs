@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SkillMatrix.Infrastructure.Persistence;
@@ -11,9 +12,10 @@ using SkillMatrix.Infrastructure.Persistence;
 namespace SkillMatrix.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(SkillMatrixDbContext))]
-    partial class SkillMatrixDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260121160000_RemoveVietnameseColumns")]
+    partial class RemoveVietnameseColumns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -323,8 +325,7 @@ namespace SkillMatrix.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("GradingRubric")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                        .HasColumnType("jsonb");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -348,7 +349,7 @@ namespace SkillMatrix.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("SectionId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("SkillId")
+                    b.Property<Guid>("SkillId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Tags")
@@ -2205,7 +2206,8 @@ namespace SkillMatrix.Infrastructure.Persistence.Migrations
                     b.HasOne("SkillMatrix.Domain.Entities.Taxonomy.Skill", "Skill")
                         .WithMany()
                         .HasForeignKey("SkillId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Section");
 

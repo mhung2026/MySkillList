@@ -55,7 +55,7 @@ public class TestSection : BaseEntity
 public class Question : VersionedEntity
 {
     public Guid? SectionId { get; set; }
-    public Guid SkillId { get; set; }
+    public Guid? SkillId { get; set; }  // Optional - can generate questions without specific skill
     public ProficiencyLevel TargetLevel { get; set; }  // What level this question tests
 
     // Content
@@ -78,7 +78,7 @@ public class Question : VersionedEntity
 
     // Navigation
     public TestSection? Section { get; set; }
-    public Taxonomy.Skill Skill { get; set; } = null!;
+    public Taxonomy.Skill? Skill { get; set; }
     public ICollection<QuestionOption> Options { get; set; } = new List<QuestionOption>();
     public ICollection<AssessmentResponse> Responses { get; set; } = new List<AssessmentResponse>();
 }

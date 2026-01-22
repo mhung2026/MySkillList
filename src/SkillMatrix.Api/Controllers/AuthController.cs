@@ -16,7 +16,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Đăng nhập
+    /// User login
     /// </summary>
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
@@ -28,7 +28,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Đăng ký user mới
+    /// Register new user
     /// </summary>
     [HttpPost("register")]
     public async Task<ActionResult<LoginResponse>> Register([FromBody] RegisterRequest request)
@@ -40,7 +40,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy thông tin user hiện tại
+    /// Get current user information
     /// </summary>
     [HttpGet("me/{userId}")]
     public async Task<ActionResult<UserDto>> GetCurrentUser(Guid userId)
@@ -52,19 +52,19 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Đổi mật khẩu
+    /// Change password
     /// </summary>
     [HttpPost("change-password/{userId}")]
     public async Task<ActionResult> ChangePassword(Guid userId, [FromBody] ChangePasswordRequest request)
     {
         var success = await _authService.ChangePasswordAsync(userId, request);
         if (!success)
-            return BadRequest(new { error = "Mật khẩu hiện tại không đúng" });
-        return Ok(new { message = "Đổi mật khẩu thành công" });
+            return BadRequest(new { error = "Current password is incorrect" });
+        return Ok(new { message = "Password changed successfully" });
     }
 
     /// <summary>
-    /// Lấy danh sách tất cả users (for admin)
+    /// Get all users (admin only)
     /// </summary>
     [HttpGet("users")]
     public async Task<ActionResult<List<UserDto>>> GetAllUsers()

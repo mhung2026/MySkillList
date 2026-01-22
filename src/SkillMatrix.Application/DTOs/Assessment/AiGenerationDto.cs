@@ -3,63 +3,68 @@ using SkillMatrix.Domain.Enums;
 namespace SkillMatrix.Application.DTOs.Assessment;
 
 /// <summary>
-/// Request để AI generate câu hỏi
+/// Request for AI to generate questions
 /// </summary>
 public class AiGenerateQuestionsRequest
 {
     /// <summary>
-    /// Skill ID cần generate câu hỏi (optional)
+    /// Skill ID to generate questions for (optional)
     /// </summary>
     public Guid? SkillId { get; set; }
 
     /// <summary>
-    /// Skill name - dùng khi không có SkillId (optional)
+    /// Skill name - used when SkillId is not provided (optional)
     /// </summary>
     public string? SkillName { get; set; }
 
     /// <summary>
-    /// Level cần đánh giá (1-7) - optional
+    /// Target level to assess (1-7) - optional
     /// </summary>
     public ProficiencyLevel? TargetLevel { get; set; }
 
     /// <summary>
-    /// Số lượng câu hỏi cần generate
+    /// Number of questions to generate
     /// </summary>
     public int QuestionCount { get; set; } = 5;
 
     /// <summary>
-    /// Loại assessment: Quiz, CodingTest, CaseStudy, RoleBasedTest, SituationalJudgment
+    /// Assessment type: Quiz, CodingTest, CaseStudy, RoleBasedTest, SituationalJudgment
     /// </summary>
     public AssessmentType AssessmentType { get; set; } = AssessmentType.Quiz;
 
     /// <summary>
-    /// Độ khó mong muốn (optional)
+    /// Question types to generate (required): MultipleChoice, MultipleAnswer, TrueFalse, etc.
+    /// </summary>
+    public List<QuestionType> QuestionTypes { get; set; } = new();
+
+    /// <summary>
+    /// Desired difficulty level (optional)
     /// </summary>
     public DifficultyLevel? Difficulty { get; set; }
 
     /// <summary>
-    /// Ngôn ngữ output (vi, en)
+    /// Output language (en, vi)
     /// </summary>
-    public string Language { get; set; } = "vi";
+    public string Language { get; set; } = "en";
 
     /// <summary>
-    /// Context bổ sung cho AI (vd: focus vào .NET Core 8)
+    /// Additional context for AI (e.g., focus on .NET Core 8)
     /// </summary>
     public string? AdditionalContext { get; set; }
 
     /// <summary>
-    /// Job role - dùng cho Role-based Test
+    /// Job role - used for Role-based Test
     /// </summary>
     public string? JobRole { get; set; }
 
     /// <summary>
-    /// Section ID nếu muốn add vào section cụ thể
+    /// Section ID if adding to a specific section
     /// </summary>
     public Guid? SectionId { get; set; }
 }
 
 /// <summary>
-/// Response từ AI service
+/// Response from AI service
 /// </summary>
 public class AiGenerateQuestionsResponse
 {
@@ -71,134 +76,134 @@ public class AiGenerateQuestionsResponse
 }
 
 /// <summary>
-/// Câu hỏi được AI generate
+/// AI-generated question
 /// </summary>
 public class AiGeneratedQuestion
 {
     /// <summary>
-    /// Nội dung câu hỏi
+    /// Question content
     /// </summary>
     public string Content { get; set; } = string.Empty;
 
     /// <summary>
-    /// Loại assessment
+    /// Assessment type
     /// </summary>
     public AssessmentType AssessmentType { get; set; }
 
     /// <summary>
-    /// Loại câu hỏi cụ thể trong assessment
+    /// Specific question type within assessment
     /// </summary>
     public QuestionType QuestionType { get; set; }
 
     /// <summary>
-    /// Độ khó (optional)
+    /// Difficulty level (optional)
     /// </summary>
     public DifficultyLevel? Difficulty { get; set; }
 
     /// <summary>
-    /// Level gợi ý phù hợp (optional)
+    /// Suggested target level (optional)
     /// </summary>
     public ProficiencyLevel? TargetLevel { get; set; }
 
     /// <summary>
-    /// Skill ID liên quan (optional)
+    /// Related skill ID (optional)
     /// </summary>
     public Guid? SkillId { get; set; }
 
     /// <summary>
-    /// Skill name liên quan (optional)
+    /// Related skill name (optional)
     /// </summary>
     public string? SkillName { get; set; }
 
     /// <summary>
-    /// Điểm gợi ý
+    /// Suggested points
     /// </summary>
     public int SuggestedPoints { get; set; }
 
     /// <summary>
-    /// Thời gian gợi ý (giây)
+    /// Suggested time (seconds)
     /// </summary>
     public int? SuggestedTimeSeconds { get; set; }
 
     /// <summary>
-    /// Tags cho câu hỏi
+    /// Tags for the question
     /// </summary>
     public List<string> Tags { get; set; } = new();
 
     /// <summary>
-    /// Giải thích đáp án
+    /// Answer explanation
     /// </summary>
     public string? Explanation { get; set; }
 
-    // === Cho Quiz (trắc nghiệm) ===
+    // === For Quiz (multiple choice) ===
     /// <summary>
-    /// Các lựa chọn cho câu trắc nghiệm
+    /// Options for multiple choice questions
     /// </summary>
     public List<AiGeneratedOption> Options { get; set; } = new();
 
-    // === Cho Coding Test ===
+    // === For Coding Test ===
     /// <summary>
     /// Code snippet/template
     /// </summary>
     public string? CodeSnippet { get; set; }
 
     /// <summary>
-    /// Output mong đợi
+    /// Expected output
     /// </summary>
     public string? ExpectedOutput { get; set; }
 
     /// <summary>
-    /// Test cases cho coding
+    /// Test cases for coding
     /// </summary>
     public List<AiTestCase> TestCases { get; set; } = new();
 
-    // === Cho Case Study ===
+    // === For Case Study ===
     /// <summary>
-    /// Mô tả tình huống chi tiết
+    /// Detailed scenario description
     /// </summary>
     public string? Scenario { get; set; }
 
     /// <summary>
-    /// Tài liệu bổ sung
+    /// Additional documents
     /// </summary>
     public List<string> Documents { get; set; } = new();
 
-    // === Cho Role-based Test ===
+    // === For Role-based Test ===
     /// <summary>
-    /// Context về vai trò
+    /// Role context
     /// </summary>
     public string? RoleContext { get; set; }
 
     /// <summary>
-    /// Trách nhiệm của vai trò
+    /// Role responsibilities
     /// </summary>
     public List<string> Responsibilities { get; set; } = new();
 
-    // === Cho SJT ===
+    // === For SJT ===
     /// <summary>
-    /// Mô tả tình huống SJT
+    /// SJT situation description
     /// </summary>
     public string? Situation { get; set; }
 
     /// <summary>
-    /// Các phương án xử lý cho SJT
+    /// Response options for SJT
     /// </summary>
     public List<AiSjtResponseOption> ResponseOptions { get; set; } = new();
 
-    // === Chung cho tự luận ===
+    // === Common for essay/open-ended ===
     /// <summary>
-    /// Câu trả lời mong đợi
+    /// Expected answer
     /// </summary>
     public string? ExpectedAnswer { get; set; }
 
     /// <summary>
-    /// Rubric chấm điểm
+    /// Grading rubric
     /// </summary>
     public string? GradingRubric { get; set; }
 }
 
 /// <summary>
-/// Option cho câu hỏi trắc nghiệm
+/// Option for multiple choice questions
 /// </summary>
 public class AiGeneratedOption
 {
@@ -208,7 +213,7 @@ public class AiGeneratedOption
 }
 
 /// <summary>
-/// Test case cho coding challenge
+/// Test case for coding challenge
 /// </summary>
 public class AiTestCase
 {
@@ -219,7 +224,7 @@ public class AiTestCase
 }
 
 /// <summary>
-/// Response option cho SJT
+/// Response option for SJT
 /// </summary>
 public class AiSjtResponseOption
 {
@@ -229,7 +234,7 @@ public class AiSjtResponseOption
 }
 
 /// <summary>
-/// Metadata về quá trình generate
+/// Metadata about the generation process
 /// </summary>
 public class AiGenerationMetadata
 {
@@ -241,7 +246,7 @@ public class AiGenerationMetadata
 }
 
 /// <summary>
-/// Request để AI phân tích và đề xuất skill gaps
+/// Request for AI to analyze and recommend skill gaps
 /// </summary>
 public class AiAnalyzeSkillGapRequest
 {
@@ -259,7 +264,7 @@ public class EmployeeSkillSnapshot
 }
 
 /// <summary>
-/// Response phân tích từ AI
+/// AI analysis response
 /// </summary>
 public class AiAnalyzeSkillGapResponse
 {
@@ -294,7 +299,7 @@ public class AiLearningRecommendation
 }
 
 /// <summary>
-/// Request để AI chấm bài tự luận/coding
+/// Request for AI to grade essay/coding answers
 /// </summary>
 public class AiGradeAnswerRequest
 {

@@ -17,7 +17,7 @@ public class AssessmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy danh sách tests có thể làm
+    /// Get list of available tests
     /// </summary>
     [HttpGet("available/{employeeId}")]
     public async Task<ActionResult<List<AvailableTestDto>>> GetAvailableTests(Guid employeeId)
@@ -27,7 +27,7 @@ public class AssessmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy danh sách assessments của employee
+    /// Get list of assessments for an employee
     /// </summary>
     [HttpGet("employee/{employeeId}")]
     public async Task<ActionResult<PagedResult<AssessmentListDto>>> GetByEmployee(
@@ -40,7 +40,7 @@ public class AssessmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy chi tiết assessment
+    /// Get assessment details
     /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<AssessmentDto>> GetById(Guid id)
@@ -52,7 +52,7 @@ public class AssessmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Bắt đầu làm bài test
+    /// Start taking a test
     /// </summary>
     [HttpPost("start")]
     public async Task<ActionResult<StartAssessmentResponse>> StartAssessment([FromBody] StartAssessmentRequest request)
@@ -69,7 +69,7 @@ public class AssessmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy bài test đang làm dở
+    /// Get in-progress test
     /// </summary>
     [HttpGet("{id}/continue")]
     public async Task<ActionResult<StartAssessmentResponse>> ContinueAssessment(Guid id)
@@ -81,7 +81,7 @@ public class AssessmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Submit câu trả lời cho 1 câu hỏi
+    /// Submit answer for a question
     /// </summary>
     [HttpPost("answer")]
     public async Task<ActionResult<SubmitAnswerResponse>> SubmitAnswer([FromBody] SubmitAnswerRequest request)
@@ -98,7 +98,7 @@ public class AssessmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Nộp bài test (hoàn thành)
+    /// Submit test (complete)
     /// </summary>
     [HttpPost("{id}/submit")]
     public async Task<ActionResult<AssessmentResultDto>> SubmitAssessment(Guid id)
@@ -115,7 +115,7 @@ public class AssessmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Xem kết quả bài test
+    /// View test result
     /// </summary>
     [HttpGet("{id}/result")]
     public async Task<ActionResult<AssessmentResultDto>> GetResult(Guid id)

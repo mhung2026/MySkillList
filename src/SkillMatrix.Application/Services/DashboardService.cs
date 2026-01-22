@@ -19,26 +19,26 @@ public class DashboardService : IDashboardService
     {
         var overview = new DashboardOverviewDto();
 
-        // Tổng số nhân viên active
+        // Total active employees
         overview.TotalEmployees = await _context.Employees
             .CountAsync(e => !e.IsDeleted && e.Status == EmploymentStatus.Active);
 
-        // Tổng số skills
+        // Total skills
         overview.TotalSkills = await _context.Skills
             .CountAsync(s => !s.IsDeleted && s.IsActive);
 
-        // Tổng số assessments hoàn thành
+        // Total completed assessments
         overview.TotalAssessments = await _context.Assessments
             .CountAsync(a => !a.IsDeleted && a.Status == AssessmentStatus.Completed);
 
-        // Tổng số test templates
+        // Total test templates
         overview.TotalTestTemplates = await _context.TestTemplates
             .CountAsync(t => !t.IsDeleted && t.IsActive);
 
-        // Phân bố nhân sự theo team
+        // Employee distribution by team
         var teamGroups = await _context.Employees
             .Where(e => !e.IsDeleted && e.Status == EmploymentStatus.Active)
-            .GroupBy(e => new { e.TeamId, TeamName = e.Team != null ? e.Team.Name : "Chưa phân team" })
+            .GroupBy(e => new { e.TeamId, TeamName = e.Team != null ? e.Team.Name : "Unassigned" })
             .Select(g => new TeamDistributionDto
             {
                 TeamId = g.Key.TeamId,
@@ -56,7 +56,7 @@ public class DashboardService : IDashboardService
         }
         overview.TeamDistribution = teamGroups;
 
-        // Phân bố nhân sự theo role
+        // Employee distribution by role
         var roleGroups = await _context.Employees
             .Where(e => !e.IsDeleted && e.Status == EmploymentStatus.Active)
             .GroupBy(e => e.SystemRole)
@@ -76,7 +76,7 @@ public class DashboardService : IDashboardService
         }
         overview.RoleDistribution = roleGroups;
 
-        // Top skills phổ biến (top 10)
+        // Top popular skills (top 10)
         overview.TopSkills = await _context.EmployeeSkills
             .Where(es => !es.IsDeleted && !es.Employee.IsDeleted && es.Employee.Status == EmploymentStatus.Active)
             .GroupBy(es => new
@@ -99,7 +99,7 @@ public class DashboardService : IDashboardService
             .Take(10)
             .ToListAsync();
 
-        // Phân bố proficiency levels
+        // Proficiency level distribution
         var levelGroups = await _context.EmployeeSkills
             .Where(es => !es.IsDeleted && !es.Employee.IsDeleted && es.Employee.Status == EmploymentStatus.Active)
             .GroupBy(es => es.CurrentLevel)
@@ -120,7 +120,7 @@ public class DashboardService : IDashboardService
         }
         overview.ProficiencyDistribution = levelGroups.OrderBy(l => l.Level).ToList();
 
-        // Recent assessments (10 gần nhất)
+        // Recent assessments (last 10)
         overview.RecentAssessments = await _context.Assessments
             .Where(a => !a.IsDeleted && a.Status == AssessmentStatus.Completed && a.CompletedAt != null)
             .OrderByDescending(a => a.CompletedAt)
@@ -295,7 +295,7 @@ public class DashboardService : IDashboardService
             .ToListAsync();
 
         // Get team name
-        var teamName = "Tất cả";
+        var teamName = "All Teams";
         if (teamId.HasValue)
         {
             var team = await _context.Teams.FindAsync(teamId.Value);

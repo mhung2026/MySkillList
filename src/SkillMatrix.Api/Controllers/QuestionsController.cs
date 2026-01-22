@@ -17,7 +17,7 @@ public class QuestionsController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy danh sách câu hỏi với filter và phân trang
+    /// Get list of questions with filter and pagination
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<PagedResult<QuestionListDto>>> GetAll([FromQuery] QuestionFilterRequest filter)
@@ -27,7 +27,7 @@ public class QuestionsController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy chi tiết câu hỏi theo ID
+    /// Get question detail by ID
     /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<QuestionDto>> GetById(Guid id)
@@ -39,7 +39,7 @@ public class QuestionsController : ControllerBase
     }
 
     /// <summary>
-    /// Tạo câu hỏi mới
+    /// Create new question
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<QuestionDto>> Create([FromBody] CreateQuestionDto dto)
@@ -55,7 +55,7 @@ public class QuestionsController : ControllerBase
     }
 
     /// <summary>
-    /// Cập nhật câu hỏi
+    /// Update question
     /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult<QuestionDto>> Update(Guid id, [FromBody] UpdateQuestionDto dto)
@@ -67,7 +67,7 @@ public class QuestionsController : ControllerBase
     }
 
     /// <summary>
-    /// Xóa câu hỏi (soft delete)
+    /// Delete question (soft delete)
     /// </summary>
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
@@ -79,7 +79,7 @@ public class QuestionsController : ControllerBase
     }
 
     /// <summary>
-    /// Toggle trạng thái active của câu hỏi
+    /// Toggle question active status
     /// </summary>
     [HttpPost("{id}/toggle-active")]
     public async Task<ActionResult> ToggleActive(Guid id)
@@ -91,7 +91,7 @@ public class QuestionsController : ControllerBase
     }
 
     /// <summary>
-    /// Tạo nhiều câu hỏi cùng lúc (bulk create)
+    /// Create multiple questions at once (bulk create)
     /// </summary>
     [HttpPost("bulk")]
     public async Task<ActionResult<List<QuestionDto>>> CreateBulk([FromBody] List<CreateQuestionDto> dtos)
@@ -104,7 +104,7 @@ public class QuestionsController : ControllerBase
     }
 
     /// <summary>
-    /// Generate câu hỏi từ AI và thêm vào section
+    /// Generate questions from AI and add to section
     /// </summary>
     [HttpPost("generate-ai")]
     public async Task<ActionResult<List<QuestionDto>>> GenerateFromAi([FromBody] GenerateAiQuestionsRequest request)
@@ -117,10 +117,11 @@ public class QuestionsController : ControllerBase
             SkillId = request.SkillId,
             SkillName = request.SkillName,
             TargetLevel = request.TargetLevel,
-            QuestionCount = request.QuestionCount,
+            QuestionCount = request.QuestionCount > 0 ? request.QuestionCount : 5,
+            QuestionTypes = request.QuestionTypes,
             AssessmentType = request.AssessmentType,
             Difficulty = request.Difficulty,
-            Language = request.Language,
+            Language = request.Language ?? "en",
             AdditionalContext = request.AdditionalContext,
             JobRole = request.JobRole,
             SectionId = request.SectionId
@@ -136,12 +137,12 @@ public class QuestionsController : ControllerBase
 }
 
 /// <summary>
-/// Request để generate câu hỏi từ AI và thêm vào section
+/// Request to generate questions from AI and add to section
 /// </summary>
 public class GenerateAiQuestionsRequest : AiGenerateQuestionsRequest
 {
     /// <summary>
-    /// Section ID để add câu hỏi vào (bắt buộc)
+    /// Section ID to add questions to (required)
     /// </summary>
     public new Guid SectionId { get; set; }
 }

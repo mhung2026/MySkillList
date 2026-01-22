@@ -24,24 +24,14 @@ public class SystemEnumValue : BaseEntity
     public string Code { get; set; } = string.Empty;
 
     /// <summary>
-    /// Display name in English
+    /// Display name
     /// </summary>
     public string Name { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Display name in Vietnamese
-    /// </summary>
-    public string? NameVi { get; set; }
 
     /// <summary>
     /// Detailed description
     /// </summary>
     public string? Description { get; set; }
-
-    /// <summary>
-    /// Description in Vietnamese
-    /// </summary>
-    public string? DescriptionVi { get; set; }
 
     /// <summary>
     /// Color code for UI display (e.g., "#52c41a", "blue")

@@ -3,7 +3,7 @@ using SkillMatrix.Domain.Enums;
 namespace SkillMatrix.Application.DTOs.Assessment;
 
 /// <summary>
-/// DTO cho Assessment session
+/// DTO for Assessment session
 /// </summary>
 public class AssessmentDto
 {
@@ -37,7 +37,7 @@ public class AssessmentDto
 }
 
 /// <summary>
-/// DTO danh sách Assessment
+/// DTO for Assessment list
 /// </summary>
 public class AssessmentListDto
 {
@@ -59,7 +59,7 @@ public class AssessmentListDto
 }
 
 /// <summary>
-/// Request tạo Assessment mới (bắt đầu làm bài test)
+/// Request to create new Assessment (start taking a test)
 /// </summary>
 public class StartAssessmentRequest
 {
@@ -69,7 +69,7 @@ public class StartAssessmentRequest
 }
 
 /// <summary>
-/// Response khi bắt đầu làm bài test
+/// Response when starting a test
 /// </summary>
 public class StartAssessmentResponse
 {
@@ -85,7 +85,7 @@ public class StartAssessmentResponse
 }
 
 /// <summary>
-/// Section với các câu hỏi cho người làm bài
+/// Section with questions for test taker
 /// </summary>
 public class TestSectionWithQuestionsDto
 {
@@ -98,7 +98,7 @@ public class TestSectionWithQuestionsDto
 }
 
 /// <summary>
-/// Câu hỏi hiển thị cho người làm bài (ẩn đáp án đúng)
+/// Question displayed to test taker (correct answer hidden)
 /// </summary>
 public class QuestionForTestDto
 {
@@ -116,7 +116,7 @@ public class QuestionForTestDto
 }
 
 /// <summary>
-/// Option cho câu hỏi (không hiển thị isCorrect)
+/// Option for question (isCorrect not displayed)
 /// </summary>
 public class OptionForTestDto
 {
@@ -126,7 +126,7 @@ public class OptionForTestDto
 }
 
 /// <summary>
-/// DTO cho response (câu trả lời của người làm bài)
+/// DTO for response (test taker's answer)
 /// </summary>
 public class AssessmentResponseDto
 {
@@ -145,7 +145,7 @@ public class AssessmentResponseDto
 }
 
 /// <summary>
-/// Request submit câu trả lời
+/// Request to submit answer
 /// </summary>
 public class SubmitAnswerRequest
 {
@@ -158,19 +158,19 @@ public class SubmitAnswerRequest
 }
 
 /// <summary>
-/// Response sau khi submit câu trả lời
+/// Response after submitting answer
 /// </summary>
 public class SubmitAnswerResponse
 {
     public bool Success { get; set; }
     public Guid ResponseId { get; set; }
-    public bool? IsCorrect { get; set; }  // null nếu chưa chấm (essay/coding)
+    public bool? IsCorrect { get; set; }  // null if not yet graded (essay/coding)
     public int? PointsAwarded { get; set; }
-    public string? Feedback { get; set; }  // Feedback ngay lập tức (nếu có)
+    public string? Feedback { get; set; }  // Immediate feedback (if available)
 }
 
 /// <summary>
-/// Request nộp bài (hoàn thành test)
+/// Request to submit test (complete test)
 /// </summary>
 public class SubmitAssessmentRequest
 {
@@ -178,7 +178,7 @@ public class SubmitAssessmentRequest
 }
 
 /// <summary>
-/// Response khi nộp bài xong
+/// Response when test submission is complete
 /// </summary>
 public class AssessmentResultDto
 {
@@ -214,7 +214,7 @@ public class AssessmentResultDto
 }
 
 /// <summary>
-/// Kết quả theo từng skill
+/// Result by each skill
 /// </summary>
 public class SkillResultDto
 {
@@ -229,7 +229,7 @@ public class SkillResultDto
 }
 
 /// <summary>
-/// Kết quả từng câu hỏi (để review)
+/// Result for each question (for review)
 /// </summary>
 public class QuestionResultDto
 {
@@ -260,7 +260,7 @@ public class QuestionResultDto
 }
 
 /// <summary>
-/// Option result với marking đáp án đúng
+/// Option result with correct answer marking
 /// </summary>
 public class OptionResultDto
 {

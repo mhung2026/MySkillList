@@ -8,9 +8,9 @@ public class QuestionDto
     public Guid Id { get; set; }
     public Guid? SectionId { get; set; }
     public string? SectionTitle { get; set; }
-    public Guid SkillId { get; set; }
-    public string SkillName { get; set; } = string.Empty;
-    public string SkillCode { get; set; } = string.Empty;
+    public Guid? SkillId { get; set; }
+    public string? SkillName { get; set; }
+    public string? SkillCode { get; set; }
     public ProficiencyLevel TargetLevel { get; set; }
     public string TargetLevelName { get; set; } = string.Empty;
     public QuestionType Type { get; set; }
@@ -33,9 +33,9 @@ public class QuestionDto
 public class QuestionListDto
 {
     public Guid Id { get; set; }
-    public Guid SkillId { get; set; }
-    public string SkillName { get; set; } = string.Empty;
-    public string SkillCode { get; set; } = string.Empty;
+    public Guid? SkillId { get; set; }
+    public string? SkillName { get; set; }
+    public string? SkillCode { get; set; }
     public ProficiencyLevel TargetLevel { get; set; }
     public string TargetLevelName { get; set; } = string.Empty;
     public QuestionType Type { get; set; }
@@ -52,7 +52,7 @@ public class QuestionListDto
 public class CreateQuestionDto
 {
     public Guid? SectionId { get; set; }
-    public Guid SkillId { get; set; }
+    public Guid? SkillId { get; set; }
     public ProficiencyLevel TargetLevel { get; set; }
     public QuestionType Type { get; set; }
     public string Content { get; set; } = string.Empty;
@@ -69,7 +69,7 @@ public class CreateQuestionDto
 public class UpdateQuestionDto
 {
     public Guid? SectionId { get; set; }
-    public Guid SkillId { get; set; }
+    public Guid? SkillId { get; set; }
     public ProficiencyLevel TargetLevel { get; set; }
     public QuestionType Type { get; set; }
     public string Content { get; set; } = string.Empty;

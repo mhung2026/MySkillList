@@ -27,7 +27,7 @@ builder.Services.AddScoped<ISkillSubcategoryService, SkillSubcategoryService>();
 builder.Services.AddScoped<ISkillService, SkillService>();
 builder.Services.AddScoped<IProficiencyLevelDefinitionService, ProficiencyLevelDefinitionService>();
 
-// AI Services (Mock - sẽ replace bằng real AI service sau)
+// AI Services (Mock - will be replaced with real AI service later)
 builder.Services.AddScoped<IAiQuestionGeneratorService, MockAiQuestionGeneratorService>();
 builder.Services.AddScoped<IAiSkillAnalyzerService, MockAiSkillAnalyzerService>();
 

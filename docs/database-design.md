@@ -2,7 +2,7 @@
 
 ## Overview
 
-Thiết kế database dựa trên **SFIA 9 (Skills Framework for the Information Age)** với khả năng mở rộng cao cho các nhu cầu đặc thù của công ty.
+Database design based on **SFIA 9 (Skills Framework for the Information Age)** with high extensibility for company-specific needs.
 
 ## Entity Relationship Diagram
 
@@ -136,56 +136,56 @@ Thiết kế database dựa trên **SFIA 9 (Skills Framework for the Information
 
 ## SFIA Proficiency Levels
 
-| Level | Name | Description (Vietnamese) |
-|-------|------|--------------------------|
-| 0 | None | Không có kiến thức/kinh nghiệm |
-| 1 | Follow | Làm theo hướng dẫn, đang học |
-| 2 | Assist | Hỗ trợ người khác, phát triển kỹ năng |
-| 3 | Apply | Áp dụng độc lập, hiểu best practices |
-| 4 | Enable | Hỗ trợ người khác, đảm bảo chất lượng |
-| 5 | Ensure/Advise | Đảm bảo/Tư vấn ở cấp tổ chức |
-| 6 | Initiate | Khởi xướng, ảnh hưởng chiến lược |
-| 7 | Set Strategy | Định hướng chiến lược, dẫn đầu ngành |
+| Level | Name | Description |
+|-------|------|-------------|
+| 0 | None | No knowledge or experience |
+| 1 | Follow | Following instructions, learning |
+| 2 | Assist | Assisting others, developing skills |
+| 3 | Apply | Applying independently, understanding best practices |
+| 4 | Enable | Enabling others, ensuring quality |
+| 5 | Ensure/Advise | Ensuring/Advising at organizational level |
+| 6 | Initiate | Initiating, influencing strategy |
+| 7 | Set Strategy | Setting strategy, leading the industry |
 
 ## Key Design Decisions
 
 ### 1. Versioned Entities
-- `SkillDomain`, `SkillSubcategory`, `Skill`, `JobRole` đều kế thừa `VersionedEntity`
-- Cho phép track thay đổi theo thời gian
-- `IsCurrent` flag để lấy version hiện tại
-- `EffectiveFrom`, `EffectiveTo` cho version control
+- `SkillDomain`, `SkillSubcategory`, `Skill`, `JobRole` all inherit from `VersionedEntity`
+- Allows tracking changes over time
+- `IsCurrent` flag to get current version
+- `EffectiveFrom`, `EffectiveTo` for version control
 
 ### 2. Skill Level Definitions
-- Mỗi skill có định nghĩa chi tiết cho từng level (SFIA style)
-- `BehavioralIndicators`: Hành vi quan sát được
-- `EvidenceExamples`: Ví dụ bằng chứng
-- Giúp assessment khách quan hơn
+- Each skill has detailed definitions for each level (SFIA style)
+- `BehavioralIndicators`: Observable behaviors
+- `EvidenceExamples`: Evidence examples
+- Helps make assessment more objective
 
 ### 3. Multiple Assessment Sources
-- `EmployeeSkill` lưu trữ:
-  - `CurrentLevel`: Level hiện tại (tổng hợp)
-  - `SelfAssessedLevel`: Tự đánh giá
-  - `ManagerAssessedLevel`: Manager đánh giá
-  - `TestValidatedLevel`: Qua bài test
-- Hybrid approach cho accuracy cao hơn
+- `EmployeeSkill` stores:
+  - `CurrentLevel`: Current level (aggregated)
+  - `SelfAssessedLevel`: Self-assessment
+  - `ManagerAssessedLevel`: Manager assessment
+  - `TestValidatedLevel`: Test-based validation
+- Hybrid approach for higher accuracy
 
 ### 4. AI Integration Points
-- `Assessment.AiAnalysis`: Phân tích của AI
-- `Assessment.AiRecommendations`: Đề xuất của AI
-- `AssessmentSkillResult.AiExplanation`: Giải thích tại sao AI đánh giá mức này
-- `SkillGap.AiRecommendation`: AI đề xuất cách giải quyết gap
-- `EmployeeLearningPath.AiRationale`: Lý do AI suggest learning path
-- `Question.IsAiGenerated`: Track câu hỏi do AI tạo
+- `Assessment.AiAnalysis`: AI analysis
+- `Assessment.AiRecommendations`: AI recommendations
+- `AssessmentSkillResult.AiExplanation`: Explanation of why AI assessed this level
+- `SkillGap.AiRecommendation`: AI recommendation for addressing the gap
+- `EmployeeLearningPath.AiRationale`: Reason AI suggested this learning path
+- `Question.IsAiGenerated`: Track AI-generated questions
 
 ### 5. Soft Delete & Audit
-- Tất cả entities đều có soft delete (`IsDeleted`)
+- All entities have soft delete (`IsDeleted`)
 - Audit fields: `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`
-- Global query filters tự động exclude deleted records
+- Global query filters automatically exclude deleted records
 
 ### 6. Career Ladder Integration
-- `JobRole` có hierarchy (Junior -> Mid -> Senior -> Lead)
-- `RoleSkillRequirement` định nghĩa skill cần thiết cho mỗi role
-- `MinimumLevel` vs `ExpectedLevel` cho flexibility
+- `JobRole` has hierarchy (Junior -> Mid -> Senior -> Lead)
+- `RoleSkillRequirement` defines required skills for each role
+- `MinimumLevel` vs `ExpectedLevel` for flexibility
 
 ### 7. T-Shaped Model Support
 - `SkillType` enum: Core, Specialty, Adjacent
@@ -227,7 +227,7 @@ Thiết kế database dựa trên **SFIA 9 (Skills Framework for the Information
 
 ## Tech Stack
 
-- **Backend**: .NET Core
+- **Backend**: .NET Core 9
 - **Database**: PostgreSQL
-- **ORM**: Entity Framework Core
+- **ORM**: Entity Framework Core 9
 - **JSON columns**: PostgreSQL `jsonb` type for flexible data (Tags, BehavioralIndicators, etc.)

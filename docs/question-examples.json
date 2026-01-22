@@ -3,32 +3,32 @@
     {
       "id": "q-001",
       "type": "mcq",
-      "language": "vi",
+      "language": "en",
       "difficulty": "medium",
-      "topic": "Cơ sở dữ liệu",
-      "stem": "Chuẩn hoá dạng bình thường (1NF) yêu cầu điều gì?",
+      "topic": "Database",
+      "stem": "What does First Normal Form (1NF) require?",
       "choices": [
-        { "id": "A", "text": "Mỗi ô chỉ chứa một giá trị nguyên tử", "is_correct": true },
-        { "id": "B", "text": "Bảng phải có khoá chính duy nhất", "is_correct": false },
-        { "id": "C", "text": "Không có phụ thuộc hàm", "is_correct": false },
-        { "id": "D", "text": "Mọi thuộc tính đều là khoá", "is_correct": false }
+        { "id": "A", "text": "Each cell contains only atomic values", "is_correct": true },
+        { "id": "B", "text": "Table must have a unique primary key", "is_correct": false },
+        { "id": "C", "text": "No functional dependencies", "is_correct": false },
+        { "id": "D", "text": "All attributes are keys", "is_correct": false }
       ],
       "shuffle_choices": true,
       "points": 1,
-      "explanation": "1NF yêu cầu mỗi ô chứa giá trị nguyên tử, không chứa danh sách hoặc tập con.",
+      "explanation": "1NF requires each cell to contain atomic values only, not lists or subsets.",
       "tags": ["database", "normalization"]
     },
 
     {
       "id": "q-002",
       "type": "short_answer",
-      "language": "vi",
+      "language": "en",
       "difficulty": "easy",
       "topic": "HTTP",
-      "stem": "Mã trạng thái HTTP nào biểu thị 'Not Found'?",
+      "stem": "Which HTTP status code indicates 'Not Found'?",
       "expected_answer": "404",
       "rubric": [
-        { "criteria": "Đúng mã", "points": 1 }
+        { "criteria": "Correct code", "points": 1 }
       ]
     },
 

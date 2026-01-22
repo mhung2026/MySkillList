@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const err = error as { response?: { data?: { message?: string } } };
       return {
         success: false,
-        message: err?.response?.data?.message || 'Đăng nhập thất bại',
+        message: err?.response?.data?.message || 'Login failed',
       };
     }
   };
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const err = error as { response?: { data?: { message?: string } } };
       return {
         success: false,
-        message: err?.response?.data?.message || 'Đăng ký thất bại',
+        message: err?.response?.data?.message || 'Registration failed',
       };
     }
   };

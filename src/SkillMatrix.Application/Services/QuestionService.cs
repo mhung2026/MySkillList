@@ -275,7 +275,7 @@ public class QuestionService : IQuestionService
         var questions = aiResponse.Questions.Select((q, index) => new Question
         {
             SectionId = sectionId,
-            SkillId = q.SkillId ?? request.SkillId ?? Guid.Empty,
+            SkillId = q.SkillId ?? request.SkillId,  // Nullable - can be null if no skill specified
             TargetLevel = q.TargetLevel ?? request.TargetLevel ?? ProficiencyLevel.Apply,
             Type = q.QuestionType,
             Content = q.Content,
@@ -283,7 +283,9 @@ public class QuestionService : IQuestionService
             Points = q.SuggestedPoints,
             TimeLimitSeconds = q.SuggestedTimeSeconds,
             Difficulty = q.Difficulty ?? DifficultyLevel.Medium,
-            Tags = q.Tags.Any() ? JsonSerializer.Serialize(q.Tags) : null,
+            Tags = q.Tags.Where(t => !string.IsNullOrWhiteSpace(t)).Any()
+                ? JsonSerializer.Serialize(q.Tags.Where(t => !string.IsNullOrWhiteSpace(t)).ToList())
+                : null,
             GradingRubric = q.GradingRubric,
             IsAiGenerated = true,
             AiPromptUsed = aiResponse.Metadata?.PromptUsed,

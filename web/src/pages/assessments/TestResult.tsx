@@ -55,7 +55,7 @@ export default function TestResult() {
 
   const skillColumns: ColumnsType<SkillResultDto> = [
     {
-      title: 'Kỹ năng',
+      title: 'Skill',
       dataIndex: 'skillName',
       key: 'skillName',
       render: (text, record) => (
@@ -66,7 +66,7 @@ export default function TestResult() {
       ),
     },
     {
-      title: 'Số câu đúng',
+      title: 'Correct Answers',
       key: 'correct',
       align: 'center',
       render: (_, record) => (
@@ -76,7 +76,7 @@ export default function TestResult() {
       ),
     },
     {
-      title: 'Điểm',
+      title: 'Score',
       key: 'score',
       align: 'center',
       render: (_, record) => (
@@ -86,7 +86,7 @@ export default function TestResult() {
       ),
     },
     {
-      title: 'Tỷ lệ',
+      title: 'Percentage',
       dataIndex: 'percentage',
       key: 'percentage',
       align: 'center',
@@ -105,7 +105,7 @@ export default function TestResult() {
     return (
       <div style={{ textAlign: 'center', padding: 100 }}>
         <Spin size="large" />
-        <div style={{ marginTop: 16 }}>Đang tải kết quả...</div>
+        <div style={{ marginTop: 16 }}>Loading results...</div>
       </div>
     );
   }
@@ -114,11 +114,11 @@ export default function TestResult() {
     return (
       <Alert
         type="error"
-        message="Không thể tải kết quả"
-        description="Vui lòng thử lại sau hoặc liên hệ quản trị viên."
+        message="Failed to load results"
+        description="Please try again later or contact administrator."
         showIcon
         action={
-          <Button onClick={() => navigate('/assessments')}>Quay lại</Button>
+          <Button onClick={() => navigate('/assessments')}>Go back</Button>
         }
       />
     );
@@ -132,7 +132,7 @@ export default function TestResult() {
         style={{ marginBottom: 16 }}
         onClick={() => navigate('/assessments')}
       >
-        Quay lại danh sách
+        Back to list
       </Button>
 
       {/* Result Header */}
@@ -146,17 +146,17 @@ export default function TestResult() {
                 {result.title}
               </Title>
               <Tag color={result.passed ? 'success' : 'error'} style={{ fontSize: 16, padding: '4px 12px' }}>
-                {result.passed ? 'ĐẠT' : 'CHƯA ĐẠT'}
+                {result.passed ? 'PASSED' : 'FAILED'}
               </Tag>
             </Space>
           }
           subTitle={
             <Space direction="vertical" size={8}>
               <Text type="secondary">
-                Hoàn thành lúc: {new Date(result.completedAt).toLocaleString('vi-VN')}
+                Completed at: {new Date(result.completedAt).toLocaleString('en-US')}
               </Text>
               <Text type="secondary">
-                Điểm cần đạt: {result.passingScore}%
+                Passing score: {result.passingScore}%
               </Text>
             </Space>
           }
@@ -167,7 +167,7 @@ export default function TestResult() {
           <Col xs={24} sm={8}>
             <Card>
               <Statistic
-                title="Điểm số"
+                title="Score"
                 value={result.totalScore}
                 suffix={`/ ${result.maxScore}`}
                 valueStyle={{ color: getScoreColor(result.percentage), fontSize: 32 }}
@@ -184,7 +184,7 @@ export default function TestResult() {
                   size={100}
                 />
                 <div style={{ marginTop: 8 }}>
-                  <Text strong>Tỷ lệ đúng</Text>
+                  <Text strong>Correct Rate</Text>
                 </div>
               </div>
             </Card>
@@ -192,9 +192,9 @@ export default function TestResult() {
           <Col xs={24} sm={8}>
             <Card>
               <Statistic
-                title="Thời gian làm bài"
+                title="Time Spent"
                 value={result.totalTimeMinutes}
-                suffix="phút"
+                suffix="min"
                 prefix={<ClockCircleOutlined />}
               />
             </Card>
@@ -203,12 +203,12 @@ export default function TestResult() {
       </Card>
 
       {/* Statistics */}
-      <Card title={<Space><BarChartOutlined /> Thống kê chi tiết</Space>} style={{ marginBottom: 16 }}>
+      <Card title={<Space><BarChartOutlined /> Detailed Statistics</Space>} style={{ marginBottom: 16 }}>
         <Row gutter={[16, 16]}>
           <Col xs={12} sm={6}>
             <Card size="small" style={{ background: '#f6ffed' }}>
               <Statistic
-                title="Câu đúng"
+                title="Correct"
                 value={result.correctAnswers}
                 valueStyle={{ color: '#52c41a' }}
                 prefix={<CheckCircleOutlined />}
@@ -218,7 +218,7 @@ export default function TestResult() {
           <Col xs={12} sm={6}>
             <Card size="small" style={{ background: '#fff2f0' }}>
               <Statistic
-                title="Câu sai"
+                title="Wrong"
                 value={result.wrongAnswers}
                 valueStyle={{ color: '#ff4d4f' }}
                 prefix={<CloseCircleOutlined />}
@@ -228,7 +228,7 @@ export default function TestResult() {
           <Col xs={12} sm={6}>
             <Card size="small" style={{ background: '#fffbe6' }}>
               <Statistic
-                title="Bỏ qua"
+                title="Skipped"
                 value={result.unansweredQuestions}
                 valueStyle={{ color: '#faad14' }}
               />
@@ -237,7 +237,7 @@ export default function TestResult() {
           <Col xs={12} sm={6}>
             <Card size="small" style={{ background: '#e6f7ff' }}>
               <Statistic
-                title="Chờ chấm"
+                title="Pending Review"
                 value={result.pendingReviewQuestions}
                 valueStyle={{ color: '#1890ff' }}
               />
@@ -249,7 +249,7 @@ export default function TestResult() {
       {/* Skill Breakdown */}
       {result.skillResults && result.skillResults.length > 0 && (
         <Card
-          title={<Space><BarChartOutlined /> Kết quả theo kỹ năng</Space>}
+          title={<Space><BarChartOutlined /> Results by Skill</Space>}
           style={{ marginBottom: 16 }}
         >
           <Table
@@ -264,7 +264,7 @@ export default function TestResult() {
 
       {/* Question Details */}
       {result.questionResults && result.questionResults.length > 0 && (
-        <Card title={<Space><FileTextOutlined /> Chi tiết từng câu hỏi</Space>}>
+        <Card title={<Space><FileTextOutlined /> Question Details</Space>}>
           <Collapse
             accordion
             items={result.questionResults.map((q) => ({
@@ -274,11 +274,11 @@ export default function TestResult() {
                   <Tag color={q.isCorrect ? 'success' : q.isCorrect === false ? 'error' : 'processing'}>
                     {q.isCorrect ? <CheckCircleOutlined /> : q.isCorrect === false ? <CloseCircleOutlined /> : <ClockCircleOutlined />}
                   </Tag>
-                  <Text strong>Câu {q.questionNumber}</Text>
+                  <Text strong>Question {q.questionNumber}</Text>
                   <Tag>{q.typeName}</Tag>
                   <Text type="secondary">{q.skillName}</Text>
                   <Tag color={q.isCorrect ? 'success' : 'default'}>
-                    {q.pointsAwarded ?? 0}/{q.points} điểm
+                    {q.pointsAwarded ?? 0}/{q.points} points
                   </Tag>
                 </Space>
               ),
@@ -308,7 +308,7 @@ export default function TestResult() {
                   {/* Options with results */}
                   {q.options && q.options.length > 0 && (
                     <div style={{ marginBottom: 16 }}>
-                      <Text strong>Các lựa chọn:</Text>
+                      <Text strong>Options:</Text>
                       <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
                         {q.options.map((opt, idx) => {
                           let bgColor = '#fafafa';
@@ -337,17 +337,17 @@ export default function TestResult() {
                                 <Text style={{ color: textColor }}>{opt.content}</Text>
                                 {opt.isCorrect && (
                                   <Tag color="success" icon={<CheckCircleOutlined />}>
-                                    Đáp án đúng
+                                    Correct answer
                                   </Tag>
                                 )}
                                 {opt.wasSelected && !opt.isCorrect && (
                                   <Tag color="error" icon={<CloseCircleOutlined />}>
-                                    Bạn chọn
+                                    Your choice
                                   </Tag>
                                 )}
                                 {opt.wasSelected && opt.isCorrect && (
                                   <Tag color="success" icon={<CheckCircleOutlined />}>
-                                    Bạn chọn đúng
+                                    Correct choice
                                   </Tag>
                                 )}
                               </Space>
@@ -368,7 +368,7 @@ export default function TestResult() {
                   {/* Text/Code answers */}
                   {q.userAnswer && (
                     <div style={{ marginBottom: 16 }}>
-                      <Text strong>Câu trả lời của bạn:</Text>
+                      <Text strong>Your answer:</Text>
                       <div
                         style={{
                           marginTop: 8,
@@ -385,7 +385,7 @@ export default function TestResult() {
                   {q.correctAnswer && (
                     <div style={{ marginBottom: 16 }}>
                       <Text strong style={{ color: '#52c41a' }}>
-                        Đáp án đúng:
+                        Correct answer:
                       </Text>
                       <div
                         style={{
@@ -404,7 +404,7 @@ export default function TestResult() {
                   {q.explanation && (
                     <Alert
                       type="info"
-                      message="Giải thích"
+                      message="Explanation"
                       description={q.explanation}
                       showIcon
                     />

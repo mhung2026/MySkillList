@@ -221,7 +221,7 @@ export default function SkillLevelEditor({ skillId, skillName, applicableLevelsS
     );
   }
 
-  // Không cần check applicableLevels.length === 0 nữa vì có thể thêm level bất kỳ
+  // No need to check applicableLevels.length === 0 since any level can be added
 
   return (
     <div style={{ padding: '12px 24px', background: '#fafafa' }}>
@@ -254,16 +254,16 @@ export default function SkillLevelEditor({ skillId, skillName, applicableLevelsS
           </div>
         </div>
 
-        {/* Add Level Dropdown - chọn từ các level chưa được định nghĩa */}
+        {/* Add Level Dropdown - select from undefined levels */}
         {(() => {
-          // Lấy các level chưa được định nghĩa cho skill này
+          // Get levels that haven't been defined for this skill
           const undefinedLevels = levelDefinitionsData
             ?.filter(l => l.isActive && !getLevelDefinition(l.level))
             .sort((a, b) => a.level - b.level) || [];
 
           if (undefinedLevels.length === 0) {
             return (
-              <Tooltip title="Tất cả các level đã được định nghĩa">
+              <Tooltip title="All levels have been defined">
                 <Button type="primary" icon={<PlusOutlined />} disabled>
                   Add Level
                 </Button>
@@ -445,7 +445,7 @@ export default function SkillLevelEditor({ skillId, skillName, applicableLevelsS
         destroyOnClose
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          {/* Hiển thị level đã chọn - read only */}
+          {/* Display selected level - read only */}
           <Form.Item
             name="level"
             label="Level"

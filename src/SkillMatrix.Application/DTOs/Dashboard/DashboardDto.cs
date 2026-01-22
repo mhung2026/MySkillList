@@ -1,29 +1,29 @@
 namespace SkillMatrix.Application.DTOs.Dashboard;
 
 /// <summary>
-/// Tổng quan Dashboard
+/// Dashboard Overview
 /// </summary>
 public class DashboardOverviewDto
 {
-    // Thống kê tổng quan
+    // Overview statistics
     public int TotalEmployees { get; set; }
     public int TotalSkills { get; set; }
     public int TotalAssessments { get; set; }
     public int TotalTestTemplates { get; set; }
 
-    // Phân bố nhân sự theo team
+    // Employee distribution by team
     public List<TeamDistributionDto> TeamDistribution { get; set; } = new();
 
-    // Phân bố nhân sự theo role
+    // Employee distribution by role
     public List<RoleDistributionDto> RoleDistribution { get; set; } = new();
 
-    // Top skills phổ biến
+    // Top popular skills
     public List<SkillPopularityDto> TopSkills { get; set; } = new();
 
-    // Skill gaps (skills thiếu nhiều nhất)
+    // Skill gaps (most missing skills)
     public List<SkillGapDto> SkillGaps { get; set; } = new();
 
-    // Phân bố proficiency levels
+    // Proficiency levels distribution
     public List<ProficiencyDistributionDto> ProficiencyDistribution { get; set; } = new();
 
     // Recent assessments
@@ -34,7 +34,7 @@ public class DashboardOverviewDto
 }
 
 /// <summary>
-/// Phân bố nhân sự theo team
+/// Employee distribution by team
 /// </summary>
 public class TeamDistributionDto
 {
@@ -45,7 +45,7 @@ public class TeamDistributionDto
 }
 
 /// <summary>
-/// Phân bố nhân sự theo role
+/// Employee distribution by role
 /// </summary>
 public class RoleDistributionDto
 {
@@ -55,7 +55,7 @@ public class RoleDistributionDto
 }
 
 /// <summary>
-/// Skill phổ biến nhất
+/// Most popular skill
 /// </summary>
 public class SkillPopularityDto
 {
@@ -68,21 +68,21 @@ public class SkillPopularityDto
 }
 
 /// <summary>
-/// Skill Gap - skills thiếu nhiều nhất
+/// Skill Gap - most missing skills
 /// </summary>
 public class SkillGapDto
 {
     public Guid SkillId { get; set; }
     public string SkillName { get; set; } = string.Empty;
     public string DomainName { get; set; } = string.Empty;
-    public int RequiredCount { get; set; }  // Số người cần skill này
-    public int HasSkillCount { get; set; }  // Số người có skill này
-    public int GapCount { get; set; }       // Số người thiếu
+    public int RequiredCount { get; set; }  // Number of people who need this skill
+    public int HasSkillCount { get; set; }  // Number of people who have this skill
+    public int GapCount { get; set; }       // Number of people missing the skill
     public double GapPercentage { get; set; }
 }
 
 /// <summary>
-/// Phân bố proficiency levels
+/// Proficiency levels distribution
 /// </summary>
 public class ProficiencyDistributionDto
 {
@@ -93,7 +93,7 @@ public class ProficiencyDistributionDto
 }
 
 /// <summary>
-/// Assessment gần đây
+/// Recent assessment
 /// </summary>
 public class RecentAssessmentDto
 {
@@ -108,7 +108,7 @@ public class RecentAssessmentDto
 }
 
 /// <summary>
-/// Độ phủ skill theo domain
+/// Skill coverage by domain
 /// </summary>
 public class DomainSkillCoverageDto
 {
@@ -121,7 +121,7 @@ public class DomainSkillCoverageDto
 }
 
 /// <summary>
-/// Chi tiết skill của một nhân viên
+/// Skill details for an employee
 /// </summary>
 public class EmployeeSkillSummaryDto
 {
@@ -135,7 +135,7 @@ public class EmployeeSkillSummaryDto
 }
 
 /// <summary>
-/// Chi tiết từng skill của nhân viên
+/// Individual skill details for an employee
 /// </summary>
 public class EmployeeSkillItemDto
 {
@@ -150,7 +150,7 @@ public class EmployeeSkillItemDto
 }
 
 /// <summary>
-/// Skill matrix của team
+/// Team skill matrix
 /// </summary>
 public class TeamSkillMatrixDto
 {

@@ -6,48 +6,48 @@ namespace SkillMatrix.Application.Interfaces;
 public interface IAssessmentService
 {
     /// <summary>
-    /// Lấy danh sách assessments của employee
+    /// Get list of assessments for an employee
     /// </summary>
     Task<PagedResult<AssessmentListDto>> GetByEmployeeAsync(Guid employeeId, int pageNumber, int pageSize);
 
     /// <summary>
-    /// Lấy chi tiết assessment
+    /// Get assessment details
     /// </summary>
     Task<AssessmentDto?> GetByIdAsync(Guid id);
 
     /// <summary>
-    /// Bắt đầu làm bài test - tạo assessment mới
+    /// Start taking a test - create new assessment
     /// </summary>
     Task<StartAssessmentResponse> StartAssessmentAsync(StartAssessmentRequest request);
 
     /// <summary>
-    /// Lấy bài test đang làm dở
+    /// Get in-progress test
     /// </summary>
     Task<StartAssessmentResponse?> GetInProgressAssessmentAsync(Guid assessmentId);
 
     /// <summary>
-    /// Submit câu trả lời cho 1 câu hỏi
+    /// Submit answer for a question
     /// </summary>
     Task<SubmitAnswerResponse> SubmitAnswerAsync(SubmitAnswerRequest request);
 
     /// <summary>
-    /// Nộp bài test (hoàn thành)
+    /// Submit test (complete)
     /// </summary>
     Task<AssessmentResultDto> SubmitAssessmentAsync(Guid assessmentId);
 
     /// <summary>
-    /// Xem kết quả bài test
+    /// View test result
     /// </summary>
     Task<AssessmentResultDto?> GetResultAsync(Guid assessmentId);
 
     /// <summary>
-    /// Lấy danh sách test templates có thể làm
+    /// Get list of available test templates
     /// </summary>
     Task<List<AvailableTestDto>> GetAvailableTestsAsync(Guid employeeId);
 }
 
 /// <summary>
-/// Test có thể làm
+/// Available test
 /// </summary>
 public class AvailableTestDto
 {

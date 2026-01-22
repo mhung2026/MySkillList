@@ -93,7 +93,7 @@ export default function Dashboard() {
   // Employee skills table columns
   const employeeColumns = [
     {
-      title: 'Nhân viên',
+      title: 'Employee',
       dataIndex: 'employeeName',
       key: 'employeeName',
       width: 200,
@@ -103,14 +103,14 @@ export default function Dashboard() {
           <div>
             <div>{name}</div>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {record.teamName || 'Chưa phân team'} | {record.jobRoleName || 'Chưa có role'}
+              {record.teamName || 'No team'} | {record.jobRoleName || 'No role'}
             </Text>
           </div>
         </Space>
       ),
     },
     {
-      title: 'Số skills',
+      title: 'Skills',
       dataIndex: 'totalSkills',
       key: 'totalSkills',
       width: 100,
@@ -118,7 +118,7 @@ export default function Dashboard() {
       render: (count: number) => <Badge count={count} showZero color="#1890ff" />,
     },
     {
-      title: 'Level TB',
+      title: 'Avg Level',
       dataIndex: 'averageLevel',
       key: 'averageLevel',
       width: 120,
@@ -159,7 +159,7 @@ export default function Dashboard() {
   const matrixColumns = skillMatrix
     ? [
         {
-          title: 'Nhân viên',
+          title: 'Employee',
           dataIndex: 'employeeName',
           key: 'employeeName',
           fixed: 'left' as const,
@@ -189,14 +189,14 @@ export default function Dashboard() {
 
   return (
     <div>
-      <Title level={3}>Dashboard - Tổng quan kỹ năng nhân sự</Title>
+      <Title level={3}>Dashboard - Employee Skills Overview</Title>
 
       {/* Statistics Cards */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Tổng nhân viên"
+              title="Total Employees"
               value={overview?.totalEmployees || 0}
               prefix={<TeamOutlined />}
               valueStyle={{ color: '#1890ff' }}
@@ -206,7 +206,7 @@ export default function Dashboard() {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Tổng skills"
+              title="Total Skills"
               value={overview?.totalSkills || 0}
               prefix={<ToolOutlined />}
               valueStyle={{ color: '#52c41a' }}
@@ -216,7 +216,7 @@ export default function Dashboard() {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Assessments hoàn thành"
+              title="Completed Assessments"
               value={overview?.totalAssessments || 0}
               prefix={<CheckCircleOutlined />}
               valueStyle={{ color: '#722ed1' }}
@@ -226,7 +226,7 @@ export default function Dashboard() {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Test templates"
+              title="Test Templates"
               value={overview?.totalTestTemplates || 0}
               prefix={<FileTextOutlined />}
               valueStyle={{ color: '#fa8c16' }}
@@ -238,7 +238,7 @@ export default function Dashboard() {
       {/* Distribution Charts */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={12}>
-          <Card title="Phân bố nhân sự theo Team">
+          <Card title="Employee Distribution by Team">
             {overview?.teamDistribution?.map((team) => (
               <div key={team.teamId || 'none'} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -257,7 +257,7 @@ export default function Dashboard() {
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="Phân bố Proficiency Levels">
+          <Card title="Proficiency Level Distribution">
             {overview?.proficiencyDistribution?.map((level) => (
               <div key={level.level} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -287,7 +287,7 @@ export default function Dashboard() {
             title={
               <Space>
                 <TrophyOutlined style={{ color: '#faad14' }} />
-                Top 10 Skills phổ biến
+                Top 10 Popular Skills
               </Space>
             }
           >
@@ -317,14 +317,14 @@ export default function Dashboard() {
                   ),
                 },
                 {
-                  title: 'Nhân viên',
+                  title: 'Employees',
                   dataIndex: 'employeeCount',
                   key: 'employeeCount',
                   width: 80,
                   align: 'center' as const,
                 },
                 {
-                  title: 'Level TB',
+                  title: 'Avg Level',
                   dataIndex: 'averageLevel',
                   key: 'averageLevel',
                   width: 80,
@@ -361,7 +361,7 @@ export default function Dashboard() {
       </Row>
 
       {/* Recent Assessments */}
-      <Card title="Assessments gần đây" style={{ marginTop: 16 }}>
+      <Card title="Recent Assessments" style={{ marginTop: 16 }}>
         <Table
           dataSource={overview?.recentAssessments}
           rowKey="id"
@@ -369,17 +369,17 @@ export default function Dashboard() {
           size="small"
           columns={[
             {
-              title: 'Nhân viên',
+              title: 'Employee',
               dataIndex: 'employeeName',
               key: 'employeeName',
             },
             {
-              title: 'Bài test',
+              title: 'Test',
               dataIndex: 'testTitle',
               key: 'testTitle',
             },
             {
-              title: 'Điểm',
+              title: 'Score',
               key: 'score',
               render: (_, record) => (
                 <span>
@@ -388,7 +388,7 @@ export default function Dashboard() {
               ),
             },
             {
-              title: 'Kết quả',
+              title: 'Result',
               key: 'result',
               render: (_, record) => (
                 <Space>
@@ -399,17 +399,17 @@ export default function Dashboard() {
                     format={(p) => `${p}%`}
                   />
                   <Tag color={record.passed ? 'success' : 'error'}>
-                    {record.passed ? 'Đạt' : 'Chưa đạt'}
+                    {record.passed ? 'Passed' : 'Failed'}
                   </Tag>
                 </Space>
               ),
             },
             {
-              title: 'Hoàn thành',
+              title: 'Completed',
               dataIndex: 'completedAt',
               key: 'completedAt',
               render: (date: string) =>
-                new Date(date).toLocaleDateString('vi-VN', {
+                new Date(date).toLocaleDateString('en-US', {
                   day: '2-digit',
                   month: '2-digit',
                   year: 'numeric',
@@ -423,11 +423,11 @@ export default function Dashboard() {
 
       {/* Employee Skills */}
       <Card
-        title="Danh sách kỹ năng nhân viên"
+        title="Employee Skills List"
         style={{ marginTop: 16 }}
         extra={
           <Select
-            placeholder="Lọc theo team"
+            placeholder="Filter by team"
             allowClear
             style={{ width: 200 }}
             value={selectedTeamId}
@@ -446,7 +446,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Skill Matrix */}
-      <Card title={`Skill Matrix - ${skillMatrix?.teamName || 'Tất cả'}`} style={{ marginTop: 16 }}>
+      <Card title={`Skill Matrix - ${skillMatrix?.teamName || 'All'}`} style={{ marginTop: 16 }}>
         {loadingSkillMatrix ? (
           <Spin />
         ) : skillMatrix?.skills?.length ? (
@@ -460,12 +460,12 @@ export default function Dashboard() {
             bordered
           />
         ) : (
-          <Text type="secondary">Chưa có dữ liệu skill matrix</Text>
+          <Text type="secondary">No skill matrix data available</Text>
         )}
       </Card>
 
       {/* Legend */}
-      <Card title="Chú thích Proficiency Levels (SFIA)" style={{ marginTop: 16 }}>
+      <Card title="Proficiency Levels Legend (SFIA)" style={{ marginTop: 16 }}>
         <Space wrap>
           {Object.entries(levelNames).map(([level, name]) => (
             <Tag key={level} color={levelColors[parseInt(level)]}>

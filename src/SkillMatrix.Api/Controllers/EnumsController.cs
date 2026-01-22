@@ -113,21 +113,13 @@ public class EnumsController : ControllerBase
             {
                 Level = level,
                 LevelName = attr.LevelName,
-                LevelNameVi = attr.LevelNameVi,
                 Description = attr.Description,
-                DescriptionVi = attr.DescriptionVi,
                 Autonomy = attr.Autonomy,
-                AutonomyVi = attr.AutonomyVi,
                 Influence = attr.Influence,
-                InfluenceVi = attr.InfluenceVi,
                 Complexity = attr.Complexity,
-                ComplexityVi = attr.ComplexityVi,
                 Knowledge = attr.Knowledge,
-                KnowledgeVi = attr.KnowledgeVi,
                 BusinessSkills = attr.BusinessSkills,
-                BusinessSkillsVi = attr.BusinessSkillsVi,
-                BehavioralIndicators = attr.BehavioralIndicators.ToList(),
-                BehavioralIndicatorsVi = attr.BehavioralIndicatorsVi.ToList()
+                BehavioralIndicators = attr.BehavioralIndicators.ToList()
             };
             return Ok(ApiResponse<SfiaLevelReference>.Ok(result));
         }
@@ -137,22 +129,22 @@ public class EnumsController : ControllerBase
 
     private static string GetProficiencyLevelDescription(ProficiencyLevel level) => level switch
     {
-        ProficiencyLevel.None => "Không có kiến thức/kinh nghiệm",
-        ProficiencyLevel.Follow => "Làm theo hướng dẫn, đang học",
-        ProficiencyLevel.Assist => "Hỗ trợ người khác, phát triển kỹ năng",
-        ProficiencyLevel.Apply => "Áp dụng độc lập, hiểu best practices",
-        ProficiencyLevel.Enable => "Hỗ trợ người khác, đảm bảo chất lượng",
-        ProficiencyLevel.EnsureAdvise => "Đảm bảo/Tư vấn ở cấp tổ chức",
-        ProficiencyLevel.Initiate => "Khởi xướng, ảnh hưởng chiến lược",
-        ProficiencyLevel.SetStrategy => "Định hướng chiến lược, dẫn đầu ngành",
+        ProficiencyLevel.None => "No knowledge or experience",
+        ProficiencyLevel.Follow => "Following instructions, learning",
+        ProficiencyLevel.Assist => "Assisting others, developing skills",
+        ProficiencyLevel.Apply => "Applying independently, understanding best practices",
+        ProficiencyLevel.Enable => "Enabling others, ensuring quality",
+        ProficiencyLevel.EnsureAdvise => "Ensuring and advising at organizational level",
+        ProficiencyLevel.Initiate => "Initiating, influencing strategy",
+        ProficiencyLevel.SetStrategy => "Setting strategy, leading the industry",
         _ => ""
     };
 
     private static string GetSkillTypeDescription(SkillType type) => type switch
     {
-        SkillType.Core => "Kỹ năng cốt lõi - Mọi người đều cần (Git, Communication...)",
-        SkillType.Specialty => "Kỹ năng chuyên môn - Theo từng role",
-        SkillType.Adjacent => "Kỹ năng liên quan - Nice to have, cross-functional",
+        SkillType.Core => "Core skills - Everyone needs (Git, Communication...)",
+        SkillType.Specialty => "Specialty skills - Role-specific deep skills",
+        SkillType.Adjacent => "Adjacent skills - Nice to have, cross-functional",
         _ => ""
     };
 }

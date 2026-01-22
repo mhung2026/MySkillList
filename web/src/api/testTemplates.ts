@@ -9,6 +9,8 @@ import type {
   CreateTestSectionDto,
   UpdateTestSectionDto,
   QuestionDto,
+  CreateQuestionDto,
+  UpdateQuestionDto,
   GenerateAiQuestionsRequest,
   AiGenerateQuestionsResponse,
 } from '../types';
@@ -103,4 +105,28 @@ export const previewAiQuestions = async (
     data
   );
   return response.data;
+};
+
+// Questions CRUD
+export const createQuestion = async (
+  data: CreateQuestionDto
+): Promise<QuestionDto> => {
+  const response = await apiClient.post<QuestionDto>('/questions', data);
+  return response.data;
+};
+
+export const updateQuestion = async (
+  id: string,
+  data: UpdateQuestionDto
+): Promise<QuestionDto> => {
+  const response = await apiClient.put<QuestionDto>(`/questions/${id}`, data);
+  return response.data;
+};
+
+export const deleteQuestion = async (id: string): Promise<void> => {
+  await apiClient.delete(`/questions/${id}`);
+};
+
+export const toggleQuestionActive = async (id: string): Promise<void> => {
+  await apiClient.post(`/questions/${id}/toggle-active`);
 };

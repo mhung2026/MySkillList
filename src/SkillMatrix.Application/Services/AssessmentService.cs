@@ -347,13 +347,17 @@ public class AssessmentService : IAssessmentService
             questionNumber++;
             maxScore += question.Points;
 
+            // Handle nullable SkillId - only track skill scores if skill is specified
             var skillId = question.SkillId;
-            if (!skillScores.ContainsKey(skillId))
+            (string Name, string Code, int Correct, int Total, int Score, int MaxScore) skillData = ("", "", 0, 0, 0, 0);
+            if (skillId.HasValue)
             {
-                skillScores[skillId] = (question.Skill?.Name ?? "", question.Skill?.Code ?? "", 0, 0, 0, 0);
+                if (!skillScores.ContainsKey(skillId.Value))
+                {
+                    skillScores[skillId.Value] = (question.Skill?.Name ?? "", question.Skill?.Code ?? "", 0, 0, 0, 0);
+                }
+                skillData = skillScores[skillId.Value];
             }
-
-            var skillData = skillScores[skillId];
             skillData.Total++;
             skillData.MaxScore += question.Points;
 
@@ -425,7 +429,11 @@ public class AssessmentService : IAssessmentService
             // Get explanation from correct option
             questionResult.Explanation = correctOptions.FirstOrDefault()?.Explanation;
 
-            skillScores[skillId] = skillData;
+            // Update skill scores if skill is specified
+            if (skillId.HasValue)
+            {
+                skillScores[skillId.Value] = skillData;
+            }
             questionResults.Add(questionResult);
         }
 
@@ -506,11 +514,16 @@ public class AssessmentService : IAssessmentService
         foreach (var question in allQuestions)
         {
             questionNumber++;
-            var skillId = question.SkillId;
-            if (!skillScores.ContainsKey(skillId))
-                skillScores[skillId] = (question.Skill?.Name ?? "", question.Skill?.Code ?? "", 0, 0, 0, 0);
 
-            var skillData = skillScores[skillId];
+            // Handle nullable SkillId - only track skill scores if skill is specified
+            var skillId = question.SkillId;
+            (string Name, string Code, int Correct, int Total, int Score, int MaxScore) skillData = ("", "", 0, 0, 0, 0);
+            if (skillId.HasValue)
+            {
+                if (!skillScores.ContainsKey(skillId.Value))
+                    skillScores[skillId.Value] = (question.Skill?.Name ?? "", question.Skill?.Code ?? "", 0, 0, 0, 0);
+                skillData = skillScores[skillId.Value];
+            }
             skillData.Total++;
             skillData.MaxScore += question.Points;
 
@@ -563,7 +576,11 @@ public class AssessmentService : IAssessmentService
             questionResult.CorrectAnswer = string.Join(", ", correctOptions.Select(o => o.Content));
             questionResult.Explanation = correctOptions.FirstOrDefault()?.Explanation;
 
-            skillScores[skillId] = skillData;
+            // Update skill scores if skill is specified
+            if (skillId.HasValue)
+            {
+                skillScores[skillId.Value] = skillData;
+            }
             questionResults.Add(questionResult);
         }
 

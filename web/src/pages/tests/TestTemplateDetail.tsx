@@ -38,17 +38,25 @@ import {
   updateTestSection,
   deleteTestSection,
   generateAiQuestions,
+  createQuestion,
+  updateQuestion,
+  deleteQuestion,
 } from '../../api/testTemplates';
 import { getSkills } from '../../api/taxonomy';
+import { systemEnumApi } from '../../api/systemEnums';
 import type {
   TestSectionDto,
   CreateTestSectionDto,
   UpdateTestSectionDto,
   QuestionDto,
+  CreateQuestionDto,
+  UpdateQuestionDto,
   GenerateAiQuestionsRequest,
   SkillListDto,
+  EnumDropdownItemDto,
 } from '../../types';
-import { ProficiencyLevel, QuestionType, DifficultyLevel } from '../../types';
+import { ProficiencyLevel } from '../../types';
+import QuestionFormModal from '../../components/QuestionFormModal';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
@@ -63,22 +71,6 @@ const proficiencyOptions = [
   { value: ProficiencyLevel.SetStrategy, label: 'Level 7 - Set Strategy' },
 ];
 
-const questionTypeOptions = [
-  { value: QuestionType.MultipleChoice, label: 'Multiple Choice' },
-  { value: QuestionType.MultipleAnswer, label: 'Multiple Answer' },
-  { value: QuestionType.TrueFalse, label: 'True/False' },
-  { value: QuestionType.ShortAnswer, label: 'Short Answer' },
-  { value: QuestionType.Essay, label: 'Essay' },
-  { value: QuestionType.CodingChallenge, label: 'Coding Challenge' },
-];
-
-const difficultyOptions = [
-  { value: DifficultyLevel.Easy, label: 'Easy' },
-  { value: DifficultyLevel.Medium, label: 'Medium' },
-  { value: DifficultyLevel.Hard, label: 'Hard' },
-  { value: DifficultyLevel.Expert, label: 'Expert' },
-];
-
 export default function TestTemplateDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -90,6 +82,8 @@ export default function TestTemplateDetail() {
   );
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [selectedSectionId, setSelectedSectionId] = useState<string>('');
+  const [questionModalOpen, setQuestionModalOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<QuestionDto | null>(null);
   const [sectionForm] = Form.useForm();
   const [aiForm] = Form.useForm();
 
@@ -108,6 +102,28 @@ export default function TestTemplateDetail() {
   const { data: skillsData } = useQuery({
     queryKey: ['skills-dropdown'],
     queryFn: () => getSkills({ pageSize: 100 }),
+  });
+
+  // Fetch QuestionTypes from SystemEnum
+  const { data: questionTypeOptions = [] } = useQuery({
+    queryKey: ['enum-dropdown', 'QuestionType'],
+    queryFn: () => systemEnumApi.getDropdown('QuestionType'),
+    select: (data: EnumDropdownItemDto[]) =>
+      data.map((item) => ({
+        value: item.value,
+        label: item.label,
+      })),
+  });
+
+  // Fetch DifficultyLevel from SystemEnum
+  const { data: difficultyOptions = [] } = useQuery({
+    queryKey: ['enum-dropdown', 'DifficultyLevel'],
+    queryFn: () => systemEnumApi.getDropdown('DifficultyLevel'),
+    select: (data: EnumDropdownItemDto[]) =>
+      data.map((item) => ({
+        value: item.value,
+        label: item.label,
+      })),
   });
 
   // Mutations
@@ -160,6 +176,39 @@ export default function TestTemplateDetail() {
     onError: () => message.error('Failed to generate questions'),
   });
 
+  // Question mutations
+  const createQuestionMutation = useMutation({
+    mutationFn: createQuestion,
+    onSuccess: () => {
+      message.success('Question created successfully');
+      queryClient.invalidateQueries({ queryKey: ['testTemplate', id] });
+      setQuestionModalOpen(false);
+      setEditingQuestion(null);
+    },
+    onError: () => message.error('Failed to create question'),
+  });
+
+  const updateQuestionMutation = useMutation({
+    mutationFn: ({ questionId, data }: { questionId: string; data: UpdateQuestionDto }) =>
+      updateQuestion(questionId, data),
+    onSuccess: () => {
+      message.success('Question updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['testTemplate', id] });
+      setQuestionModalOpen(false);
+      setEditingQuestion(null);
+    },
+    onError: () => message.error('Failed to update question'),
+  });
+
+  const deleteQuestionMutation = useMutation({
+    mutationFn: deleteQuestion,
+    onSuccess: () => {
+      message.success('Question deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['testTemplate', id] });
+    },
+    onError: () => message.error('Failed to delete question'),
+  });
+
   const handleSectionSubmit = (values: CreateTestSectionDto) => {
     if (editingSection) {
       updateSectionMutation.mutate({
@@ -189,9 +238,7 @@ export default function TestTemplateDetail() {
     setSelectedSectionId(sectionId);
     aiForm.setFieldsValue({
       questionCount: 5,
-      targetLevel: ProficiencyLevel.Apply,
-      questionTypes: [QuestionType.MultipleChoice],
-      language: 'vi',
+      language: 'en',
     });
     setAiModalOpen(true);
   };
@@ -201,6 +248,32 @@ export default function TestTemplateDetail() {
       ...values,
       sectionId: selectedSectionId,
     });
+  };
+
+  const handleOpenAddQuestion = (sectionId: string) => {
+    setSelectedSectionId(sectionId);
+    setEditingQuestion(null);
+    setQuestionModalOpen(true);
+  };
+
+  const handleEditQuestion = (question: QuestionDto, sectionId: string) => {
+    setSelectedSectionId(sectionId);
+    setEditingQuestion(question);
+    setQuestionModalOpen(true);
+  };
+
+  const handleQuestionSubmit = (values: CreateQuestionDto) => {
+    if (editingQuestion) {
+      updateQuestionMutation.mutate({
+        questionId: editingQuestion.id,
+        data: {
+          ...values,
+          isActive: editingQuestion.isActive,
+        } as UpdateQuestionDto,
+      });
+    } else {
+      createQuestionMutation.mutate(values);
+    }
   };
 
   if (isLoading) {
@@ -386,88 +459,134 @@ export default function TestTemplateDetail() {
                     description="No questions yet"
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                   >
-                    <Button
-                      type="primary"
-                      icon={<RobotOutlined />}
-                      onClick={() => handleOpenAiModal(section.id)}
-                    >
-                      Generate with AI
-                    </Button>
+                    <Space>
+                      <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => handleOpenAddQuestion(section.id)}
+                      >
+                        Add Question
+                      </Button>
+                      <Button
+                        icon={<RobotOutlined />}
+                        onClick={() => handleOpenAiModal(section.id)}
+                      >
+                        Generate with AI
+                      </Button>
+                    </Space>
                   </Empty>
                 ) : (
-                  <List
-                    dataSource={section.questions}
-                    renderItem={(question: QuestionDto, index: number) => (
-                      <List.Item>
-                        <List.Item.Meta
-                          avatar={
-                            <div
-                              style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: '50%',
-                                background: '#1890ff',
-                                color: '#fff',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: 'bold',
-                              }}
+                  <>
+                    <div style={{ marginBottom: 16 }}>
+                      <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => handleOpenAddQuestion(section.id)}
+                      >
+                        Add Question
+                      </Button>
+                    </div>
+                    <List
+                      dataSource={section.questions}
+                      renderItem={(question: QuestionDto, index: number) => (
+                        <List.Item
+                          actions={[
+                            <Button
+                              key="edit"
+                              type="link"
+                              size="small"
+                              icon={<EditOutlined />}
+                              onClick={() => handleEditQuestion(question, section.id)}
                             >
-                              {index + 1}
-                            </div>
-                          }
-                          title={
-                            <Space>
-                              <span>{question.content}</span>
-                              {question.isAiGenerated && (
-                                <Tag color="purple" icon={<RobotOutlined />}>
-                                  AI
-                                </Tag>
-                              )}
-                            </Space>
-                          }
-                          description={
-                            <Space wrap>
-                              <Tag color="cyan">{question.typeName}</Tag>
-                              <Tag color="orange">{question.difficultyName}</Tag>
-                              <Tag>{question.skillName}</Tag>
-                              <Tag color="geekblue">
-                                Level {question.targetLevel}
-                              </Tag>
-                              <Text type="secondary">
-                                {question.points} pts
-                              </Text>
-                            </Space>
-                          }
-                        />
-                        {question.options?.length > 0 && (
-                          <div style={{ marginLeft: 48 }}>
-                            {question.options.map((opt) => (
-                              <div key={opt.id} style={{ marginBottom: 4 }}>
-                                {opt.isCorrect ? (
-                                  <CheckCircleOutlined
-                                    style={{ color: '#52c41a', marginRight: 8 }}
-                                  />
-                                ) : (
-                                  <CloseCircleOutlined
-                                    style={{ color: '#ff4d4f', marginRight: 8 }}
-                                  />
-                                )}
-                                <Text
-                                  style={{
-                                    color: opt.isCorrect ? '#52c41a' : undefined,
-                                  }}
-                                >
-                                  {opt.content}
-                                </Text>
+                              Edit
+                            </Button>,
+                            <Popconfirm
+                              key="delete"
+                              title="Delete this question?"
+                              description="This action cannot be undone."
+                              onConfirm={() => deleteQuestionMutation.mutate(question.id)}
+                            >
+                              <Button
+                                type="link"
+                                danger
+                                size="small"
+                                icon={<DeleteOutlined />}
+                              >
+                                Delete
+                              </Button>
+                            </Popconfirm>,
+                          ]}
+                        >
+                          <List.Item.Meta
+                            avatar={
+                              <div
+                                style={{
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: '50%',
+                                  background: '#1890ff',
+                                  color: '#fff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontWeight: 'bold',
+                                }}
+                              >
+                                {index + 1}
                               </div>
-                            ))}
-                          </div>
-                        )}
-                      </List.Item>
-                    )}
-                  />
+                            }
+                            title={
+                              <Space>
+                                <span>{question.content}</span>
+                                {question.isAiGenerated && (
+                                  <Tag color="purple" icon={<RobotOutlined />}>
+                                    AI
+                                  </Tag>
+                                )}
+                              </Space>
+                            }
+                            description={
+                              <Space wrap>
+                                <Tag color="cyan">{question.typeName}</Tag>
+                                <Tag color="orange">{question.difficultyName}</Tag>
+                                {question.skillName && <Tag>{question.skillName}</Tag>}
+                                <Tag color="geekblue">
+                                  Level {question.targetLevel}
+                                </Tag>
+                                <Text type="secondary">
+                                  {question.points} pts
+                                </Text>
+                              </Space>
+                            }
+                          />
+                          {question.options?.length > 0 && (
+                            <div style={{ marginLeft: 48 }}>
+                              {question.options.map((opt) => (
+                                <div key={opt.id} style={{ marginBottom: 4 }}>
+                                  {opt.isCorrect ? (
+                                    <CheckCircleOutlined
+                                      style={{ color: '#52c41a', marginRight: 8 }}
+                                    />
+                                  ) : (
+                                    <CloseCircleOutlined
+                                      style={{ color: '#ff4d4f', marginRight: 8 }}
+                                    />
+                                  )}
+                                  <Text
+                                    style={{
+                                      color: opt.isCorrect ? '#52c41a' : undefined,
+                                    }}
+                                  >
+                                    {opt.content}
+                                  </Text>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </List.Item>
+                      )}
+                    />
+                  </>
                 )}
               </Panel>
             ))}
@@ -554,7 +673,7 @@ export default function TestTemplateDetail() {
           aiForm.resetFields();
         }}
         footer={null}
-        width={500}
+        width={600}
       >
         <Form
           form={aiForm}
@@ -562,43 +681,10 @@ export default function TestTemplateDetail() {
           onFinish={handleAiGenerate}
           initialValues={{
             questionCount: 5,
-            targetLevel: ProficiencyLevel.Apply,
-            questionTypes: [QuestionType.MultipleChoice],
-            language: 'vi',
+            language: 'en',
           }}
         >
-          <Form.Item
-            name="skillId"
-            label="Skill"
-            rules={[{ required: true, message: 'Please select a skill' }]}
-          >
-            <Select
-              placeholder="Select a skill"
-              options={skillsData?.data?.items?.map((s: SkillListDto) => ({
-                value: s.id,
-                label: `${s.code} - ${s.name}`,
-              }))}
-              showSearch
-              optionFilterProp="label"
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="targetLevel"
-            label="Target Proficiency Level"
-            rules={[{ required: true }]}
-          >
-            <Select options={proficiencyOptions} />
-          </Form.Item>
-
-          <Form.Item
-            name="questionCount"
-            label="Number of Questions"
-            rules={[{ required: true }]}
-          >
-            <InputNumber min={1} max={20} style={{ width: '100%' }} />
-          </Form.Item>
-
+          {/* Required Fields */}
           <Form.Item
             name="questionTypes"
             label="Question Types"
@@ -608,29 +694,87 @@ export default function TestTemplateDetail() {
                 message: 'Select at least one question type',
               },
             ]}
+            tooltip="Required: Select the types of questions to generate"
           >
             <Checkbox.Group options={questionTypeOptions} />
           </Form.Item>
 
-          <Form.Item name="difficulty" label="Difficulty (Optional)">
+          <Form.Item
+            name="language"
+            label="Language"
+            rules={[{ required: true, message: 'Please select a language' }]}
+            tooltip="Required: Language for generated questions"
+          >
+            <Radio.Group>
+              <Radio value="en">English</Radio>
+              <Radio value="vi">Vietnamese</Radio>
+            </Radio.Group>
+          </Form.Item>
+
+          <Form.Item
+            name="questionCount"
+            label="Number of Questions"
+            rules={[{ required: true, message: 'Please enter number of questions' }]}
+            tooltip="Required: How many questions to generate"
+          >
+            <InputNumber
+              min={1}
+              max={20}
+              style={{ width: '100%' }}
+              placeholder="5"
+            />
+          </Form.Item>
+
+          {/* Optional Fields */}
+          <Form.Item
+            name="skillId"
+            label="Skill"
+            tooltip="Optional: Select a specific skill to focus questions on"
+          >
+            <Select
+              placeholder="Select a skill (optional)"
+              options={skillsData?.data?.items?.map((s: SkillListDto) => ({
+                value: s.id,
+                label: `${s.code} - ${s.name}`,
+              }))}
+              showSearch
+              optionFilterProp="label"
+              allowClear
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="targetLevel"
+            label="Target Proficiency Level"
+            tooltip="Optional: Specify difficulty based on proficiency level"
+          >
+            <Select
+              placeholder="Auto-detect (optional)"
+              options={proficiencyOptions}
+              allowClear
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="difficulty"
+            label="Difficulty"
+            tooltip="Optional: Specific difficulty level"
+          >
             <Select
               allowClear
-              placeholder="Auto-detect based on level"
+              placeholder="Auto-detect based on level (optional)"
               options={difficultyOptions}
             />
           </Form.Item>
 
-          <Form.Item name="language" label="Language">
-            <Radio.Group>
-              <Radio value="vi">Vietnamese</Radio>
-              <Radio value="en">English</Radio>
-            </Radio.Group>
-          </Form.Item>
-
-          <Form.Item name="additionalContext" label="Additional Context">
+          <Form.Item
+            name="additionalContext"
+            label="Additional Context"
+            tooltip="Optional: Provide extra context for AI"
+          >
             <Input.TextArea
               rows={2}
-              placeholder="e.g., Focus on .NET Core 8 features"
+              placeholder="e.g., Focus on .NET Core 8 features, include code examples..."
             />
           </Form.Item>
 
@@ -649,6 +793,22 @@ export default function TestTemplateDetail() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Question Form Modal */}
+      <QuestionFormModal
+        open={questionModalOpen}
+        onCancel={() => {
+          setQuestionModalOpen(false);
+          setEditingQuestion(null);
+        }}
+        onSubmit={handleQuestionSubmit}
+        loading={createQuestionMutation.isPending || updateQuestionMutation.isPending}
+        editingQuestion={editingQuestion}
+        sectionId={selectedSectionId}
+        skills={skillsData?.data?.items}
+        questionTypeOptions={questionTypeOptions}
+        difficultyOptions={difficultyOptions}
+      />
     </div>
   );
 }

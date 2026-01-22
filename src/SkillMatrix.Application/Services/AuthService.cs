@@ -30,7 +30,7 @@ public class AuthService : IAuthService
             return new LoginResponse
             {
                 Success = false,
-                Message = "Email không tồn tại trong hệ thống"
+                Message = "Email does not exist in the system"
             };
         }
 
@@ -39,7 +39,7 @@ public class AuthService : IAuthService
             return new LoginResponse
             {
                 Success = false,
-                Message = "Mật khẩu không đúng"
+                Message = "Incorrect password"
             };
         }
 
@@ -48,7 +48,7 @@ public class AuthService : IAuthService
             return new LoginResponse
             {
                 Success = false,
-                Message = "Tài khoản đã bị vô hiệu hóa"
+                Message = "Account has been disabled"
             };
         }
 
@@ -58,7 +58,7 @@ public class AuthService : IAuthService
         return new LoginResponse
         {
             Success = true,
-            Message = "Đăng nhập thành công",
+            Message = "Login successful",
             User = userDto,
             Token = token
         };
@@ -75,7 +75,7 @@ public class AuthService : IAuthService
             return new LoginResponse
             {
                 Success = false,
-                Message = "Email đã được sử dụng"
+                Message = "Email is already in use"
             };
         }
 
@@ -107,7 +107,7 @@ public class AuthService : IAuthService
         return new LoginResponse
         {
             Success = true,
-            Message = "Đăng ký thành công",
+            Message = "Registration successful",
             User = userDto,
             Token = token
         };
@@ -197,7 +197,7 @@ public class AuthService : IAuthService
                 UserId = emp1Id.ToString(),
                 Email = "employee1@skillmatrix.com",
                 PasswordHash = HashPassword("employee123"),
-                FullName = "Nguyễn Văn A",
+                FullName = "John Doe",
                 SystemRole = UserRole.Employee,
                 Status = EmploymentStatus.Active,
                 JoinDate = DateTime.UtcNow,
@@ -209,7 +209,7 @@ public class AuthService : IAuthService
                 UserId = emp2Id.ToString(),
                 Email = "employee2@skillmatrix.com",
                 PasswordHash = HashPassword("employee123"),
-                FullName = "Trần Thị B",
+                FullName = "Jane Smith",
                 SystemRole = UserRole.Employee,
                 Status = EmploymentStatus.Active,
                 JoinDate = DateTime.UtcNow,

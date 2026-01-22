@@ -12,14 +12,14 @@ public static class TeamSeed
             {
                 Id = Guid.Parse("50000000-0000-0000-0000-000000000001"),
                 Name = "Team SoEzy",
-                Description = "Team phát triển sản phẩm SoEzy - 17 thành viên",
+                Description = "SoEzy product development team - 17 members",
                 IsActive = true
             },
             new()
             {
                 Id = Guid.Parse("50000000-0000-0000-0000-000000000002"),
                 Name = "Team Mezy",
-                Description = "Team phát triển sản phẩm Mezy - 4 thành viên",
+                Description = "Mezy product development team - 4 members",
                 IsActive = true
             }
         };

@@ -3,51 +3,51 @@ using SkillMatrix.Application.DTOs.Assessment;
 namespace SkillMatrix.Application.Interfaces;
 
 /// <summary>
-/// Interface cho AI Service - sẽ được implement bởi real AI hoặc mock
+/// Interface for AI Service - will be implemented by real AI or mock
 /// </summary>
 public interface IAiQuestionGeneratorService
 {
     /// <summary>
-    /// Generate câu hỏi dựa trên skill và level
+    /// Generate questions based on skill and level
     /// </summary>
     Task<AiGenerateQuestionsResponse> GenerateQuestionsAsync(AiGenerateQuestionsRequest request);
 
     /// <summary>
-    /// Chấm điểm câu trả lời tự luận/coding
+    /// Grade essay/coding answer
     /// </summary>
     Task<AiGradeAnswerResponse> GradeAnswerAsync(AiGradeAnswerRequest request);
 }
 
 /// <summary>
-/// Interface cho AI phân tích skill gaps
+/// Interface for AI skill gap analysis
 /// </summary>
 public interface IAiSkillAnalyzerService
 {
     /// <summary>
-    /// Phân tích skill gaps của employee
+    /// Analyze employee skill gaps
     /// </summary>
     Task<AiAnalyzeSkillGapResponse> AnalyzeSkillGapsAsync(AiAnalyzeSkillGapRequest request);
 }
 
 /// <summary>
-/// Options để configure AI service
+/// Options to configure AI service
 /// </summary>
 public class AiServiceOptions
 {
     public const string SectionName = "AiService";
 
     /// <summary>
-    /// Sử dụng mock service hay real AI
+    /// Use mock service or real AI
     /// </summary>
     public bool UseMock { get; set; } = true;
 
     /// <summary>
-    /// API Key cho real AI service
+    /// API Key for real AI service
     /// </summary>
     public string? ApiKey { get; set; }
 
     /// <summary>
-    /// Base URL cho AI API
+    /// Base URL for AI API
     /// </summary>
     public string? BaseUrl { get; set; }
 

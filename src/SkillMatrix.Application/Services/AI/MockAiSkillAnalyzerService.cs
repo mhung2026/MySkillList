@@ -5,7 +5,7 @@ using SkillMatrix.Domain.Enums;
 namespace SkillMatrix.Application.Services.AI;
 
 /// <summary>
-/// Mock AI Service cho phân tích skill gaps
+/// Mock AI Service for skill gap analysis
 /// </summary>
 public class MockAiSkillAnalyzerService : IAiSkillAnalyzerService
 {
@@ -61,18 +61,18 @@ public class MockAiSkillAnalyzerService : IAiSkillAnalyzerService
 
     private string GenerateMockAnalysis(string skillName, ProficiencyLevel current, ProficiencyLevel required)
     {
-        return $"Kỹ năng {skillName} hiện đang ở mức {current} ({GetLevelDescription(current)}). " +
-               $"Để đáp ứng yêu cầu công việc, cần đạt mức {required} ({GetLevelDescription(required)}). " +
-               $"Gap này ảnh hưởng đến khả năng làm việc độc lập và đóng góp vào team.";
+        return $"The {skillName} skill is currently at level {current} ({GetLevelDescription(current)}). " +
+               $"To meet job requirements, level {required} ({GetLevelDescription(required)}) is needed. " +
+               $"This gap affects the ability to work independently and contribute to the team.";
     }
 
     private string GenerateMockRecommendation(string skillName, int gapSize)
     {
         if (gapSize >= 3)
-            return $"Cần tập trung intensive training cho {skillName}. Đề xuất: mentor 1-1, bootcamp ngắn hạn, và hands-on projects.";
+            return $"Intensive training required for {skillName}. Recommendations: 1-on-1 mentoring, short bootcamp, and hands-on projects.";
         if (gapSize == 2)
-            return $"Kết hợp học online courses và thực hành qua dự án thực tế để nâng cao {skillName}.";
-        return $"Có thể nâng cao {skillName} thông qua self-study và code review từ senior.";
+            return $"Combine online courses and real-world project practice to improve {skillName}.";
+        return $"Can improve {skillName} through self-study and code reviews from seniors.";
     }
 
     private List<AiLearningRecommendation> GenerateMockLearningRecommendations(Guid skillId, string skillName, int gapSize)
@@ -86,10 +86,10 @@ public class MockAiSkillAnalyzerService : IAiSkillAnalyzerService
             SkillName = skillName,
             RecommendationType = "Course",
             Title = $"Complete {skillName} Mastery",
-            Description = $"Khóa học comprehensive về {skillName} từ cơ bản đến nâng cao",
+            Description = $"Comprehensive {skillName} course from basics to advanced",
             Url = "https://example.com/course",
             EstimatedHours = gapSize * 20,
-            Rationale = $"Khóa học này cover đầy đủ các topic cần thiết để nâng {skillName} lên level yêu cầu"
+            Rationale = $"This course covers all necessary topics to bring {skillName} to the required level"
         });
 
         if (gapSize >= 2)
@@ -100,9 +100,9 @@ public class MockAiSkillAnalyzerService : IAiSkillAnalyzerService
                 SkillName = skillName,
                 RecommendationType = "Project",
                 Title = $"Hands-on {skillName} Project",
-                Description = "Dự án thực hành để áp dụng kiến thức",
+                Description = "Practice project to apply knowledge",
                 EstimatedHours = gapSize * 15,
-                Rationale = "Thực hành qua dự án giúp consolidate kiến thức và build portfolio"
+                Rationale = "Learning through projects helps consolidate knowledge and build portfolio"
             });
         }
 
@@ -114,9 +114,9 @@ public class MockAiSkillAnalyzerService : IAiSkillAnalyzerService
                 SkillName = skillName,
                 RecommendationType = "Mentorship",
                 Title = $"{skillName} Mentorship Program",
-                Description = "Được mentor bởi senior engineer",
+                Description = "Mentored by senior engineer",
                 EstimatedHours = gapSize * 10,
-                Rationale = "Mentorship 1-1 giúp học nhanh hơn và tránh common pitfalls"
+                Rationale = "1-on-1 mentorship accelerates learning and helps avoid common pitfalls"
             });
         }
 
@@ -126,36 +126,36 @@ public class MockAiSkillAnalyzerService : IAiSkillAnalyzerService
     private string GenerateOverallAssessment(List<AiSkillGapAnalysis> gaps)
     {
         if (!gaps.Any())
-            return "Tuyệt vời! Không phát hiện skill gap đáng kể. Tiếp tục duy trì và phát triển.";
+            return "Excellent! No significant skill gaps detected. Continue maintaining and developing skills.";
 
         var criticalCount = gaps.Count(g => g.Priority == "Critical");
         var highCount = gaps.Count(g => g.Priority == "High");
 
         if (criticalCount > 0)
-            return $"Phát hiện {criticalCount} skill gap nghiêm trọng cần được xử lý ngay. " +
-                   $"Đề xuất tập trung vào: {string.Join(", ", gaps.Where(g => g.Priority == "Critical").Select(g => g.SkillName))}. " +
-                   "Cần có kế hoạch training intensive trong 3-6 tháng tới.";
+            return $"Detected {criticalCount} critical skill gaps requiring immediate attention. " +
+                   $"Recommended focus areas: {string.Join(", ", gaps.Where(g => g.Priority == "Critical").Select(g => g.SkillName))}. " +
+                   "An intensive training plan is needed for the next 3-6 months.";
 
         if (highCount > 0)
-            return $"Có {highCount} skill gap mức độ cao. " +
-                   "Nên xây dựng learning path có cấu trúc và theo dõi tiến độ hàng tuần.";
+            return $"Found {highCount} high-priority skill gaps. " +
+                   "Build a structured learning path and track progress weekly.";
 
-        return $"Phát hiện {gaps.Count} skill gaps nhỏ. Có thể cải thiện qua self-learning và on-the-job training.";
+        return $"Detected {gaps.Count} minor skill gaps. Can be improved through self-learning and on-the-job training.";
     }
 
     private string GetLevelDescription(ProficiencyLevel level)
     {
         return level switch
         {
-            ProficiencyLevel.None => "Chưa có kinh nghiệm",
-            ProficiencyLevel.Follow => "Cần hướng dẫn",
-            ProficiencyLevel.Assist => "Có thể hỗ trợ",
-            ProficiencyLevel.Apply => "Làm việc độc lập",
-            ProficiencyLevel.Enable => "Hướng dẫn người khác",
-            ProficiencyLevel.EnsureAdvise => "Tư vấn cấp tổ chức",
-            ProficiencyLevel.Initiate => "Khởi xướng chiến lược",
-            ProficiencyLevel.SetStrategy => "Định hướng ngành",
-            _ => "Không xác định"
+            ProficiencyLevel.None => "No experience",
+            ProficiencyLevel.Follow => "Needs guidance",
+            ProficiencyLevel.Assist => "Can assist",
+            ProficiencyLevel.Apply => "Works independently",
+            ProficiencyLevel.Enable => "Guides others",
+            ProficiencyLevel.EnsureAdvise => "Advises at organizational level",
+            ProficiencyLevel.Initiate => "Initiates strategy",
+            ProficiencyLevel.SetStrategy => "Sets industry direction",
+            _ => "Unknown"
         };
     }
 }

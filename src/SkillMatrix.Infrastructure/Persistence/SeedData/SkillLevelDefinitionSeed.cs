@@ -20,65 +20,65 @@ public static class SkillLevelDefinitionSeed
                 Id = Guid.NewGuid(),
                 SkillId = skillId,
                 Level = ProficiencyLevel.Follow,
-                Description = "Có kiến thức cơ bản về cú pháp C#. Có thể viết code đơn giản với sự hướng dẫn.",
-                Autonomy = "Làm việc dưới sự giám sát chặt chẽ",
-                Influence = "Tác động tối thiểu, chủ yếu học hỏi",
-                Complexity = "Thực hiện các task đơn giản, rõ ràng",
-                Knowledge = "Hiểu biến, kiểu dữ liệu, vòng lặp, điều kiện cơ bản",
-                BehavioralIndicators = "[\"Viết được hàm đơn giản\", \"Hiểu OOP cơ bản\", \"Debug với sự hướng dẫn\"]",
-                EvidenceExamples = "[\"Hoàn thành tutorial C# cơ bản\", \"Code được các bài tập cơ bản\"]"
+                Description = "Has basic knowledge of C# syntax. Can write simple code with guidance.",
+                Autonomy = "Works under close supervision",
+                Influence = "Minimal impact, mainly learning",
+                Complexity = "Performs simple, well-defined tasks",
+                Knowledge = "Understands variables, data types, loops, basic conditionals",
+                BehavioralIndicators = "[\"Can write simple functions\", \"Understands basic OOP\", \"Debugs with guidance\"]",
+                EvidenceExamples = "[\"Completed basic C# tutorials\", \"Coded basic exercises\"]"
             },
             new()
             {
                 Id = Guid.NewGuid(),
                 SkillId = skillId,
                 Level = ProficiencyLevel.Assist,
-                Description = "Có thể hỗ trợ trong các task C# với sự hướng dẫn. Hiểu OOP và có thể áp dụng patterns cơ bản.",
-                Autonomy = "Làm việc với sự hướng dẫn định kỳ",
-                Influence = "Tác động đến công việc của bản thân",
-                Complexity = "Giải quyết vấn đề có cấu trúc rõ ràng",
-                Knowledge = "OOP, LINQ cơ bản, Exception handling, Collections",
-                BehavioralIndicators = "[\"Viết code có cấu trúc rõ ràng\", \"Sử dụng LINQ cơ bản\", \"Xử lý exception đúng cách\", \"Tự debug được lỗi thông thường\"]",
-                EvidenceExamples = "[\"Hoàn thành feature nhỏ độc lập\", \"Fix bug với hướng dẫn\", \"Viết unit test cơ bản\"]"
+                Description = "Can assist in C# tasks with guidance. Understands OOP and can apply basic patterns.",
+                Autonomy = "Works with periodic guidance",
+                Influence = "Impacts own work",
+                Complexity = "Solves well-structured problems",
+                Knowledge = "OOP, basic LINQ, Exception handling, Collections",
+                BehavioralIndicators = "[\"Writes well-structured code\", \"Uses basic LINQ\", \"Handles exceptions properly\", \"Can debug common errors independently\"]",
+                EvidenceExamples = "[\"Completed small features independently\", \"Fixed bugs with guidance\", \"Wrote basic unit tests\"]"
             },
             new()
             {
                 Id = Guid.NewGuid(),
                 SkillId = skillId,
                 Level = ProficiencyLevel.Apply,
-                Description = "Áp dụng C# một cách độc lập trong công việc hàng ngày. Hiểu sâu về ngôn ngữ và best practices.",
-                Autonomy = "Làm việc độc lập, chỉ cần hướng dẫn khi cần",
-                Influence = "Tác động đến team trực tiếp",
-                Complexity = "Giải quyết vấn đề phức tạp vừa phải",
+                Description = "Applies C# independently in daily work. Has deep understanding of the language and best practices.",
+                Autonomy = "Works independently, seeks guidance when needed",
+                Influence = "Impacts direct team",
+                Complexity = "Solves moderately complex problems",
                 Knowledge = "Async/await, Generics, Reflection, Design Patterns, SOLID principles",
-                BehavioralIndicators = "[\"Viết code clean, maintainable\", \"Áp dụng design patterns phù hợp\", \"Tối ưu performance cơ bản\", \"Code review cho junior\"]",
-                EvidenceExamples = "[\"Lead feature vừa và nhỏ\", \"Refactor code legacy\", \"Mentor junior developer\"]"
+                BehavioralIndicators = "[\"Writes clean, maintainable code\", \"Applies appropriate design patterns\", \"Performs basic performance optimization\", \"Reviews code for juniors\"]",
+                EvidenceExamples = "[\"Led medium and small features\", \"Refactored legacy code\", \"Mentored junior developers\"]"
             },
             new()
             {
                 Id = Guid.NewGuid(),
                 SkillId = skillId,
                 Level = ProficiencyLevel.Enable,
-                Description = "Hỗ trợ và nâng cao năng lực C# cho team. Đảm bảo chất lượng code và best practices được tuân thủ.",
-                Autonomy = "Hoàn toàn tự chủ, định hướng cho người khác",
-                Influence = "Tác động đến nhiều team/project",
-                Complexity = "Giải quyết vấn đề phức tạp, đa dạng",
+                Description = "Supports and enhances C# capabilities for the team. Ensures code quality and best practices are followed.",
+                Autonomy = "Fully autonomous, guides others",
+                Influence = "Impacts multiple teams/projects",
+                Complexity = "Solves complex, diverse problems",
                 Knowledge = "Advanced patterns, Performance optimization, Memory management, Multithreading",
-                BehavioralIndicators = "[\"Thiết lập coding standards\", \"Review architecture decisions\", \"Troubleshoot vấn đề phức tạp\", \"Training và mentor team\"]",
-                EvidenceExamples = "[\"Lead technical decisions cho team\", \"Cải thiện performance đáng kể\", \"Xây dựng shared libraries\"]"
+                BehavioralIndicators = "[\"Establishes coding standards\", \"Reviews architecture decisions\", \"Troubleshoots complex issues\", \"Trains and mentors team\"]",
+                EvidenceExamples = "[\"Led technical decisions for team\", \"Significantly improved performance\", \"Built shared libraries\"]"
             },
             new()
             {
                 Id = Guid.NewGuid(),
                 SkillId = skillId,
                 Level = ProficiencyLevel.EnsureAdvise,
-                Description = "Đảm bảo và tư vấn về C# ở cấp độ tổ chức. Định hướng chiến lược kỹ thuật.",
-                Autonomy = "Định hướng chiến lược",
-                Influence = "Tác động cấp tổ chức",
-                Complexity = "Giải quyết vấn đề chiến lược, tầm nhìn dài hạn",
+                Description = "Ensures and advises on C# at organizational level. Guides technical strategy.",
+                Autonomy = "Strategic direction",
+                Influence = "Organizational impact",
+                Complexity = "Solves strategic, long-term problems",
                 Knowledge = "Language internals, CLR, .NET ecosystem strategy",
-                BehavioralIndicators = "[\"Xây dựng roadmap công nghệ\", \"Quyết định adoption của công nghệ mới\", \"Represent công ty ở cộng đồng\"]",
-                EvidenceExamples = "[\"Dẫn dắt migration công nghệ\", \"Contribute vào .NET community\", \"Speaking tại tech events\"]"
+                BehavioralIndicators = "[\"Builds technology roadmap\", \"Decides on new technology adoption\", \"Represents company in community\"]",
+                EvidenceExamples = "[\"Led technology migration\", \"Contributed to .NET community\", \"Speaking at tech events\"]"
             }
         };
     }
@@ -92,50 +92,50 @@ public static class SkillLevelDefinitionSeed
                 Id = Guid.NewGuid(),
                 SkillId = skillId,
                 Level = ProficiencyLevel.Follow,
-                Description = $"Có kiến thức cơ bản về {skillName}. Cần hướng dẫn để thực hiện công việc.",
-                Autonomy = "Làm việc dưới sự giám sát",
-                Influence = "Học hỏi và phát triển",
-                Complexity = "Tasks đơn giản, rõ ràng"
+                Description = $"Has basic knowledge of {skillName}. Requires guidance to perform tasks.",
+                Autonomy = "Works under supervision",
+                Influence = "Learning and developing",
+                Complexity = "Simple, well-defined tasks"
             },
             new()
             {
                 Id = Guid.NewGuid(),
                 SkillId = skillId,
                 Level = ProficiencyLevel.Assist,
-                Description = $"Có thể hỗ trợ trong các task liên quan đến {skillName}.",
-                Autonomy = "Cần hướng dẫn định kỳ",
-                Influence = "Tác động đến công việc của mình",
-                Complexity = "Vấn đề có cấu trúc"
+                Description = $"Can assist in tasks related to {skillName}.",
+                Autonomy = "Requires periodic guidance",
+                Influence = "Impacts own work",
+                Complexity = "Structured problems"
             },
             new()
             {
                 Id = Guid.NewGuid(),
                 SkillId = skillId,
                 Level = ProficiencyLevel.Apply,
-                Description = $"Áp dụng {skillName} độc lập trong công việc hàng ngày.",
-                Autonomy = "Làm việc độc lập",
-                Influence = "Tác động đến team",
-                Complexity = "Vấn đề phức tạp vừa"
+                Description = $"Applies {skillName} independently in daily work.",
+                Autonomy = "Works independently",
+                Influence = "Impacts team",
+                Complexity = "Moderately complex problems"
             },
             new()
             {
                 Id = Guid.NewGuid(),
                 SkillId = skillId,
                 Level = ProficiencyLevel.Enable,
-                Description = $"Hỗ trợ và nâng cao năng lực {skillName} cho team.",
-                Autonomy = "Tự chủ hoàn toàn",
-                Influence = "Nhiều team/project",
-                Complexity = "Vấn đề phức tạp cao"
+                Description = $"Supports and enhances {skillName} capabilities for team.",
+                Autonomy = "Fully autonomous",
+                Influence = "Multiple teams/projects",
+                Complexity = "Highly complex problems"
             },
             new()
             {
                 Id = Guid.NewGuid(),
                 SkillId = skillId,
                 Level = ProficiencyLevel.EnsureAdvise,
-                Description = $"Tư vấn và định hướng {skillName} ở cấp tổ chức.",
-                Autonomy = "Định hướng chiến lược",
-                Influence = "Cấp tổ chức",
-                Complexity = "Chiến lược dài hạn"
+                Description = $"Advises and guides {skillName} at organizational level.",
+                Autonomy = "Strategic direction",
+                Influence = "Organizational level",
+                Complexity = "Long-term strategic"
             }
         };
     }

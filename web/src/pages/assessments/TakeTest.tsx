@@ -20,6 +20,7 @@ import {
   Alert,
   Affix,
   Statistic,
+  Rate,
 } from 'antd';
 import {
   ClockCircleOutlined,
@@ -46,6 +47,7 @@ interface UserAnswer {
   selectedOptionIds?: string[];
   textResponse?: string;
   codeResponse?: string;
+  ratingValue?: number;
   isSaved: boolean;
   timeSpent: number;
 }
@@ -86,7 +88,7 @@ export default function TakeTest() {
       });
     },
     onError: (error: Error) => {
-      message.error(error.message || 'Không thể lưu câu trả lời');
+      message.error(error.message || 'Failed to save answer');
     },
   });
 
@@ -94,11 +96,11 @@ export default function TakeTest() {
   const submitMutation = useMutation({
     mutationFn: submitAssessment,
     onSuccess: () => {
-      message.success('Nộp bài thành công!');
+      message.success('Test submitted successfully!');
       navigate(`/assessments/result/${assessmentId}`);
     },
     onError: (error: Error) => {
-      message.error(error.message || 'Không thể nộp bài');
+      message.error(error.message || 'Failed to submit test');
     },
   });
 
@@ -111,7 +113,7 @@ export default function TakeTest() {
         const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
         setTimeRemaining(remaining);
         if (remaining === 0) {
-          message.warning('Hết thời gian làm bài!');
+          message.warning('Time is up!');
           handleSubmitAssessment();
         }
       };
@@ -245,7 +247,8 @@ export default function TakeTest() {
     return !!(
       answer.selectedOptionIds?.length ||
       answer.textResponse?.trim() ||
-      answer.codeResponse?.trim()
+      answer.codeResponse?.trim() ||
+      answer.ratingValue
     );
   };
 
@@ -328,22 +331,22 @@ export default function TakeTest() {
       case QuestionType.ShortAnswer:
         return (
           <Input
-            placeholder="Nhập câu trả lời của bạn..."
+            placeholder="Enter your answer..."
             value={answer?.textResponse || ''}
             onChange={(e) => updateAnswer(currentQuestion.id, { textResponse: e.target.value })}
             size="large"
           />
         );
 
-      case QuestionType.Essay:
+      case QuestionType.LongAnswer:
         return (
           <TextArea
-            placeholder="Nhập câu trả lời của bạn..."
+            placeholder="Enter your detailed answer..."
             value={answer?.textResponse || ''}
             onChange={(e) => updateAnswer(currentQuestion.id, { textResponse: e.target.value })}
-            rows={8}
+            rows={10}
             showCount
-            maxLength={5000}
+            maxLength={10000}
           />
         );
 
@@ -351,7 +354,7 @@ export default function TakeTest() {
         return (
           <div>
             <TextArea
-              placeholder="Viết code của bạn ở đây..."
+              placeholder="Write your code here..."
               value={answer?.codeResponse || ''}
               onChange={(e) => updateAnswer(currentQuestion.id, { codeResponse: e.target.value })}
               rows={15}
@@ -360,8 +363,79 @@ export default function TakeTest() {
           </div>
         );
 
+      case QuestionType.Scenario:
+      case QuestionType.SituationalJudgment:
+        // These types can have options (like multiple choice) or text response
+        if (currentQuestion.options && currentQuestion.options.length > 0) {
+          return (
+            <Radio.Group
+              value={answer?.selectedOptionIds?.[0]}
+              onChange={(e) =>
+                updateAnswer(currentQuestion.id, { selectedOptionIds: [e.target.value] })
+              }
+              style={{ width: '100%' }}
+            >
+              <Space direction="vertical" style={{ width: '100%' }}>
+                {currentQuestion.options.map((opt, idx) => (
+                  <Radio
+                    key={opt.id}
+                    value={opt.id}
+                    style={{
+                      padding: '12px 16px',
+                      background: '#fafafa',
+                      borderRadius: 8,
+                      width: '100%',
+                      marginRight: 0,
+                    }}
+                  >
+                    <Text>
+                      <Text strong style={{ marginRight: 8 }}>
+                        {String.fromCharCode(65 + idx)}.
+                      </Text>
+                      {opt.content}
+                    </Text>
+                  </Radio>
+                ))}
+              </Space>
+            </Radio.Group>
+          );
+        }
+        // If no options, use text response
+        return (
+          <TextArea
+            placeholder="Describe how you would handle this situation..."
+            value={answer?.textResponse || ''}
+            onChange={(e) => updateAnswer(currentQuestion.id, { textResponse: e.target.value })}
+            rows={8}
+            showCount
+            maxLength={5000}
+          />
+        );
+
+      case QuestionType.Rating:
+        return (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <Rate
+              value={answer?.ratingValue || 0}
+              onChange={(value) => updateAnswer(currentQuestion.id, { ratingValue: value })}
+              style={{ fontSize: 36 }}
+              count={5}
+            />
+            <div style={{ marginTop: 12 }}>
+              <Text type="secondary">
+                {answer?.ratingValue === 1 && 'Very Poor'}
+                {answer?.ratingValue === 2 && 'Poor'}
+                {answer?.ratingValue === 3 && 'Average'}
+                {answer?.ratingValue === 4 && 'Good'}
+                {answer?.ratingValue === 5 && 'Excellent'}
+                {!answer?.ratingValue && 'Select your rating'}
+              </Text>
+            </div>
+          </div>
+        );
+
       default:
-        return <Text type="secondary">Loại câu hỏi không được hỗ trợ</Text>;
+        return <Text type="secondary">Question type not supported</Text>;
     }
   };
 
@@ -415,14 +489,14 @@ export default function TakeTest() {
 
   // Calculate progress
   const answeredCount = Array.from(answers.values()).filter(
-    (a) => a.selectedOptionIds?.length || a.textResponse?.trim() || a.codeResponse?.trim()
+    (a) => a.selectedOptionIds?.length || a.textResponse?.trim() || a.codeResponse?.trim() || a.ratingValue
   ).length;
 
   if (isLoading) {
     return (
       <div style={{ textAlign: 'center', padding: 100 }}>
         <Spin size="large" />
-        <div style={{ marginTop: 16 }}>Đang tải bài test...</div>
+        <div style={{ marginTop: 16 }}>Loading test...</div>
       </div>
     );
   }
@@ -431,11 +505,11 @@ export default function TakeTest() {
     return (
       <Alert
         type="error"
-        message="Không thể tải bài test"
-        description="Vui lòng thử lại sau hoặc liên hệ quản trị viên."
+        message="Failed to load test"
+        description="Please try again later or contact administrator."
         showIcon
         action={
-          <Button onClick={() => navigate('/assessments')}>Quay lại</Button>
+          <Button onClick={() => navigate('/assessments')}>Go back</Button>
         }
       />
     );
@@ -453,7 +527,7 @@ export default function TakeTest() {
                   {assessmentData.title}
                 </Title>
                 <Tag color="blue">
-                  Câu {globalIndex + 1}/{allQuestions.length}
+                  Question {globalIndex + 1}/{allQuestions.length}
                 </Tag>
               </Space>
             </Col>
@@ -486,7 +560,7 @@ export default function TakeTest() {
                   icon={<SendOutlined />}
                   onClick={() => setSubmitModalVisible(true)}
                 >
-                  Nộp bài
+                  Submit
                 </Button>
               </Space>
             </Col>
@@ -502,13 +576,13 @@ export default function TakeTest() {
               <div>
                 {/* Question header */}
                 <Space style={{ marginBottom: 16 }}>
-                  <Tag color="purple">Câu {currentQuestion.questionNumber}</Tag>
+                  <Tag color="purple">Question {currentQuestion.questionNumber}</Tag>
                   <Tag>{currentQuestion.typeName}</Tag>
-                  <Tag color="gold">{currentQuestion.points} điểm</Tag>
+                  <Tag color="gold">{currentQuestion.points} points</Tag>
                   <Tag color="cyan">{currentQuestion.skillName}</Tag>
                   {answers.get(currentQuestion.id)?.isSaved && (
                     <Tag color="success" icon={<CheckOutlined />}>
-                      Đã lưu
+                      Saved
                     </Tag>
                   )}
                 </Space>
@@ -547,7 +621,7 @@ export default function TakeTest() {
                       onClick={goPrev}
                       disabled={globalIndex === 0}
                     >
-                      Câu trước
+                      Previous
                     </Button>
                   </Col>
                   <Col>
@@ -557,7 +631,7 @@ export default function TakeTest() {
                         onClick={saveCurrentAnswer}
                         loading={answerMutation.isPending}
                       >
-                        Lưu
+                        Save
                       </Button>
                       <Button
                         type="primary"
@@ -565,7 +639,7 @@ export default function TakeTest() {
                         onClick={goNext}
                         disabled={globalIndex === allQuestions.length - 1}
                       >
-                        Câu tiếp
+                        Next
                       </Button>
                     </Space>
                   </Col>
@@ -577,7 +651,7 @@ export default function TakeTest() {
 
         {/* Question navigator */}
         <Col xs={24} lg={6}>
-          <Card title="Danh sách câu hỏi" size="small">
+          <Card title="Question List" size="small">
             {renderQuestionNavigator()}
             <Divider />
             <Space direction="vertical" size={4}>
@@ -590,7 +664,7 @@ export default function TakeTest() {
                     borderRadius: 4,
                   }}
                 />
-                <Text type="secondary">Đã trả lời & lưu</Text>
+                <Text type="secondary">Answered & Saved</Text>
               </Space>
               <Space>
                 <div
@@ -601,7 +675,7 @@ export default function TakeTest() {
                     borderRadius: 4,
                   }}
                 />
-                <Text type="secondary">Đã trả lời (chưa lưu)</Text>
+                <Text type="secondary">Answered (not saved)</Text>
               </Space>
               <Space>
                 <div
@@ -613,7 +687,7 @@ export default function TakeTest() {
                     borderRadius: 4,
                   }}
                 />
-                <Text type="secondary">Chưa trả lời</Text>
+                <Text type="secondary">Not answered</Text>
               </Space>
             </Space>
           </Card>
@@ -625,14 +699,14 @@ export default function TakeTest() {
         title={
           <Space>
             <ExclamationCircleOutlined style={{ color: '#faad14' }} />
-            Xác nhận nộp bài
+            Confirm Submission
           </Space>
         }
         open={submitModalVisible}
         onCancel={() => setSubmitModalVisible(false)}
         onOk={handleSubmitAssessment}
-        okText="Nộp bài"
-        cancelText="Tiếp tục làm"
+        okText="Submit"
+        cancelText="Continue"
         confirmLoading={submitMutation.isPending}
         okButtonProps={{ danger: true }}
       >
@@ -641,7 +715,7 @@ export default function TakeTest() {
             <Col span={12}>
               <Card size="small">
                 <Statistic
-                  title="Đã trả lời"
+                  title="Answered"
                   value={answeredCount}
                   suffix={`/ ${allQuestions.length}`}
                   valueStyle={{ color: '#52c41a' }}
@@ -652,9 +726,9 @@ export default function TakeTest() {
             <Col span={12}>
               <Card size="small">
                 <Statistic
-                  title="Chưa trả lời"
+                  title="Unanswered"
                   value={allQuestions.length - answeredCount}
-                  suffix="câu"
+                  suffix="questions"
                   valueStyle={{
                     color: allQuestions.length - answeredCount > 0 ? '#ff4d4f' : '#52c41a',
                   }}
@@ -667,14 +741,14 @@ export default function TakeTest() {
           {allQuestions.length - answeredCount > 0 && (
             <Alert
               type="warning"
-              message={`Bạn còn ${allQuestions.length - answeredCount} câu chưa trả lời. Bạn có chắc muốn nộp bài?`}
+              message={`You have ${allQuestions.length - answeredCount} unanswered questions. Are you sure you want to submit?`}
               style={{ marginTop: 16 }}
               showIcon
             />
           )}
 
           <Paragraph type="secondary" style={{ marginTop: 16 }}>
-            Sau khi nộp bài, bạn sẽ không thể thay đổi câu trả lời.
+            After submission, you cannot change your answers.
           </Paragraph>
         </div>
       </Modal>

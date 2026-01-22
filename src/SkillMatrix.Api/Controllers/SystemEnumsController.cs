@@ -45,7 +45,7 @@ public class SystemEnumsController : ControllerBase
         string enumType,
         [FromQuery] string language = "en")
     {
-        var result = await _enumService.GetDropdownAsync(enumType, language);
+        var result = await _enumService.GetDropdownAsync(enumType);
         return Ok(result);
     }
 

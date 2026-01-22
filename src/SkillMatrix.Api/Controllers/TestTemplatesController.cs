@@ -17,7 +17,7 @@ public class TestTemplatesController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy danh sách test templates với phân trang
+    /// Get list of test templates with pagination
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<PagedResult<TestTemplateListDto>>> GetAll(
@@ -31,7 +31,7 @@ public class TestTemplatesController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy chi tiết test template theo ID (bao gồm sections và questions)
+    /// Get test template details by ID (including sections and questions)
     /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<TestTemplateDto>> GetById(Guid id)
@@ -43,7 +43,7 @@ public class TestTemplatesController : ControllerBase
     }
 
     /// <summary>
-    /// Tạo test template mới
+    /// Create new test template
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<TestTemplateDto>> Create([FromBody] CreateTestTemplateDto dto)
@@ -56,7 +56,7 @@ public class TestTemplatesController : ControllerBase
     }
 
     /// <summary>
-    /// Cập nhật test template
+    /// Update test template
     /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult<TestTemplateDto>> Update(Guid id, [FromBody] UpdateTestTemplateDto dto)
@@ -68,7 +68,7 @@ public class TestTemplatesController : ControllerBase
     }
 
     /// <summary>
-    /// Xóa test template (soft delete)
+    /// Delete test template (soft delete)
     /// </summary>
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
@@ -80,7 +80,7 @@ public class TestTemplatesController : ControllerBase
     }
 
     /// <summary>
-    /// Toggle trạng thái active của test template
+    /// Toggle active status of test template
     /// </summary>
     [HttpPost("{id}/toggle-active")]
     public async Task<ActionResult> ToggleActive(Guid id)
@@ -94,7 +94,7 @@ public class TestTemplatesController : ControllerBase
     // ==================== SECTION ENDPOINTS ====================
 
     /// <summary>
-    /// Tạo section mới trong test template
+    /// Create new section in test template
     /// </summary>
     [HttpPost("sections")]
     public async Task<ActionResult<TestSectionDto>> CreateSection([FromBody] CreateTestSectionDto dto)
@@ -110,7 +110,7 @@ public class TestTemplatesController : ControllerBase
     }
 
     /// <summary>
-    /// Cập nhật section
+    /// Update section
     /// </summary>
     [HttpPut("sections/{id}")]
     public async Task<ActionResult<TestSectionDto>> UpdateSection(Guid id, [FromBody] UpdateTestSectionDto dto)
@@ -122,7 +122,7 @@ public class TestTemplatesController : ControllerBase
     }
 
     /// <summary>
-    /// Xóa section
+    /// Delete section
     /// </summary>
     [HttpDelete("sections/{id}")]
     public async Task<ActionResult> DeleteSection(Guid id)

@@ -372,9 +372,11 @@ export enum QuestionType {
   MultipleAnswer = 2,
   TrueFalse = 3,
   ShortAnswer = 4,
-  Essay = 5,
+  LongAnswer = 5,
   CodingChallenge = 6,
-  Rating = 7,
+  Scenario = 7,
+  SituationalJudgment = 8,
+  Rating = 9,
 }
 
 export enum DifficultyLevel {
@@ -528,7 +530,7 @@ export interface QuestionListDto {
 
 export interface CreateQuestionDto {
   sectionId?: string;
-  skillId: string;
+  skillId?: string;
   targetLevel: ProficiencyLevel;
   type: QuestionType;
   content: string;
@@ -539,6 +541,23 @@ export interface CreateQuestionDto {
   difficulty: DifficultyLevel;
   tags?: string[];
   gradingRubric?: string;
+  options: CreateQuestionOptionDto[];
+}
+
+export interface UpdateQuestionDto {
+  sectionId?: string;
+  skillId?: string;
+  targetLevel: ProficiencyLevel;
+  type: QuestionType;
+  content: string;
+  codeSnippet?: string;
+  mediaUrl?: string;
+  points: number;
+  timeLimitSeconds?: number;
+  difficulty: DifficultyLevel;
+  tags?: string[];
+  gradingRubric?: string;
+  isActive: boolean;
   options: CreateQuestionOptionDto[];
 }
 
@@ -568,14 +587,14 @@ export interface QuestionFilterRequest extends PagedRequest {
 
 // AI Generation
 export interface AiGenerateQuestionsRequest {
-  skillId: string;
-  targetLevel: ProficiencyLevel;
-  questionCount: number;
-  questionTypes: QuestionType[];
-  difficulty?: DifficultyLevel;
-  language: string;
-  additionalContext?: string;
-  sectionId?: string;
+  questionTypes: QuestionType[];  // Required
+  language: string;               // Required
+  questionCount: number;          // Required
+  skillId?: string;               // Optional
+  targetLevel?: ProficiencyLevel; // Optional
+  difficulty?: DifficultyLevel;   // Optional
+  additionalContext?: string;     // Optional
+  sectionId?: string;             // Optional
 }
 
 export interface AiGenerateQuestionsResponse {
@@ -797,9 +816,7 @@ export interface SystemEnumValueDto {
   value: number;
   code: string;
   name: string;
-  nameVi?: string;
   description?: string;
-  descriptionVi?: string;
   color?: string;
   icon?: string;
   displayOrder: number;
@@ -813,9 +830,7 @@ export interface CreateSystemEnumValueDto {
   value: number;
   code: string;
   name: string;
-  nameVi?: string;
   description?: string;
-  descriptionVi?: string;
   color?: string;
   icon?: string;
   displayOrder?: number;
@@ -824,9 +839,7 @@ export interface CreateSystemEnumValueDto {
 
 export interface UpdateSystemEnumValueDto {
   name: string;
-  nameVi?: string;
   description?: string;
-  descriptionVi?: string;
   color?: string;
   icon?: string;
   displayOrder?: number;
@@ -845,7 +858,6 @@ export interface EnumDropdownItemDto {
   value: number;
   code: string;
   label: string;
-  labelVi?: string;
   color?: string;
   icon?: string;
 }

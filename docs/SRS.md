@@ -1,71 +1,80 @@
-# 📋 SRS - SkillMatrix System
+# SRS - SkillMatrix System
 
-## Tổng Quan Dự Án
+## Project Overview
 
-**SkillMatrix** là hệ thống quản lý kỹ năng nhân viên, đánh giá năng lực và đề xuất lộ trình học tập. Hệ thống tích hợp framework SFIA 9 và hỗ trợ AI để tự động tạo câu hỏi và phân tích skill gaps.
+**SkillMatrix** is an employee skill management system for competency assessment and learning path recommendations. The system integrates SFIA 9 framework and supports AI for automatic question generation and skill gap analysis.
+
+---
+
+## DEVELOPMENT RULES
+
+### Language Rule
+- **English Only**: All code, comments, documentation, UI text, database content, API responses, and error messages MUST be in English.
+- No bilingual/multilingual content needed.
+- All enum values, names, descriptions use English only.
 
 ---
 
 ## 1. DOMAIN ENTITIES
 
-### 1.1 Taxonomy (Phân loại Kỹ năng)
+### 1.1 Taxonomy (Skill Classification)
 
-| Entity | Mô tả | Status |
-|--------|-------|--------|
-| **SkillDomain** | Nhóm kỹ năng cấp cao (DEV, STRA, PEOP...) | ✅ Hoàn thành |
-| **SkillSubcategory** | Phân nhóm con theo domain | ✅ Hoàn thành |
-| **Skill** | Kỹ năng cụ thể với mức độ | ✅ Hoàn thành |
-| **SkillLevelDefinition** | Tiêu chí hành vi cho từng level của skill | ✅ Hoàn thành |
-| **SkillRelationship** | Quan hệ giữa các skill (prerequisite, related) | ✅ Entity có, UI chưa |
-| **ProficiencyLevelDefinition** | Định nghĩa mức độ SFIA 9 (1-7) | ✅ Hoàn thành |
+| Entity | Description | Status |
+|--------|-------------|--------|
+| **SkillDomain** | High-level skill groups (DEV, STRA, PEOP...) | Done |
+| **SkillSubcategory** | Sub-groups within domain | Done |
+| **Skill** | Specific skill with levels | Done |
+| **SkillLevelDefinition** | Behavioral criteria for each skill level | Done |
+| **SkillRelationship** | Relationships between skills (prerequisite, related) | Entity exists, UI pending |
+| **ProficiencyLevelDefinition** | SFIA 9 level definitions (1-7) | Done |
 
-### 1.2 Organization (Tổ chức)
+### 1.2 Organization
 
-| Entity | Mô tả | Status |
-|--------|-------|--------|
-| **Team** | Phòng ban/nhóm (hỗ trợ hierarchy) | ✅ Entity có, API chưa đầy đủ |
-| **JobRole** | Vị trí công việc (BE, FE, QA, BA, PM...) | ✅ Entity có, API chưa |
-| **RoleSkillRequirement** | Yêu cầu skill cho từng role | ✅ Entity có, API chưa |
-| **Employee** | Nhân viên với profile đầy đủ | ✅ Hoàn thành |
-| **EmployeeSkill** | Skill hiện tại của nhân viên | ✅ Hoàn thành |
-| **EmployeeSkillHistory** | Lịch sử thay đổi skill level | ✅ Hoàn thành |
+| Entity | Description | Status |
+|--------|-------------|--------|
+| **Team** | Department/team (supports hierarchy) | Entity exists, API incomplete |
+| **JobRole** | Job positions (BE, FE, QA, BA, PM...) | Entity exists, API pending |
+| **RoleSkillRequirement** | Skill requirements per role | Entity exists, API pending |
+| **Employee** | Employee with full profile | Done |
+| **EmployeeSkill** | Employee's current skills | Done |
+| **EmployeeSkillHistory** | Skill level change history | Done |
 
-### 1.3 Project (Dự án)
+### 1.3 Project
 
-| Entity | Mô tả | Status |
-|--------|-------|--------|
-| **Project** | Dự án với skill requirements | 🔲 Entity có, API chưa |
-| **ProjectSkillRequirement** | Skills cần cho dự án | 🔲 Entity có, API chưa |
-| **ProjectAssignment** | Phân công nhân viên vào dự án | 🔲 Entity có, API chưa |
+| Entity | Description | Status |
+|--------|-------------|--------|
+| **Project** | Project with skill requirements | Entity exists, API pending |
+| **ProjectSkillRequirement** | Skills needed for project | Entity exists, API pending |
+| **ProjectAssignment** | Employee project assignments | Entity exists, API pending |
 
-### 1.4 Assessment (Đánh giá)
+### 1.4 Assessment
 
-| Entity | Mô tả | Status |
-|--------|-------|--------|
-| **TestTemplate** | Template bài test có thể tái sử dụng | ✅ Hoàn thành |
-| **TestSection** | Sections trong test | ✅ Hoàn thành |
-| **Question** | Câu hỏi với nhiều loại | ✅ Hoàn thành |
-| **QuestionOption** | Options cho trắc nghiệm | ✅ Hoàn thành |
-| **Assessment** | Phiên đánh giá | ✅ Hoàn thành |
-| **AssessmentSkillResult** | Kết quả theo skill | ✅ Hoàn thành |
-| **AssessmentResponse** | Câu trả lời của nhân viên | ✅ Hoàn thành |
+| Entity | Description | Status |
+|--------|-------------|--------|
+| **TestTemplate** | Reusable test templates | Done |
+| **TestSection** | Sections within test | Done |
+| **Question** | Questions with multiple types | Done |
+| **QuestionOption** | Options for multiple choice | Done |
+| **Assessment** | Assessment session | Done |
+| **AssessmentSkillResult** | Results per skill | Done |
+| **AssessmentResponse** | Employee responses | Done |
 
-### 1.5 Learning (Học tập)
+### 1.5 Learning
 
-| Entity | Mô tả | Status |
-|--------|-------|--------|
-| **LearningResource** | Tài liệu học (Course, Book, Cert...) | 🔲 Entity có, API chưa |
-| **LearningResourceSkill** | Skills mà resource phát triển | 🔲 Entity có, API chưa |
-| **EmployeeLearningPath** | Lộ trình học cá nhân (AI-generated) | 🔲 Entity có, API chưa |
-| **LearningPathItem** | Items trong lộ trình | 🔲 Entity có, API chưa |
-| **SkillGap** | Khoảng cách skill cần phát triển | 🔲 Entity có, API chưa |
-| **TeamSkillGap** | Skill gaps cấp team | 🔲 Entity có, API chưa |
+| Entity | Description | Status |
+|--------|-------------|--------|
+| **LearningResource** | Learning materials (Course, Book, Cert...) | Entity exists, API pending |
+| **LearningResourceSkill** | Skills developed by resource | Entity exists, API pending |
+| **EmployeeLearningPath** | Personal learning path (AI-generated) | Entity exists, API pending |
+| **LearningPathItem** | Items in learning path | Entity exists, API pending |
+| **SkillGap** | Skill development gaps | Entity exists, API pending |
+| **TeamSkillGap** | Team-level skill gaps | Entity exists, API pending |
 
-### 1.6 Configuration (Cấu hình - Dynamic Enums)
+### 1.6 Configuration (Dynamic Enums)
 
-| Entity | Mô tả | Status |
-|--------|-------|--------|
-| **SystemEnumValue** | Giá trị enum có thể cấu hình từ Admin | ✅ Hoàn thành |
+| Entity | Description | Status |
+|--------|-------------|--------|
+| **SystemEnumValue** | Configurable enum values from Admin | Done |
 
 ---
 
@@ -74,141 +83,141 @@
 ### 2.1 Taxonomy Management
 
 ```
-✅ GET/POST/PUT/DELETE /api/skills                    - CRUD Skills
-✅ GET/POST/PUT/DELETE /api/skilldomains              - CRUD Domains
-✅ GET/POST/PUT/DELETE /api/skillsubcategories        - CRUD Subcategories
-✅ GET/POST/PUT/DELETE /api/leveldefinitions          - CRUD Level Definitions
-✅ POST /api/leveldefinitions/seed                    - Seed SFIA 9 defaults
-✅ GET /api/enums/*                                   - Get all enums
+GET/POST/PUT/DELETE /api/skills                    - CRUD Skills
+GET/POST/PUT/DELETE /api/skilldomains              - CRUD Domains
+GET/POST/PUT/DELETE /api/skillsubcategories        - CRUD Subcategories
+GET/POST/PUT/DELETE /api/leveldefinitions          - CRUD Level Definitions
+POST /api/leveldefinitions/seed                    - Seed SFIA 9 defaults
+GET /api/enums/*                                   - Get all enums
 ```
 
 ### 2.2 Assessment & Testing
 
 ```
-✅ GET/POST/PUT/DELETE /api/testtemplates             - CRUD Templates
-✅ POST/PUT/DELETE /api/testtemplates/sections        - Manage sections
-✅ GET/POST/PUT/DELETE /api/questions                 - CRUD Questions
-✅ POST /api/questions/bulk                           - Bulk create
-✅ POST /api/questions/generate-ai                    - AI generation
-✅ GET /api/assessments/available/{employeeId}        - Available tests
-✅ POST /api/assessments/start                        - Start assessment
-✅ GET /api/assessments/{id}/continue                 - Continue test
-✅ POST /api/assessments/answer                       - Submit answer
-✅ POST /api/assessments/{id}/submit                  - Complete test
-✅ GET /api/assessments/{id}/result                   - Get result
+GET/POST/PUT/DELETE /api/testtemplates             - CRUD Templates
+POST/PUT/DELETE /api/testtemplates/sections        - Manage sections
+GET/POST/PUT/DELETE /api/questions                 - CRUD Questions
+POST /api/questions/bulk                           - Bulk create
+POST /api/questions/generate-ai                    - AI generation
+GET /api/assessments/available/{employeeId}        - Available tests
+POST /api/assessments/start                        - Start assessment
+GET /api/assessments/{id}/continue                 - Continue test
+POST /api/assessments/answer                       - Submit answer
+POST /api/assessments/{id}/submit                  - Complete test
+GET /api/assessments/{id}/result                   - Get result
 ```
 
 ### 2.3 Authentication
 
 ```
-✅ POST /api/auth/login                               - Login
-✅ POST /api/auth/register                            - Register
-✅ GET /api/auth/me/{userId}                          - Get current user
-✅ POST /api/auth/change-password/{userId}            - Change password
-✅ GET /api/auth/users                                - List users (admin)
-✅ POST /api/auth/seed                                - Seed default users
+POST /api/auth/login                               - Login
+POST /api/auth/register                            - Register
+GET /api/auth/me/{userId}                          - Get current user
+POST /api/auth/change-password/{userId}            - Change password
+GET /api/auth/users                                - List users (admin)
+POST /api/auth/seed                                - Seed default users
 ```
 
 ### 2.4 Dashboard
 
 ```
-✅ GET /api/dashboard/overview                        - Statistics
-✅ GET /api/dashboard/employees/skills                - All employees skills
-✅ GET /api/dashboard/employees/{id}/skills           - Single employee
-✅ GET /api/dashboard/skill-matrix                    - Team skill matrix
+GET /api/dashboard/overview                        - Statistics
+GET /api/dashboard/employees/skills                - All employees skills
+GET /api/dashboard/employees/{id}/skills           - Single employee
+GET /api/dashboard/skill-matrix                    - Team skill matrix
 ```
 
 ### 2.5 AI Services
 
 ```
-✅ POST /api/ai/generate-questions                    - Generate questions
-✅ POST /api/ai/grade-answer                          - Grade answer
-✅ POST /api/ai/analyze-skill-gaps                    - Analyze gaps
+POST /api/ai/generate-questions                    - Generate questions
+POST /api/ai/grade-answer                          - Grade answer
+POST /api/ai/analyze-skill-gaps                    - Analyze gaps
 ```
 
-### 2.6 Configuration (Admin) - Hoàn thành
+### 2.6 Configuration (Admin)
 
 ```
-✅ GET /api/systemenums/types                         - Get all enum types
-✅ GET /api/systemenums/values/{enumType}             - Get values for enum type
-✅ GET /api/systemenums/dropdown/{enumType}           - Get dropdown values
-✅ GET /api/systemenums/{id}                          - Get single value
-✅ POST /api/systemenums                              - Create enum value
-✅ PUT /api/systemenums/{id}                          - Update enum value
-✅ DELETE /api/systemenums/{id}                       - Delete enum value
-✅ PATCH /api/systemenums/{id}/toggle-active          - Toggle active
-✅ POST /api/systemenums/reorder                      - Reorder values
-✅ POST /api/systemenums/seed                         - Seed default values
+GET /api/systemenums/types                         - Get all enum types
+GET /api/systemenums/values/{enumType}             - Get values for enum type
+GET /api/systemenums/dropdown/{enumType}           - Get dropdown values
+GET /api/systemenums/{id}                          - Get single value
+POST /api/systemenums                              - Create enum value
+PUT /api/systemenums/{id}                          - Update enum value
+DELETE /api/systemenums/{id}                       - Delete enum value
+PATCH /api/systemenums/{id}/toggle-active          - Toggle active
+POST /api/systemenums/reorder                      - Reorder values
+POST /api/systemenums/seed                         - Seed default values
 ```
 
-### 2.7 Chưa có API (Cần phát triển)
+### 2.7 Pending APIs (To be developed)
 
 ```
-🔲 /api/jobroles                                      - Job Role management
-🔲 /api/roleskillrequirements                         - Role skill requirements
-🔲 /api/teams                                         - Team management
-🔲 /api/projects                                      - Project management
-🔲 /api/learningresources                             - Learning resources
-🔲 /api/learningpaths                                 - Learning paths
-🔲 /api/skillgaps                                     - Skill gap analysis
+/api/jobroles                                      - Job Role management
+/api/roleskillrequirements                         - Role skill requirements
+/api/teams                                         - Team management
+/api/projects                                      - Project management
+/api/learningresources                             - Learning resources
+/api/learningpaths                                 - Learning paths
+/api/skillgaps                                     - Skill gap analysis
 ```
 
 ---
 
 ## 3. FRONTEND PAGES
 
-### 3.1 Đã hoàn thành
+### 3.1 Completed
 
-| Page | Đường dẫn | Mô tả |
-|------|-----------|-------|
-| Login | `/login` | Đăng nhập |
-| Dashboard | `/dashboard` | Tổng quan, skill matrix |
-| Available Tests | `/tests` | Danh sách bài test |
-| Take Test | `/tests/:id/take` | Làm bài test |
-| Test Result | `/tests/:id/result` | Kết quả test |
-| Skill Domains | `/taxonomy/domains` | Quản lý domains |
-| Subcategories | `/taxonomy/subcategories` | Quản lý subcategories |
-| Skills | `/taxonomy/skills` | Quản lý skills |
-| Level Definitions | `/taxonomy/levels` | Quản lý mức độ |
-| Test Templates | `/templates` | Quản lý templates |
-| Template Detail | `/templates/:id` | Chi tiết template |
+| Page | Path | Description |
+|------|------|-------------|
+| Login | `/login` | User login |
+| Dashboard | `/dashboard` | Overview, skill matrix |
+| Available Tests | `/tests` | Test list |
+| Take Test | `/tests/:id/take` | Take a test |
+| Test Result | `/tests/:id/result` | Test results |
+| Skill Domains | `/taxonomy/domains` | Manage domains |
+| Subcategories | `/taxonomy/subcategories` | Manage subcategories |
+| Skills | `/taxonomy/skills` | Manage skills |
+| Level Definitions | `/taxonomy/levels` | Manage levels |
+| Test Templates | `/templates` | Manage templates |
+| Template Detail | `/templates/:id` | Template details |
+| System Enums | `/admin/enums` | Manage dynamic enums |
 
-### 3.2 Cần phát triển
+### 3.2 Pending Development
 
-| Page | Mô tả | Priority |
-|------|-------|----------|
-| ~~**System Enums**~~ | ~~Quản lý dynamic enums~~ | ✅ Hoàn thành (`/admin/enums`) |
-| Job Roles | Quản lý vị trí công việc | HIGH |
-| Role Requirements | Yêu cầu skill cho role | HIGH |
-| Team Management | Quản lý team/phòng ban | MEDIUM |
-| Learning Resources | Quản lý tài liệu học | MEDIUM |
-| Learning Paths | Lộ trình học cá nhân | MEDIUM |
-| Employee Profile | Profile chi tiết nhân viên | HIGH |
-| Skill Gap Report | Báo cáo skill gaps | HIGH |
-| Admin Dashboard | Quản trị hệ thống | MEDIUM |
+| Page | Description | Priority |
+|------|-------------|----------|
+| Job Roles | Job position management | HIGH |
+| Role Requirements | Skill requirements per role | HIGH |
+| Team Management | Team/department management | MEDIUM |
+| Learning Resources | Learning material management | MEDIUM |
+| Learning Paths | Personal learning paths | MEDIUM |
+| Employee Profile | Detailed employee profile | HIGH |
+| Skill Gap Report | Skill gap reports | HIGH |
+| Admin Dashboard | System administration | MEDIUM |
 
 ---
 
 ## 4. DYNAMIC ENUMERATIONS (Configurable)
 
-### 4.1 Enum Types (Cấu hình từ Admin)
+### 4.1 Enum Types (Admin Configurable)
 
-Các enum sau sẽ được lưu trong database và có thể cấu hình từ Admin:
+These enums are stored in database and configurable from Admin:
 
-| Enum Type | Mô tả | Default Values |
-|-----------|-------|----------------|
-| **SkillCategory** | Loại kỹ năng | Technical, Professional, Domain, Leadership, Tools |
-| **SkillType** | Phân loại T-shaped | Core, Specialty, Adjacent |
-| **AssessmentType** | Loại đánh giá | SelfAssessment, ManagerAssessment, PeerAssessment, Quiz, CodingTest, CaseStudy, RoleBasedTest, SituationalJudgment |
-| **AssessmentStatus** | Trạng thái đánh giá | Draft, Pending, InProgress, Completed, Reviewed, Disputed, Resolved |
-| **QuestionType** | Loại câu hỏi | MultipleChoice, MultipleAnswer, TrueFalse, ShortAnswer, LongAnswer, CodingChallenge, Scenario, SituationalJudgment |
-| **DifficultyLevel** | Độ khó | Easy, Medium, Hard, Expert |
-| **GapPriority** | Mức ưu tiên gap | Low, Medium, High, Critical |
-| **LearningResourceType** | Loại tài liệu học | Course, Book, Video, Article, Workshop, Certification, Project, Mentorship, Seminar |
-| **LearningPathStatus** | Trạng thái lộ trình | Suggested, Approved, InProgress, Completed, Paused, Cancelled |
-| **EmploymentStatus** | Trạng thái nhân viên | Active, OnLeave, Resigned, Terminated |
-| **UserRole** | Vai trò hệ thống | Employee, TeamLead, Manager, Admin |
-| **SjtEffectiveness** | Mức hiệu quả SJT | MostEffective, Effective, Ineffective, CounterProductive |
+| Enum Type | Description | Default Values |
+|-----------|-------------|----------------|
+| **SkillCategory** | Skill type | Technical, Professional, Domain, Leadership, Tools |
+| **SkillType** | T-shaped classification | Core, Specialty, Adjacent |
+| **AssessmentType** | Assessment type | SelfAssessment, ManagerAssessment, PeerAssessment, Quiz, CodingTest, CaseStudy, RoleBasedTest, SituationalJudgment |
+| **AssessmentStatus** | Assessment status | Draft, Pending, InProgress, Completed, Reviewed, Disputed, Resolved |
+| **QuestionType** | Question type | MultipleChoice, MultipleAnswer, TrueFalse, ShortAnswer, LongAnswer, CodingChallenge, Scenario, SituationalJudgment |
+| **DifficultyLevel** | Difficulty | Easy, Medium, Hard, Expert |
+| **GapPriority** | Gap priority | Low, Medium, High, Critical |
+| **LearningResourceType** | Learning resource type | Course, Book, Video, Article, Workshop, Certification, Project, Mentorship, Seminar |
+| **LearningPathStatus** | Learning path status | Suggested, Approved, InProgress, Completed, Paused, Cancelled |
+| **EmploymentStatus** | Employee status | Active, OnLeave, Resigned, Terminated |
+| **UserRole** | System role | Employee, TeamLead, Manager, Admin |
+| **SjtEffectiveness** | SJT effectiveness level | MostEffective, Effective, Ineffective, CounterProductive |
 
 ### 4.2 SystemEnumValue Entity Structure
 
@@ -219,27 +228,26 @@ public class SystemEnumValue
     public string EnumType { get; set; }      // "SkillCategory", "AssessmentType", etc.
     public int Value { get; set; }            // Numeric value (1, 2, 3...)
     public string Code { get; set; }          // "Technical", "Quiz", etc.
-    public string Name { get; set; }          // Display name (có thể đa ngôn ngữ)
-    public string? NameVi { get; set; }       // Tên tiếng Việt
-    public string? Description { get; set; }  // Mô tả chi tiết
+    public string Name { get; set; }          // Display name (English only)
+    public string? Description { get; set; }  // Detailed description
     public string? Color { get; set; }        // Color code for UI
     public string? Icon { get; set; }         // Icon name
-    public int DisplayOrder { get; set; }     // Thứ tự hiển thị
-    public bool IsActive { get; set; }        // Có đang active không
-    public bool IsSystem { get; set; }        // System value (không thể xóa)
-    public string? Metadata { get; set; }     // JSON cho thông tin bổ sung
+    public int DisplayOrder { get; set; }     // Display order
+    public bool IsActive { get; set; }        // Is currently active
+    public bool IsSystem { get; set; }        // System value (cannot delete)
+    public string? Metadata { get; set; }     // JSON for additional info
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
 ```
 
-### 4.3 Hard-coded Enums (Không thay đổi)
+### 4.3 Hard-coded Enums (Unchangeable)
 
-Một số enum vẫn giữ hard-code vì ảnh hưởng đến logic hệ thống:
+Some enums remain hard-coded due to system logic dependencies:
 
-| Enum | Lý do |
-|------|-------|
-| **ProficiencyLevel** (1-7) | SFIA framework chuẩn, logic tính toán dựa vào giá trị số |
+| Enum | Reason |
+|------|--------|
+| **ProficiencyLevel** (1-7) | SFIA standard framework, calculation logic depends on numeric values |
 
 ---
 
@@ -254,7 +262,7 @@ Một số enum vẫn giữ hard-code vì ảnh hưởng đến logic hệ thố
   "questionCount": 5,
   "assessmentType": "Quiz | CodingTest | CaseStudy | RoleBasedTest | SituationalJudgment",
   "difficulty": "DifficultyLevel (optional)",
-  "language": "vi | en",
+  "language": "en",
   "additionalContext": "string (optional)",
   "jobRole": "string (optional)",
   "sectionId": "guid (optional)"
@@ -267,7 +275,7 @@ Một số enum vẫn giữ hard-code vì ảnh hưởng đến logic hệ thố
   "success": true,
   "questions": [
     {
-      "content": "Nội dung câu hỏi",
+      "content": "Question content",
       "assessmentType": "Quiz",
       "questionType": "MultipleChoice",
       "difficulty": "Medium (optional)",
@@ -277,37 +285,37 @@ Một số enum vẫn giữ hard-code vì ảnh hưởng đến logic hệ thố
       "suggestedPoints": 10,
       "suggestedTimeSeconds": 120,
       "tags": ["tag1", "tag2"],
-      "explanation": "Giải thích đáp án",
+      "explanation": "Answer explanation",
 
-      // Cho Quiz
+      // For Quiz
       "options": [
-        { "content": "Option A", "isCorrect": true, "explanation": "Vì..." }
+        { "content": "Option A", "isCorrect": true, "explanation": "Because..." }
       ],
 
-      // Cho Coding Test
+      // For Coding Test
       "codeSnippet": "// Template code",
       "expectedOutput": "Expected result",
       "testCases": [
         { "input": "...", "expectedOutput": "...", "isHidden": false }
       ],
 
-      // Cho Case Study
-      "scenario": "Mô tả tình huống...",
+      // For Case Study
+      "scenario": "Scenario description...",
       "documents": ["doc1.pdf"],
 
-      // Cho Role-based Test
-      "roleContext": "Context về vai trò...",
-      "responsibilities": ["Trách nhiệm 1"],
+      // For Role-based Test
+      "roleContext": "Role context...",
+      "responsibilities": ["Responsibility 1"],
 
-      // Cho SJT
-      "situation": "Mô tả tình huống...",
+      // For SJT
+      "situation": "Situation description...",
       "responseOptions": [
-        { "content": "Phương án A", "effectiveness": "MostEffective", "explanation": "..." }
+        { "content": "Option A", "effectiveness": "MostEffective", "explanation": "..." }
       ],
 
-      // Cho tự luận
-      "expectedAnswer": "Câu trả lời mẫu",
-      "gradingRubric": "Tiêu chí chấm điểm"
+      // For essay questions
+      "expectedAnswer": "Sample answer",
+      "gradingRubric": "Grading criteria"
     }
   ],
   "metadata": {
@@ -323,28 +331,27 @@ Một số enum vẫn giữ hard-code vì ảnh hưởng đến logic hệ thố
 
 ## 6. IMPLEMENTATION STATUS
 
-### ✅ Hoàn thành (Production Ready)
+### Completed (Production Ready)
 
 - [x] Skill Taxonomy (Domains, Subcategories, Skills, Levels)
 - [x] Test Templates & Sections
-- [x] Questions với AI Generation
-- [x] Assessment Workflow (Start → Answer → Submit → Result)
+- [x] Questions with AI Generation
+- [x] Assessment Workflow (Start -> Answer -> Submit -> Result)
 - [x] Authentication (Login, Register)
-- [x] Dashboard với Skill Matrix
-- [x] **Dynamic Enum Configuration (Admin)** - NEW!
-- [x] API cho tất cả features trên
-- [x] Frontend pages cho features trên
+- [x] Dashboard with Skill Matrix
+- [x] Dynamic Enum Configuration (Admin)
+- [x] API for all features above
+- [x] Frontend pages for features above
 
-### 🔲 Cần phát triển
+### Pending Development
 
-- [x] ~~Dynamic Enum Configuration (Admin)~~ - DONE!
 - [ ] Job Role Management + UI
 - [ ] Role Skill Requirements + UI
 - [ ] Team Management + UI
 - [ ] Learning Resources + UI
-- [ ] Learning Paths với AI recommendations
+- [ ] Learning Paths with AI recommendations
 - [ ] Skill Gap Analysis + Reports
-- [ ] Employee Profile page chi tiết
+- [ ] Employee Profile page
 - [ ] Admin Dashboard
 - [ ] Email Notifications
 - [ ] Export/Reports (PDF, Excel)
@@ -359,17 +366,16 @@ Một số enum vẫn giữ hard-code vì ảnh hưởng đến logic hệ thố
 | Database | PostgreSQL |
 | Frontend | React 19, TypeScript, Ant Design v6 |
 | State Management | TanStack Query (React Query) |
-| AI Integration | Mock Service (sẵn sàng cho Claude API) |
-| Authentication | Password-based (extensible cho JWT/OAuth2) |
+| AI Integration | Mock Service (ready for Claude API) |
+| Authentication | Password-based (extensible for JWT/OAuth2) |
 
 ---
 
 ## 8. NEXT STEPS (Priority Order)
 
-1. **HIGH**: Implement Dynamic Enum Configuration
-2. **HIGH**: Job Role Management
-3. **HIGH**: Employee Profile Page
-4. **MEDIUM**: Team Management
-5. **MEDIUM**: Learning Resources & Paths
-6. **LOW**: Admin Dashboard
-7. **LOW**: Export/Reports
+1. **HIGH**: Job Role Management
+2. **HIGH**: Employee Profile Page
+3. **MEDIUM**: Team Management
+4. **MEDIUM**: Learning Resources & Paths
+5. **LOW**: Admin Dashboard
+6. **LOW**: Export/Reports
