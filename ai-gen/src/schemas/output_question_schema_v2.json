@@ -1,0 +1,501 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Generated Question Output Schema v2",
+  "description": "Simplified output schema mapping directly to CreateQuestionDto for easy backend integration",
+  "type": "object",
+  "required": ["questions"],
+  "properties": {
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/question"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "total_questions": {
+          "type": "integer"
+        },
+        "generation_timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ai_model": {
+          "type": "string"
+        },
+        "skill_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "skill_name": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string",
+          "enum": ["en", "vi"]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "question": {
+      "type": "object",
+      "required": ["type", "content", "target_level", "difficulty", "points"],
+      "properties": {
+        "skill_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Maps to Question.SkillId"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "MultipleChoice",
+            "MultipleAnswer",
+            "TrueFalse",
+            "ShortAnswer",
+            "LongAnswer",
+            "CodingChallenge",
+            "Scenario",
+            "SituationalJudgment",
+            "Rating"
+          ],
+          "description": "Maps to QuestionType enum"
+        },
+        "content": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Question text/stem. Maps to Question.Content"
+        },
+        "code_snippet": {
+          "type": ["string", "null"],
+          "description": "Code snippet for context (coding challenges, etc). Maps to Question.CodeSnippet"
+        },
+        "media_url": {
+          "type": ["string", "null"],
+          "format": "uri",
+          "description": "Image/video URL for question context. Maps to Question.MediaUrl"
+        },
+        "target_level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7,
+          "description": "SFIA proficiency level (1-7). Maps to Question.TargetLevel"
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["Easy", "Medium", "Hard", "Expert"],
+          "description": "Difficulty level. Maps to DifficultyLevel enum"
+        },
+        "points": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Points for correct answer. Maps to Question.Points"
+        },
+        "time_limit_seconds": {
+          "type": ["integer", "null"],
+          "minimum": 10,
+          "description": "Time limit in seconds. Maps to Question.TimeLimitSeconds"
+        },
+        "tags": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags for categorization. Maps to Question.Tags"
+        },
+        "options": {
+          "type": ["array", "null"],
+          "description": "Answer options for choice-based questions. Maps to QuestionOption[]",
+          "items": {
+            "$ref": "#/$defs/option"
+          }
+        },
+        "grading_rubric": {
+          "type": ["string", "null"],
+          "description": "JSON string with grading criteria for text/coding questions. Maps to Question.GradingRubric"
+        },
+        "explanation": {
+          "type": ["string", "null"],
+          "description": "Explanation of correct answer (shown after submission)"
+        },
+        "hints": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "string"
+          },
+          "description": "Hints to help answer the question"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["MultipleChoice", "MultipleAnswer", "SituationalJudgment"]
+              }
+            }
+          },
+          "then": {
+            "required": ["options"],
+            "properties": {
+              "options": {
+                "type": "array",
+                "minItems": 2
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "TrueFalse"
+              }
+            }
+          },
+          "then": {
+            "required": ["options"],
+            "properties": {
+              "options": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "Must have exactly 2 options: True and False"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "Rating"
+              }
+            }
+          },
+          "then": {
+            "required": ["options"],
+            "properties": {
+              "options": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 10,
+                "description": "Rating scale options (e.g., 1-5 stars)"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": ["ShortAnswer", "LongAnswer", "Scenario"]
+              }
+            }
+          },
+          "then": {
+            "required": ["grading_rubric"],
+            "properties": {
+              "grading_rubric": {
+                "type": "string",
+                "description": "JSON string with grading criteria"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "CodingChallenge"
+              }
+            }
+          },
+          "then": {
+            "required": ["grading_rubric"],
+            "properties": {
+              "grading_rubric": {
+                "type": "string",
+                "description": "JSON string with test cases and expected outputs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "option": {
+      "type": "object",
+      "required": ["content", "is_correct", "display_order"],
+      "properties": {
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Option text. Maps to QuestionOption.Content"
+        },
+        "is_correct": {
+          "type": "boolean",
+          "description": "Whether this option is correct. Maps to QuestionOption.IsCorrect"
+        },
+        "display_order": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Display order (1, 2, 3...). Maps to QuestionOption.DisplayOrder"
+        },
+        "explanation": {
+          "type": ["string", "null"],
+          "description": "Why this option is correct/incorrect. Maps to QuestionOption.Explanation"
+        },
+        "effectiveness_level": {
+          "type": ["string", "null"],
+          "enum": ["MostEffective", "Effective", "Ineffective", "CounterProductive", null],
+          "description": "For SJT questions only. Maps to SjtEffectiveness enum"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "questions": [
+        {
+          "skill_id": "30000000-0000-0000-0000-000000000078",
+          "type": "MultipleChoice",
+          "content": "Which WCAG 2.1 level requires all functionality to be keyboard accessible?",
+          "target_level": 3,
+          "difficulty": "Medium",
+          "points": 10,
+          "time_limit_seconds": 120,
+          "tags": ["WCAG", "Accessibility", "Keyboard"],
+          "options": [
+            {
+              "content": "Level A",
+              "is_correct": true,
+              "display_order": 1,
+              "explanation": "Level A is the minimum conformance level and requires keyboard accessibility."
+            },
+            {
+              "content": "Level AA",
+              "is_correct": false,
+              "display_order": 2
+            },
+            {
+              "content": "Level AAA",
+              "is_correct": false,
+              "display_order": 3
+            },
+            {
+              "content": "All levels",
+              "is_correct": false,
+              "display_order": 4
+            }
+          ],
+          "explanation": "WCAG Level A is the foundation level requiring basic accessibility features including keyboard access."
+        },
+        {
+          "skill_id": "30000000-0000-0000-0000-000000000078",
+          "type": "MultipleAnswer",
+          "content": "Which of the following are WCAG 2.1 success criteria? (Select all that apply)",
+          "target_level": 3,
+          "difficulty": "Medium",
+          "points": 15,
+          "time_limit_seconds": 180,
+          "tags": ["WCAG", "Standards"],
+          "options": [
+            {
+              "content": "Text alternatives for non-text content",
+              "is_correct": true,
+              "display_order": 1
+            },
+            {
+              "content": "Keyboard accessible",
+              "is_correct": true,
+              "display_order": 2
+            },
+            {
+              "content": "Auto-play videos",
+              "is_correct": false,
+              "display_order": 3
+            },
+            {
+              "content": "Color contrast ratio of at least 4.5:1",
+              "is_correct": true,
+              "display_order": 4
+            }
+          ],
+          "explanation": "WCAG 2.1 requires text alternatives, keyboard access, and sufficient color contrast. Auto-play is actually discouraged."
+        },
+        {
+          "skill_id": "30000000-0000-0000-0000-000000000078",
+          "type": "TrueFalse",
+          "content": "ARIA attributes can fix all accessibility issues without changing HTML structure.",
+          "target_level": 3,
+          "difficulty": "Easy",
+          "points": 5,
+          "tags": ["ARIA", "HTML"],
+          "options": [
+            {
+              "content": "True",
+              "is_correct": false,
+              "display_order": 1,
+              "explanation": "ARIA cannot fix poor HTML structure. Semantic HTML comes first."
+            },
+            {
+              "content": "False",
+              "is_correct": true,
+              "display_order": 2,
+              "explanation": "Correct! ARIA supplements but cannot replace proper semantic HTML."
+            }
+          ],
+          "explanation": "First rule of ARIA: Don't use ARIA if you can use semantic HTML instead."
+        },
+        {
+          "skill_id": "30000000-0000-0000-0000-000000000001",
+          "type": "ShortAnswer",
+          "content": "What is the purpose of the 'alt' attribute in HTML img tags?",
+          "target_level": 2,
+          "difficulty": "Easy",
+          "points": 5,
+          "time_limit_seconds": 120,
+          "tags": ["HTML", "Accessibility"],
+          "grading_rubric": "{\"criteria\":[{\"keyword\":\"alternative text\",\"points\":2},{\"keyword\":\"screen reader\",\"points\":2},{\"keyword\":\"image not displayed\",\"points\":1}],\"min_words\":10,\"max_words\":100}",
+          "explanation": "The alt attribute provides alternative text for images, used by screen readers and when images fail to load."
+        },
+        {
+          "skill_id": "30000000-0000-0000-0000-000000000001",
+          "type": "LongAnswer",
+          "content": "Explain the importance of semantic HTML and how it improves web accessibility. Provide at least 3 specific examples.",
+          "target_level": 4,
+          "difficulty": "Hard",
+          "points": 20,
+          "time_limit_seconds": 600,
+          "tags": ["Semantic HTML", "Accessibility", "Best Practices"],
+          "grading_rubric": "{\"criteria\":[{\"name\":\"Defines semantic HTML\",\"points\":5},{\"name\":\"Explains accessibility benefits\",\"points\":5},{\"name\":\"Provides 3+ examples\",\"points\":5},{\"name\":\"Clear structure and grammar\",\"points\":5}],\"min_words\":150,\"max_words\":500}",
+          "explanation": "Semantic HTML uses meaningful tags (header, nav, main, article) that convey structure to assistive technologies, improve SEO, and make code more maintainable."
+        },
+        {
+          "skill_id": "30000000-0000-0000-0000-000000000010",
+          "type": "CodingChallenge",
+          "content": "Write a JavaScript function that checks if a string is a valid email address using regex.",
+          "code_snippet": "// Write your solution here\nfunction isValidEmail(email) {\n  // Your code\n}",
+          "target_level": 3,
+          "difficulty": "Medium",
+          "points": 25,
+          "time_limit_seconds": 900,
+          "tags": ["JavaScript", "Regex", "Validation"],
+          "grading_rubric": "{\"test_cases\":[{\"input\":\"test@example.com\",\"expected_output\":true,\"points\":5},{\"input\":\"invalid.email\",\"expected_output\":false,\"points\":5},{\"input\":\"user@domain.co.uk\",\"expected_output\":true,\"points\":5},{\"input\":\"@example.com\",\"expected_output\":false,\"points\":5}],\"code_quality\":{\"uses_regex\":5}}",
+          "hints": [
+            "Use a regular expression to match email pattern",
+            "Consider common email formats: user@domain.com",
+            "Test for @ symbol and domain extension"
+          ],
+          "explanation": "A valid email regex should check for username, @ symbol, domain name, and TLD."
+        },
+        {
+          "skill_id": "30000000-0000-0000-0000-000000000020",
+          "type": "Scenario",
+          "content": "You are leading a project that is 2 weeks behind schedule. The client is requesting additional features that were not in the original scope. Your team is already working overtime. How would you handle this situation? Describe your approach and reasoning.",
+          "target_level": 5,
+          "difficulty": "Hard",
+          "points": 30,
+          "time_limit_seconds": 900,
+          "tags": ["Project Management", "Stakeholder Management", "Decision Making"],
+          "grading_rubric": "{\"criteria\":[{\"name\":\"Identifies key stakeholders\",\"points\":5},{\"name\":\"Proposes clear action plan\",\"points\":10},{\"name\":\"Considers team wellbeing\",\"points\":5},{\"name\":\"Addresses scope creep\",\"points\":5},{\"name\":\"Communicates trade-offs\",\"points\":5}],\"min_words\":200,\"max_words\":500}",
+          "hints": [
+            "Consider the triple constraint: scope, time, cost",
+            "Think about stakeholder communication",
+            "Consider team morale and burnout"
+          ],
+          "explanation": "Strong answers should address stakeholder communication, scope management, team capacity, and propose a realistic plan with trade-offs clearly communicated."
+        },
+        {
+          "skill_id": "30000000-0000-0000-0000-000000000020",
+          "type": "SituationalJudgment",
+          "content": "A team member consistently submits work late and with quality issues. You've had two informal conversations, but the behavior continues. What would you do?",
+          "target_level": 4,
+          "difficulty": "Medium",
+          "points": 15,
+          "tags": ["Leadership", "Performance Management"],
+          "options": [
+            {
+              "content": "Schedule a formal performance review meeting to document issues and create an improvement plan",
+              "is_correct": true,
+              "display_order": 1,
+              "effectiveness_level": "MostEffective",
+              "explanation": "This is the most appropriate next step after informal conversations have failed."
+            },
+            {
+              "content": "Assign them less critical tasks to minimize impact",
+              "is_correct": false,
+              "display_order": 2,
+              "effectiveness_level": "Ineffective",
+              "explanation": "This avoids the problem rather than addressing it and may demotivate the employee."
+            },
+            {
+              "content": "Discuss with HR about potential disciplinary action",
+              "is_correct": false,
+              "display_order": 3,
+              "effectiveness_level": "Effective",
+              "explanation": "Involving HR is appropriate, but should come after formal documentation."
+            },
+            {
+              "content": "Ignore it and hope it improves over time",
+              "is_correct": false,
+              "display_order": 4,
+              "effectiveness_level": "CounterProductive",
+              "explanation": "Ignoring performance issues allows them to worsen and affects team morale."
+            }
+          ],
+          "explanation": "After informal conversations fail, formal documentation and improvement plans are necessary for performance management."
+        },
+        {
+          "skill_id": "30000000-0000-0000-0000-000000000030",
+          "type": "Rating",
+          "content": "How would you rate your confidence in implementing OAuth 2.0 authentication in a web application?",
+          "target_level": 3,
+          "difficulty": "Easy",
+          "points": 5,
+          "tags": ["Self-Assessment", "OAuth", "Authentication"],
+          "options": [
+            {
+              "content": "1 - Not confident at all",
+              "is_correct": true,
+              "display_order": 1
+            },
+            {
+              "content": "2 - Slightly confident",
+              "is_correct": true,
+              "display_order": 2
+            },
+            {
+              "content": "3 - Moderately confident",
+              "is_correct": true,
+              "display_order": 3
+            },
+            {
+              "content": "4 - Very confident",
+              "is_correct": true,
+              "display_order": 4
+            },
+            {
+              "content": "5 - Extremely confident",
+              "is_correct": true,
+              "display_order": 5
+            }
+          ],
+          "explanation": "Rating questions are for self-assessment; all answers are valid."
+        }
+      ],
+      "metadata": {
+        "total_questions": 9,
+        "generation_timestamp": "2026-01-23T10:30:00Z",
+        "ai_model": "gemini-2.0-flash-exp",
+        "skill_id": "30000000-0000-0000-0000-000000000078",
+        "skill_name": "Accessibility and inclusion",
+        "language": "en"
+      }
+    }
+  ]
+}

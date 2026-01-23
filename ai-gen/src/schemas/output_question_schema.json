@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://example.com/schemas/question-schema.json",
+  "title": "Question",
+  "type": "object",
+  "required": ["id", "type", "stem", "language", "difficulty"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9-_:]+$" },
+    "type": { "type": "string", "enum": ["mcq", "true_false", "short_answer", "essay", "coding"] },
+    "language": { "type": "string" },
+    "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"] },
+    "topic": { "type": "string" },
+    "subtopic": { "type": ["string", "null"] },
+    "stem": { "type": "string" },
+    "context": { "type": ["string", "null"] },
+    "time_limit_seconds": { "type": ["integer", "null"], "minimum": 0 },
+    "points": { "type": ["number", "null"], "minimum": 0 },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "hints": { "type": "array", "items": { "type": "string" } },
+    "explanation": { "type": ["string", "null"] },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "url"],
+        "properties": {
+          "title": { "type": "string" },
+          "url": { "type": "string", "format": "uri" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "metadata": { "type": "object" },
+    "choices": { "type": "array" },
+    "answer": { "type": "boolean" },
+    "expected_answer": { "type": "string" },
+    "rubric": { "type": "array" },
+    "coding_language": { "type": "string" },
+    "starter_code": { "type": ["string", "null"] },
+    "max_runtime_seconds": { "type": ["integer", "null"] },
+    "test_cases": { "type": "array" },
+    "shuffle_choices": { "type": "boolean" }
+  },
+
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "mcq" } } },
+      "then": {
+        "required": ["choices"],
+        "properties": {
+          "choices": {
+            "type": "array",
+            "minItems": 2,
+            "items": { "$ref": "#/$defs/choice" },
+            "contains": { "properties": { "is_correct": { "const": true } } },
+            "minContains": 1
+          },
+          "shuffle_choices": { "type": "boolean" }
+        }
+      }
+    },
+
+    {
+      "if": { "properties": { "type": { "const": "true_false" } } },
+      "then": {
+        "required": ["answer"],
+        "properties": {
+          "answer": { "type": "boolean" }
+        }
+      }
+    },
+
+    {
+      "if": { "properties": { "type": { "const": "short_answer" } } },
+      "then": {
+        "properties": {
+          "expected_answer": { "type": "string" },
+          "rubric": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["criteria", "points"],
+              "properties": {
+                "criteria": { "type": "string" },
+                "points": { "type": "number" }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "anyOf": [
+          { "required": ["expected_answer"] },
+          { "required": ["rubric"] }
+        ]
+      }
+    },
+
+    {
+      "if": { "properties": { "type": { "const": "coding" } } },
+      "then": {
+        "required": ["coding_language"],
+        "properties": {
+          "coding_language": { "type": "string" },
+          "starter_code": { "type": ["string", "null"] },
+          "max_runtime_seconds": { "type": ["integer", "null"], "minimum": 0 },
+          "test_cases": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/test_case" }
+          }
+        }
+      }
+    }
+  ],
+
+  "$defs": {
+    "choice": {
+      "type": "object",
+      "required": ["id", "text", "is_correct"],
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "is_correct": { "type": "boolean" },
+        "explanation": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "test_case": {
+      "type": "object",
+      "required": ["input", "expected_output"],
+      "properties": {
+        "input": { "type": "string" },
+        "expected_output": { "type": "string" },
+        "hidden": { "type": "boolean", "default": false }
+      },
+      "additionalProperties": false
+    }
+  }
+}
