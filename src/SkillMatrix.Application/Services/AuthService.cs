@@ -153,6 +153,46 @@ public class AuthService : IAuthService
         return employees.Select(MapToUserDto).ToList();
     }
 
+    public async Task<EmployeeProfileDto?> GetProfileAsync(Guid userId)
+    {
+        var employee = await _context.Employees
+            .Include(e => e.Team)
+            .Include(e => e.JobRole)
+            .Include(e => e.Manager)
+            .Include(e => e.Skills)
+            .Include(e => e.Assessments)
+            .FirstOrDefaultAsync(e => e.Id == userId && !e.IsDeleted);
+
+        if (employee == null)
+            return null;
+
+        return MapToProfileDto(employee);
+    }
+
+    public async Task<EmployeeProfileDto?> UpdateProfileAsync(Guid userId, UpdateProfileRequest request)
+    {
+        var employee = await _context.Employees
+            .Include(e => e.Team)
+            .Include(e => e.JobRole)
+            .Include(e => e.Manager)
+            .Include(e => e.Skills)
+            .Include(e => e.Assessments)
+            .FirstOrDefaultAsync(e => e.Id == userId && !e.IsDeleted);
+
+        if (employee == null)
+            return null;
+
+        employee.FullName = request.FullName;
+        employee.AvatarUrl = request.AvatarUrl;
+        employee.JoinDate = request.JoinDate;
+        employee.YearsOfExperience = request.YearsOfExperience;
+        employee.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return MapToProfileDto(employee);
+    }
+
     public async Task SeedDefaultUsersAsync()
     {
         // Check if demo users already exist (by email)
@@ -235,6 +275,40 @@ public class AuthService : IAuthService
             TeamName = employee.Team?.Name,
             JobRoleId = employee.JobRoleId,
             JobRoleName = employee.JobRole?.Name
+        };
+    }
+
+    private static EmployeeProfileDto MapToProfileDto(Employee employee)
+    {
+        var completedAssessments = employee.Assessments?
+            .Count(a => a.Status == AssessmentStatus.Completed || a.Status == AssessmentStatus.Reviewed) ?? 0;
+
+        var skills = employee.Skills?.ToList() ?? new List<EmployeeSkill>();
+        var avgLevel = skills.Any() ? skills.Average(s => (int)s.CurrentLevel) : 0;
+
+        return new EmployeeProfileDto
+        {
+            Id = employee.Id,
+            Email = employee.Email,
+            FullName = employee.FullName,
+            AvatarUrl = employee.AvatarUrl,
+            Role = employee.SystemRole,
+            RoleName = employee.SystemRole.ToString(),
+            Status = employee.Status,
+            StatusName = employee.Status.ToString(),
+            TeamId = employee.TeamId,
+            TeamName = employee.Team?.Name,
+            JobRoleId = employee.JobRoleId,
+            JobRoleName = employee.JobRole?.Name,
+            ManagerId = employee.ManagerId,
+            ManagerName = employee.Manager?.FullName,
+            JoinDate = employee.JoinDate,
+            YearsOfExperience = employee.YearsOfExperience,
+            TotalSkills = skills.Count,
+            CompletedAssessments = completedAssessments,
+            AverageSkillLevel = Math.Round(avgLevel, 1),
+            CreatedAt = employee.CreatedAt,
+            UpdatedAt = employee.UpdatedAt
         };
     }
 

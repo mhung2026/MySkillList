@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, Form, Input, Button, Typography, message, Space, Divider, Alert } from 'antd';
+import { useNavigate, Link } from 'react-router-dom';
+import { Card, Form, Input, Button, Typography, message } from 'antd';
 import { UserOutlined, LockOutlined, LoginOutlined } from '@ant-design/icons';
 import { useAuth } from '../../contexts/AuthContext';
 import type { LoginRequest } from '../../types';
-import { seedUsers } from '../../api/auth';
 
 const { Title, Text } = Typography;
 
@@ -12,7 +11,6 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [seeding, setSeeding] = useState(false);
 
   const onFinish = async (values: LoginRequest) => {
     setLoading(true);
@@ -20,22 +18,11 @@ export default function Login() {
     setLoading(false);
 
     if (result.success) {
-      message.success('Login successful!');
+      message.success('Đăng nhập thành công!');
       navigate('/assessments');
     } else {
-      message.error(result.message || 'Login failed');
+      message.error(result.message || 'Đăng nhập thất bại');
     }
-  };
-
-  const handleSeedUsers = async () => {
-    setSeeding(true);
-    try {
-      await seedUsers();
-      message.success('Default users created');
-    } catch {
-      message.info('Users already exist');
-    }
-    setSeeding(false);
   };
 
   return (
@@ -53,15 +40,15 @@ export default function Login() {
           <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
             Skill Matrix
           </Title>
-          <Text type="secondary">Skill Management System</Text>
+          <Text type="secondary">Hệ thống quản lý kỹ năng</Text>
         </div>
 
         <Form name="login" onFinish={onFinish} layout="vertical" size="large">
           <Form.Item
             name="email"
             rules={[
-              { required: true, message: 'Please enter your email' },
-              { type: 'email', message: 'Invalid email format' },
+              { required: true, message: 'Vui lòng nhập email' },
+              { type: 'email', message: 'Email không hợp lệ' },
             ]}
           >
             <Input prefix={<UserOutlined />} placeholder="Email" />
@@ -69,37 +56,24 @@ export default function Login() {
 
           <Form.Item
             name="password"
-            rules={[{ required: true, message: 'Please enter your password' }]}
+            rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+            <Input.Password prefix={<LockOutlined />} placeholder="Mật khẩu" />
           </Form.Item>
 
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} block icon={<LoginOutlined />}>
-              Login
+              Đăng nhập
             </Button>
           </Form.Item>
         </Form>
 
-        <Divider>Demo Accounts</Divider>
-
-        <Alert
-          type="info"
-          message="Available Accounts"
-          description={
-            <Space direction="vertical" size={4} style={{ fontSize: 12 }}>
-              <Text code>admin@skillmatrix.com / admin123</Text>
-              <Text code>manager@skillmatrix.com / manager123</Text>
-              <Text code>employee1@skillmatrix.com / employee123</Text>
-              <Text code>employee2@skillmatrix.com / employee123</Text>
-            </Space>
-          }
-          style={{ marginBottom: 16 }}
-        />
-
-        <Button block onClick={handleSeedUsers} loading={seeding}>
-          Create demo users (if not exists)
-        </Button>
+        <div style={{ textAlign: 'center' }}>
+          <Text type="secondary">
+            Chưa có tài khoản?{' '}
+            <Link to="/register">Đăng ký ngay</Link>
+          </Text>
+        </div>
       </Card>
     </div>
   );

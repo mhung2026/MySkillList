@@ -140,6 +140,21 @@ export default function QuestionFormModal({
             { content: '', isCorrect: false, displayOrder: 4 },
           ],
         });
+      } else if (newType === MULTIPLE_CHOICE) {
+        // When switching to Multiple Choice, ensure only one correct answer
+        const correctCount = currentOptions.filter((opt: { isCorrect: boolean }) => opt.isCorrect).length;
+        if (correctCount > 1) {
+          // Keep only the first correct answer
+          let foundFirst = false;
+          const updatedOptions = currentOptions.map((opt: { content: string; isCorrect: boolean; displayOrder: number; explanation?: string }) => {
+            if (opt.isCorrect && !foundFirst) {
+              foundFirst = true;
+              return opt;
+            }
+            return { ...opt, isCorrect: false };
+          });
+          form.setFieldsValue({ options: updatedOptions });
+        }
       }
     }
   };
@@ -289,7 +304,18 @@ export default function QuestionFormModal({
                           <Switch
                             checkedChildren={<CheckCircleOutlined />}
                             unCheckedChildren=""
-                            disabled={isTrueFalse}
+                            onChange={(checked) => {
+                              // For True/False and Multiple Choice, only one can be correct
+                              const isSingleAnswer = currentType === TRUE_FALSE || currentType === MULTIPLE_CHOICE;
+                              if (isSingleAnswer && checked) {
+                                const options = form.getFieldValue('options');
+                                const updatedOptions = options.map((opt: { content: string; isCorrect: boolean; displayOrder: number; explanation?: string }, idx: number) => ({
+                                  ...opt,
+                                  isCorrect: idx === name,
+                                }));
+                                form.setFieldsValue({ options: updatedOptions });
+                              }
+                            }}
                           />
                         </Form.Item>
 

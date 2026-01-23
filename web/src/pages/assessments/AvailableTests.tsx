@@ -27,6 +27,7 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   SyncOutlined,
+  CopyOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { AvailableTestDto, AssessmentListDto } from '../../types';
@@ -107,6 +108,15 @@ export default function AvailableTests() {
 
   const handleViewResult = (assessmentId: string) => {
     navigate(`/assessments/result/${assessmentId}`);
+  };
+
+  const handleCopyLink = (assessmentId: string) => {
+    const link = `${window.location.origin}/test/${assessmentId}`;
+    navigator.clipboard.writeText(link).then(() => {
+      message.success('Link đã được sao chép!');
+    }).catch(() => {
+      message.error('Không thể sao chép link');
+    });
   };
 
   const getStatusTag = (status: number) => {
@@ -264,27 +274,33 @@ export default function AvailableTests() {
       key: 'actions',
       align: 'center',
       render: (_, record) => {
-        if (record.status === 1) {
-          // In Progress
-          return (
+        return (
+          <Space>
+            {record.status === 1 && (
+              // In Progress
+              <Button
+                type="primary"
+                icon={<PlayCircleOutlined />}
+                onClick={() => handleContinueTest(record.id)}
+              >
+                Continue
+              </Button>
+            )}
+            {record.status >= 2 && (
+              // Completed or later
+              <Button icon={<FileTextOutlined />} onClick={() => handleViewResult(record.id)}>
+                View Result
+              </Button>
+            )}
             <Button
-              type="primary"
-              icon={<PlayCircleOutlined />}
-              onClick={() => handleContinueTest(record.id)}
+              icon={<CopyOutlined />}
+              onClick={() => handleCopyLink(record.id)}
+              title="Copy test link"
             >
-              Continue
+              Copy Link
             </Button>
-          );
-        }
-        if (record.status >= 2) {
-          // Completed or later
-          return (
-            <Button icon={<FileTextOutlined />} onClick={() => handleViewResult(record.id)}>
-              View Result
-            </Button>
-          );
-        }
-        return null;
+          </Space>
+        );
       },
     },
   ];

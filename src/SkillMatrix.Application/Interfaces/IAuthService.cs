@@ -10,4 +10,8 @@ public interface IAuthService
     Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordRequest request);
     Task<List<UserDto>> GetAllUsersAsync();
     Task SeedDefaultUsersAsync();
+
+    // Profile methods
+    Task<EmployeeProfileDto?> GetProfileAsync(Guid userId);
+    Task<EmployeeProfileDto?> UpdateProfileAsync(Guid userId, UpdateProfileRequest request);
 }

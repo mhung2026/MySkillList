@@ -59,3 +59,50 @@ public class ChangePasswordRequest
     public string CurrentPassword { get; set; } = string.Empty;
     public string NewPassword { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Employee Profile DTO - detailed profile information
+/// </summary>
+public class EmployeeProfileDto
+{
+    public Guid Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string? AvatarUrl { get; set; }
+    public UserRole Role { get; set; }
+    public string RoleName { get; set; } = string.Empty;
+    public EmploymentStatus Status { get; set; }
+    public string StatusName { get; set; } = string.Empty;
+
+    // Organization
+    public Guid? TeamId { get; set; }
+    public string? TeamName { get; set; }
+    public Guid? JobRoleId { get; set; }
+    public string? JobRoleName { get; set; }
+    public Guid? ManagerId { get; set; }
+    public string? ManagerName { get; set; }
+
+    // Employment info
+    public DateTime? JoinDate { get; set; }
+    public int YearsOfExperience { get; set; }
+
+    // Statistics
+    public int TotalSkills { get; set; }
+    public int CompletedAssessments { get; set; }
+    public double AverageSkillLevel { get; set; }
+
+    // Account info
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+}
+
+/// <summary>
+/// Update Profile request
+/// </summary>
+public class UpdateProfileRequest
+{
+    public string FullName { get; set; } = string.Empty;
+    public string? AvatarUrl { get; set; }
+    public DateTime? JoinDate { get; set; }
+    public int YearsOfExperience { get; set; }
+}

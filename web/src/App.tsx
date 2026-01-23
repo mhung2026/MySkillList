@@ -26,8 +26,10 @@ import AvailableTests from './pages/assessments/AvailableTests';
 import TakeTest from './pages/assessments/TakeTest';
 import TestResult from './pages/assessments/TestResult';
 import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
 import Dashboard from './pages/dashboard/Dashboard';
 import SystemEnumManagement from './pages/admin/SystemEnumManagement';
+import PublicTest from './pages/public/PublicTest';
 import { UserRole } from './types';
 
 const { Header, Sider, Content } = Layout;
@@ -266,6 +268,9 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      {/* Public route - no authentication required */}
+      <Route path="/test/:assessmentId" element={<PublicTest />} />
       <Route
         path="/*"
         element={
