@@ -1,0 +1,41 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+
+# Environment
+.env
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Tests
+tests/
+test_*.py
+pytest.ini
+
+# Documentation (not needed in container)
+*.md
+docs/
+
+# IIS config (not needed for Railway)
+web.config
+
+# Misc
+*.log
+*.tmp
+.DS_Store
