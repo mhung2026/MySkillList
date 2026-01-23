@@ -5,13 +5,14 @@ FROM python:3.11.9-slim
 WORKDIR /app
 
 # Copy requirements first for better layer caching
-COPY ./requirements.txt ./requirements.txt
+# Note: Build context is repo root, so we need ai-gen/ prefix
+COPY ./ai-gen/requirements.txt ./requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all application code
-COPY . .
+# Copy all application code from ai-gen folder
+COPY ./ai-gen/ ./
 
 # Expose port (Railway will override with $PORT)
 EXPOSE 8002
