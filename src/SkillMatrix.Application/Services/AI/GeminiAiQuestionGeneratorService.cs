@@ -161,7 +161,8 @@ public class GeminiAiQuestionGeneratorService : IAiQuestionGeneratorService
                 new
                 {
                     skill_id = request.SkillId?.ToString(),
-                    skill_name = request.SkillName ?? "Unknown Skill"
+                    skill_name = request.SkillName ?? "Unknown Skill",
+                    skill_code = request.SkillCode ?? "UNKNOWN"
                 }
             };
         }

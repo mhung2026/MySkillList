@@ -18,6 +18,11 @@ public class AiGenerateQuestionsRequest
     public string? SkillName { get; set; }
 
     /// <summary>
+    /// Skill code (e.g., ACIN, PROG) - optional
+    /// </summary>
+    public string? SkillCode { get; set; }
+
+    /// <summary>
     /// Target level to assess (1-7) - optional
     /// </summary>
     public ProficiencyLevel? TargetLevel { get; set; }
