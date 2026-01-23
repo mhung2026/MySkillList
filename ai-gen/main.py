@@ -289,10 +289,16 @@ async def http_exception_handler(request, exc):
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info("Starting AI Question Generator API...")
+    import os
+
+    # Get port from environment variable (Railway sets this automatically)
+    port = int(os.getenv("PORT", 8002))
+    host = os.getenv("HOST", "0.0.0.0")
+
+    logger.info(f"Starting AI Question Generator API on {host}:{port}...")
     uvicorn.run(
         app,
-        host="127.0.0.1",
-        port=8002,
+        host=host,
+        port=port,
         log_level="debug" if DEBUG else "info"
     )
