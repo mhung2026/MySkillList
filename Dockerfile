@@ -4,15 +4,17 @@ FROM python:3.11.9-slim
 # Set working directory
 WORKDIR /app
 
-# Copy AI service files
-COPY ai-gen/requirements.txt .
+# Copy requirements file first for better caching
+COPY ./ai-gen/requirements.txt ./requirements.txt
+
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY ai-gen/ .
+# Copy all application code from ai-gen folder
+COPY ./ai-gen ./
 
-# Expose port
+# Expose port (Railway will override with $PORT)
 EXPOSE 8002
 
-# Start command
+# Start command - use shell form to allow environment variable expansion
 CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8002}
