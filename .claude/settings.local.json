@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet run:*)",
+      "Bash(npm run dev:*)",
+      "Bash(dir:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout 5 npx vite:*)",
+      "Bash(npm --version)",
+      "Bash(node --version:*)",
+      "Bash(ls:*)",
+      "Bash(node_modules/.bin/vite:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}

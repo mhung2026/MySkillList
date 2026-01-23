@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Question Generation Request",
+  "description": "Input schema for generating assessment questions with AI",
+  "type": "object",
+  "required": ["question_type", "language", "number_of_questions"],
+  "properties": {
+    "question_type": {
+      "description": "Type(s) of questions to generate",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "Multiple Choice",
+          "Multiple Answer",
+          "True/False",
+          "Short Answer",
+          "Long Answer",
+          "Coding Challenge",
+          "Scenario",
+          "Situational Judgment",
+          "Rating"
+        ]
+      }
+    },
+    "language": {
+      "description": "Language for generated questions and answers",
+      "type": "string",
+      "enum": ["English", "Vietnamese"]
+    },
+    "number_of_questions": {
+      "description": "Total number of questions to generate",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "skills": {
+      "description": "Skill(s) to generate questions for. If empty/null, will randomly select from available skills",
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["skill_id", "skill_name"],
+        "properties": {
+          "skill_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID from public.Skills table"
+          },
+          "skill_name": {
+            "type": "string",
+            "description": "Name of the skill"
+          },
+          "skill_code": {
+            "type": "string",
+            "description": "Skill code (e.g., ACIN, ADEV)"
+          }
+        }
+      },
+      "default": null
+    },
+    "target_proficiency_level": {
+      "description": "SFIA proficiency level(s) to target. If empty/null, will randomly select. Links to public.SkillLevelDefinitions via skill_id",
+      "type": ["array", "null"],
+      "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 7,
+        "description": "SFIA Level: 1=Follow, 2=Assist, 3=Apply, 4=Enable, 5=Ensure/Advise, 6=Initiate, 7=Set Strategy"
+      },
+      "default": null
+    },
+    "difficulty": {
+      "description": "Difficulty level of questions. If empty/null, will randomly select",
+      "type": ["string", "null"],
+      "enum": ["Easy", "Medium", "Hard", null],
+      "default": null
+    },
+    "additional_context": {
+      "description": "Additional notes or context to guide question generation",
+      "type": ["string", "null"],
+      "maxLength": 2000,
+      "default": null
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "question_type": ["Multiple Choice", "Short Answer"],
+      "language": "English",
+      "number_of_questions": 10,
+      "skills": [
+        {
+          "skill_id": "30000000-0000-0000-0000-000000000078",
+          "skill_name": "Accessibility and inclusion",
+          "skill_code": "ACIN"
+        }
+      ],
+      "target_proficiency_level": [3, 4],
+      "difficulty": "Medium",
+      "additional_context": "Focus on WCAG 2.1 AA standards and practical implementation scenarios"
+    },
+    {
+      "question_type": ["Coding Challenge"],
+      "language": "Vietnamese",
+      "number_of_questions": 5,
+      "skills": [
+        {
+          "skill_id": "30000000-0000-0000-0000-000000000001",
+          "skill_name": "Programming",
+          "skill_code": "PROG"
+        }
+      ],
+      "target_proficiency_level": [2, 3],
+      "difficulty": "Hard",
+      "additional_context": "Sử dụng Python, tập trung vào algorithms và data structures"
+    },
+    {
+      "question_type": ["Multiple Choice", "True/False", "Short Answer"],
+      "language": "English",
+      "number_of_questions": 20,
+      "skills": null,
+      "target_proficiency_level": null,
+      "difficulty": null,
+      "additional_context": null
+    }
+  ]
+}

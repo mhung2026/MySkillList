@@ -27,8 +27,30 @@ builder.Services.AddScoped<ISkillSubcategoryService, SkillSubcategoryService>();
 builder.Services.AddScoped<ISkillService, SkillService>();
 builder.Services.AddScoped<IProficiencyLevelDefinitionService, ProficiencyLevelDefinitionService>();
 
-// AI Services (Mock - will be replaced with real AI service later)
-builder.Services.AddScoped<IAiQuestionGeneratorService, MockAiQuestionGeneratorService>();
+// AI Service Configuration
+builder.Services.Configure<AiServiceOptions>(
+    builder.Configuration.GetSection(AiServiceOptions.SectionName));
+
+var aiServiceOptions = builder.Configuration
+    .GetSection(AiServiceOptions.SectionName)
+    .Get<AiServiceOptions>() ?? new AiServiceOptions();
+
+// AI Question Generator Service - Conditional based on UseMock
+if (aiServiceOptions.UseMock)
+{
+    builder.Services.AddScoped<IAiQuestionGeneratorService, MockAiQuestionGeneratorService>();
+}
+else
+{
+    // Register HttpClient for Gemini AI service
+    builder.Services.AddHttpClient<IAiQuestionGeneratorService, GeminiAiQuestionGeneratorService>(client =>
+    {
+        client.BaseAddress = new Uri(aiServiceOptions.BaseUrl ?? "http://localhost:8002");
+        client.Timeout = TimeSpan.FromSeconds(aiServiceOptions.TimeoutSeconds);
+    });
+}
+
+// AI Skill Analyzer (still mock)
 builder.Services.AddScoped<IAiSkillAnalyzerService, MockAiSkillAnalyzerService>();
 
 // Test/Assessment Services
