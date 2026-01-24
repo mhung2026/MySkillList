@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 import psycopg2
 from psycopg2 import pool
@@ -8,14 +9,33 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Database configuration
-DB_CONFIG = {
-    "host": "192.168.0.21",
-    "database": "MySkillList_NGE_DEV",
-    "user": "postgres",
-    "password": "@ll1@nceP@ss2o21",
-    "port": 5432
-}
+# Database configuration - read from environment variable
+def get_db_config():
+    """Parse DB_CONNECT_STRING from environment or use defaults."""
+    db_connect_string = os.getenv("DB_CONNECT_STRING")
+    if db_connect_string:
+        try:
+            config = json.loads(db_connect_string)
+            return {
+                "host": config.get("ServerName", "localhost"),
+                "database": config.get("CatalogName", "MySkillList_NGE_DEV"),
+                "user": config.get("Username", "postgres"),
+                "password": config.get("Password", ""),
+                "port": config.get("Port", 5432)
+            }
+        except json.JSONDecodeError:
+            logging.error("Failed to parse DB_CONNECT_STRING")
+
+    # Fallback to defaults
+    return {
+        "host": os.getenv("DATABASE_HOST", "192.168.0.21"),
+        "database": os.getenv("DATABASE_NAME", "MySkillList_NGE_DEV"),
+        "user": os.getenv("DATABASE_USER", "postgres"),
+        "password": os.getenv("DATABASE_PASSWORD", "@ll1@nceP@ss2o21"),
+        "port": int(os.getenv("DATABASE_PORT", "5432"))
+    }
+
+DB_CONFIG = get_db_config()
 
 # Connection pool
 connection_pool = None

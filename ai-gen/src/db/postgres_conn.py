@@ -6,19 +6,43 @@ from typing import List, Dict, Any
 import psycopg2
 from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
 
-# Setup logging (tương tự code mẫu của bạn)
+# Load environment variables
+load_dotenv()
+
+# Setup logging
 LOGGER = logging.getLogger(__name__)
 
-# Connection config (nên lấy từ env hoặc config file trong production)
-DB_CONFIG = {
-    "host": "192.168.0.21",
-    "database": "MySkillList_NGE_DEV",
-    "user": "postgres",
-    "password": "@ll1@nceP@ss2o21",
-    "port": 5432,               # default PostgreSQL port, thay nếu khác
-    "max_pool_size": 1000,
-}
+# Database configuration - read from environment variable
+def get_db_config():
+    """Parse DB_CONNECT_STRING from environment or use defaults."""
+    db_connect_string = os.getenv("DB_CONNECT_STRING")
+    if db_connect_string:
+        try:
+            config = json.loads(db_connect_string)
+            return {
+                "host": config.get("ServerName", "localhost"),
+                "database": config.get("CatalogName", "MySkillList_NGE_DEV"),
+                "user": config.get("Username", "postgres"),
+                "password": config.get("Password", ""),
+                "port": config.get("Port", 5432),
+                "max_pool_size": config.get("MaxPoolSize", 1000)
+            }
+        except json.JSONDecodeError:
+            LOGGER.error("Failed to parse DB_CONNECT_STRING")
+
+    # Fallback to defaults
+    return {
+        "host": os.getenv("DATABASE_HOST", "192.168.0.21"),
+        "database": os.getenv("DATABASE_NAME", "MySkillList_NGE_DEV"),
+        "user": os.getenv("DATABASE_USER", "postgres"),
+        "password": os.getenv("DATABASE_PASSWORD", "@ll1@nceP@ss2o21"),
+        "port": int(os.getenv("DATABASE_PORT", "5432")),
+        "max_pool_size": 1000
+    }
+
+DB_CONFIG = get_db_config()
 
 # Global pool (khởi tạo 1 lần)
 db_pool: pool.ThreadedConnectionPool = None
