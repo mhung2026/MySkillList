@@ -10,7 +10,7 @@ from datetime import datetime
 from src.validators.input_validator import validate_input_skill
 from src.validators.output_validator import validate_output_questions
 from src.generators.question_generator import generate_questions as generate_questions_from_llm
-from config.settings import DEBUG, GEMINI_API_KEY
+from config.settings import DEBUG, GEMINI_API_KEY, OPENAI_API_KEY
 # from src.custom import getKeywordsTable, getSkillData, getAllSkillsList
 
 # Import V2 routes
@@ -86,6 +86,7 @@ async def startup_event():
     logger.info("AI Question Generator API Starting Up")
     logger.info("=" * 50)
     logger.info(f"DEBUG mode: {DEBUG}")
+    logger.info(f"OpenAI API configured: {OPENAI_API_KEY is not None and len(OPENAI_API_KEY or '') > 0}")
     logger.info(f"Gemini API configured: {GEMINI_API_KEY is not None}")
 
 @app.on_event("shutdown")
@@ -114,10 +115,12 @@ async def root():
 async def health_check():
     """Check API health status."""
     try:
-        api_ready = GEMINI_API_KEY is not None and len(GEMINI_API_KEY) > 0
+        # Check OpenAI API key (primary) or Gemini (fallback)
+        api_ready = (OPENAI_API_KEY is not None and len(OPENAI_API_KEY) > 0) or \
+                    (GEMINI_API_KEY is not None and len(GEMINI_API_KEY) > 0)
     except:
         api_ready = False
-    
+
     return HealthResponse(
         status="healthy",
         version="0.1.0",
