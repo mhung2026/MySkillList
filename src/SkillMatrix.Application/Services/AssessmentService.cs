@@ -270,6 +270,94 @@ public class AssessmentService : IAssessmentService
         };
     }
 
+    public async Task<StartAssessmentResponse?> StartExistingAssessmentAsync(Guid assessmentId)
+    {
+        // Get the existing assessment
+        var assessment = await _context.Assessments
+            .Include(a => a.TestTemplate)
+                .ThenInclude(t => t!.Sections.OrderBy(s => s.DisplayOrder))
+                    .ThenInclude(s => s.Questions.Where(q => q.IsActive))
+                        .ThenInclude(q => q.Options.OrderBy(o => o.DisplayOrder))
+            .Include(a => a.TestTemplate)
+                .ThenInclude(t => t!.Sections)
+                    .ThenInclude(s => s.Questions)
+                        .ThenInclude(q => q.Skill)
+            .FirstOrDefaultAsync(a => a.Id == assessmentId);
+
+        if (assessment?.TestTemplate == null)
+            return null;
+
+        // If already in progress, return the in-progress data
+        if (assessment.Status == AssessmentStatus.InProgress)
+        {
+            return await GetInProgressAssessmentAsync(assessmentId);
+        }
+
+        // If already completed, return null
+        if (assessment.Status == AssessmentStatus.Completed ||
+            assessment.Status == AssessmentStatus.Reviewed)
+        {
+            return null;
+        }
+
+        // Start the assessment - update status to InProgress
+        assessment.Status = AssessmentStatus.InProgress;
+        assessment.StartedAt = DateTime.UtcNow;
+        assessment.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        var template = assessment.TestTemplate;
+
+        // Build response
+        var allQuestions = template.Sections
+            .SelectMany(s => s.Questions.Where(q => q.IsActive))
+            .ToList();
+
+        var questionNumber = 0;
+        var sections = template.Sections.Select(s => new TestSectionWithQuestionsDto
+        {
+            Id = s.Id,
+            Title = s.Title,
+            Description = s.Description,
+            DisplayOrder = s.DisplayOrder,
+            TimeLimitMinutes = s.TimeLimitMinutes,
+            Questions = s.Questions.Where(q => q.IsActive).Select(q => new QuestionForTestDto
+            {
+                Id = q.Id,
+                QuestionNumber = ++questionNumber,
+                Type = q.Type,
+                TypeName = q.Type.ToString(),
+                Content = q.Content,
+                CodeSnippet = q.CodeSnippet,
+                MediaUrl = q.MediaUrl,
+                Points = q.Points,
+                TimeLimitSeconds = q.TimeLimitSeconds,
+                SkillName = q.Skill?.Name ?? string.Empty,
+                Options = q.Options.Select(o => new OptionForTestDto
+                {
+                    Id = o.Id,
+                    Content = o.Content,
+                    DisplayOrder = o.DisplayOrder
+                }).ToList()
+            }).ToList()
+        }).ToList();
+
+        return new StartAssessmentResponse
+        {
+            AssessmentId = assessment.Id,
+            Title = assessment.Title ?? template.Title,
+            Description = template.Description,
+            TimeLimitMinutes = template.TimeLimitMinutes,
+            TotalQuestions = allQuestions.Count,
+            TotalPoints = allQuestions.Sum(q => q.Points),
+            StartedAt = assessment.StartedAt!.Value,
+            MustCompleteBy = template.TimeLimitMinutes.HasValue
+                ? assessment.StartedAt!.Value.AddMinutes(template.TimeLimitMinutes.Value)
+                : null,
+            Sections = sections
+        };
+    }
+
     public async Task<SubmitAnswerResponse> SubmitAnswerAsync(SubmitAnswerRequest request)
     {
         var assessment = await _context.Assessments

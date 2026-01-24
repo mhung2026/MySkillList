@@ -138,15 +138,19 @@ export default function TakeTest() {
       const doAutoSubmit = async () => {
         setIsSubmitting(true);
         try {
+          // Get current question from state
+          const section = assessmentData?.sections?.[currentSectionIndex];
+          const question = section?.questions?.[currentQuestionIndex];
+
           // Save current answer first
-          if (currentQuestion && assessmentId) {
-            const answer = answers.get(currentQuestion.id);
+          if (question && assessmentId) {
+            const answer = answers.get(question.id);
             if (answer && !answer.isSaved) {
               const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000) + (answer.timeSpent || 0);
               await new Promise<void>((resolve, reject) => {
                 answerMutation.mutate({
                   assessmentId,
-                  questionId: currentQuestion.id,
+                  questionId: question.id,
                   selectedOptionIds: answer.selectedOptionIds,
                   textResponse: answer.textResponse,
                   codeResponse: answer.codeResponse,
@@ -167,7 +171,7 @@ export default function TakeTest() {
       };
       doAutoSubmit();
     }
-  }, [timeRemaining, isSubmitting, currentQuestion, assessmentId, answers, questionStartTime, answerMutation, submitMutation]);
+  }, [timeRemaining, isSubmitting, assessmentData, currentSectionIndex, currentQuestionIndex, assessmentId, answers, questionStartTime, answerMutation, submitMutation]);
 
   // Load existing answers when assessment data is loaded (for continue assessment)
   useEffect(() => {
@@ -183,6 +187,7 @@ export default function TakeTest() {
           question.codeResponse
         ) {
           existingAnswers.set(question.id, {
+            questionId: question.id,
             selectedOptionIds: question.selectedOptionIds || [],
             textResponse: question.textResponse || '',
             codeResponse: question.codeResponse || '',

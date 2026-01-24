@@ -26,6 +26,11 @@ public interface IAssessmentService
     Task<StartAssessmentResponse?> GetInProgressAssessmentAsync(Guid assessmentId);
 
     /// <summary>
+    /// Start an existing assessment (for shared links)
+    /// </summary>
+    Task<StartAssessmentResponse?> StartExistingAssessmentAsync(Guid assessmentId);
+
+    /// <summary>
     /// Submit answer for a question
     /// </summary>
     Task<SubmitAnswerResponse> SubmitAnswerAsync(SubmitAnswerRequest request);

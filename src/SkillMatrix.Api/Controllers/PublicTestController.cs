@@ -59,25 +59,10 @@ public class PublicTestController : ControllerBase
     {
         try
         {
-            // Get assessment to find template and employee
-            var assessment = await _service.GetByIdAsync(assessmentId);
-            if (assessment == null)
-                return NotFound(new { error = "Test not found" });
-
-            // If already in progress, return continue
-            if (assessment.Status == AssessmentStatus.InProgress)
-            {
-                var inProgress = await _service.GetInProgressAssessmentAsync(assessmentId);
-                return Ok(inProgress);
-            }
-
-            // Start the assessment
-            var request = new StartAssessmentRequest
-            {
-                EmployeeId = assessment.EmployeeId,
-                TestTemplateId = assessment.TestTemplateId ?? Guid.Empty
-            };
-            var result = await _service.StartAssessmentAsync(request);
+            // Start the existing assessment
+            var result = await _service.StartExistingAssessmentAsync(assessmentId);
+            if (result == null)
+                return NotFound(new { error = "Test not found or already completed" });
             return Ok(result);
         }
         catch (Exception ex)
