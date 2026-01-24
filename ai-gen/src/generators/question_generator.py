@@ -16,7 +16,7 @@ def build_prompt(skill_json: dict, num_questions: int, language: str) -> str:
     """Build a detailed prompt for question generation."""
     skill_name = skill_json.get("skill_name", "Unknown Skill")
     levels = skill_json.get("levels", [])
-    
+
     prompt = f"""Generate exactly {num_questions} assessment questions in {language} for the skill: {skill_name}.
 
 Proficiency Levels:
@@ -30,31 +30,32 @@ Proficiency Levels:
         if level.get('complexity'):
             prompt += f"  Complexity: {level['complexity']}\n"
 
-    prompt += """
-Generate questions with varied types:
-- MCQ (multiple choice with 2+ options, at least 1 correct)
-- True/False
-- Short Answer
-- Essay
-- Coding (optional)
+    prompt += f"""
+Generate questions with varied types. Return a JSON array where each question MUST have these REQUIRED fields:
+- "id": unique string like "q1", "q2", etc (REQUIRED)
+- "type": one of "mcq", "true_false", "short_answer", "essay" (REQUIRED)
+- "stem": the question text (REQUIRED)
+- "language": "{language}" (REQUIRED)
+- "difficulty": one of "easy", "medium", "hard" (REQUIRED)
+- "topic": "{skill_name}"
 
-Return ONLY valid JSON array of questions matching this schema:
-{
-  "id": "q1",
-  "type": "mcq|true_false|short_answer|essay|coding",
-  "stem": "question text",
-  "language": "{language}",
-  "difficulty": "easy|medium|hard",
-  "topic": "{skill_name}",
-  "subtopic": "optional subtopic",
-  ...
-  "choices": [...] (for mcq only, min 2 items with 1 correct),
-  "answer": boolean (for true_false only),
-  "expected_answer": "string" (for short_answer),
-  ...
-}
+For MCQ type, include "choices" array with at least 2 items:
+{{"id": "a", "text": "option text", "is_correct": true/false}}
 
-Return ONLY the JSON array, no markdown or extra text."""
+For true_false type, include "answer": true or false
+
+For short_answer type, include "expected_answer": "expected response"
+
+Example MCQ:
+{{"id": "q1", "type": "mcq", "stem": "Question?", "language": "{language}", "difficulty": "easy", "topic": "{skill_name}", "choices": [{{"id": "a", "text": "Option A", "is_correct": true}}, {{"id": "b", "text": "Option B", "is_correct": false}}]}}
+
+Example true_false:
+{{"id": "q2", "type": "true_false", "stem": "Statement", "language": "{language}", "difficulty": "medium", "topic": "{skill_name}", "answer": true}}
+
+Example short_answer:
+{{"id": "q3", "type": "short_answer", "stem": "Question?", "language": "{language}", "difficulty": "hard", "topic": "{skill_name}", "expected_answer": "Expected response"}}
+
+Return ONLY the JSON array, no markdown code blocks or extra text."""
     return prompt
 
 def generate_questions(skill_json: dict, num_questions: int, language: str, min_per_level: int) -> List[Dict]:
