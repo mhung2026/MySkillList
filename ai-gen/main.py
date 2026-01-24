@@ -155,7 +155,7 @@ async def generate_questions_endpoint(request: GenerateRequest = Body(...)):
     
     # 1. Validate input
     try:
-        skill_dict = request.skill_data.dict()
+        skill_dict = request.skill_data.dict(exclude_none=True)
         validate_input_skill(skill_dict)
         logger.info(f"Input validation passed for skill: {request.skill_data.skill_name}")
     except ValueError as e:
