@@ -1,12 +1,16 @@
 import json
-import google.generativeai as genai
+from openai import AzureOpenAI
 from typing import Dict, List
 from ..validators.input_validator import validate_input_skill
 from ..validators.output_validator import validate_output_questions
-from config.settings import GEMINI_API_KEY, LLM_MODEL
+from config.settings import OPENAI_API_KEY, OPENAI_BASE_URL, LLM_MODEL
 
-# Configure Gemini API
-genai.configure(api_key=GEMINI_API_KEY)
+# Configure Azure OpenAI client
+client = AzureOpenAI(
+    api_key=OPENAI_API_KEY,
+    api_version="2024-02-15-preview",
+    azure_endpoint=OPENAI_BASE_URL.rstrip('/openai/v1/') if OPENAI_BASE_URL else None
+)
 
 def build_prompt(skill_json: dict, num_questions: int, language: str) -> str:
     """Build a detailed prompt for question generation."""
@@ -55,21 +59,28 @@ Return ONLY the JSON array, no markdown or extra text."""
 
 def generate_questions(skill_json: dict, num_questions: int, language: str, min_per_level: int) -> List[Dict]:
     """
-    Generate questions using Google Gemini API.
+    Generate questions using Azure OpenAI API.
     """
     # Validate input
     validate_input_skill(skill_json)
-    
+
     # Build prompt
     prompt = build_prompt(skill_json, num_questions, language)
-    
+
     try:
-        # Call Gemini API
-        model = genai.GenerativeModel(LLM_MODEL)
-        response = model.generate_content(prompt)
-        
+        # Call Azure OpenAI API
+        response = client.chat.completions.create(
+            model=LLM_MODEL,
+            messages=[
+                {"role": "system", "content": "You are an expert at creating assessment questions. Always respond with valid JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=4000
+        )
+
         # Extract JSON from response
-        response_text = response.text.strip()
+        response_text = response.choices[0].message.content.strip()
         
         # Remove markdown code blocks if present
         if response_text.startswith("```"):
