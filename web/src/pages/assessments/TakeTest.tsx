@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
@@ -62,6 +62,9 @@ export default function TakeTest() {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [submitModalVisible, setSubmitModalVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const pendingSaveRef = useRef<Promise<void> | null>(null);
+  const autoSubmitTriggeredRef = useRef(false);
 
   // Fetch assessment data
   const {
@@ -96,10 +99,15 @@ export default function TakeTest() {
   const submitMutation = useMutation({
     mutationFn: submitAssessment,
     onSuccess: () => {
+      setSubmitModalVisible(false);
       message.success('Test submitted successfully!');
-      navigate(`/assessments/result/${assessmentId}`);
+      // Small delay before navigate to prevent flash
+      setTimeout(() => {
+        navigate(`/assessments/result/${assessmentId}`);
+      }, 300);
     },
     onError: (error: Error) => {
+      setIsSubmitting(false);
       message.error(error.message || 'Failed to submit test');
     },
   });
@@ -112,9 +120,9 @@ export default function TakeTest() {
         const now = Date.now();
         const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
         setTimeRemaining(remaining);
-        if (remaining === 0) {
-          message.warning('Time is up!');
-          handleSubmitAssessment();
+        if (remaining === 0 && !autoSubmitTriggeredRef.current) {
+          autoSubmitTriggeredRef.current = true;
+          message.warning('Time is up! Auto-submitting...');
         }
       };
       updateTimer();
@@ -122,6 +130,73 @@ export default function TakeTest() {
       return () => clearInterval(interval);
     }
   }, [assessmentData?.mustCompleteBy]);
+
+  // Auto-submit when time is up
+  useEffect(() => {
+    if (timeRemaining === 0 && autoSubmitTriggeredRef.current && !isSubmitting) {
+      // Trigger auto-submit
+      const doAutoSubmit = async () => {
+        setIsSubmitting(true);
+        try {
+          // Save current answer first
+          if (currentQuestion && assessmentId) {
+            const answer = answers.get(currentQuestion.id);
+            if (answer && !answer.isSaved) {
+              const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000) + (answer.timeSpent || 0);
+              await new Promise<void>((resolve, reject) => {
+                answerMutation.mutate({
+                  assessmentId,
+                  questionId: currentQuestion.id,
+                  selectedOptionIds: answer.selectedOptionIds,
+                  textResponse: answer.textResponse,
+                  codeResponse: answer.codeResponse,
+                  timeSpentSeconds: timeSpent,
+                }, {
+                  onSuccess: () => resolve(),
+                  onError: (err) => reject(err),
+                });
+              });
+            }
+          }
+          // Wait a bit then submit
+          await new Promise(resolve => setTimeout(resolve, 100));
+          submitMutation.mutate(assessmentId!);
+        } catch {
+          setIsSubmitting(false);
+        }
+      };
+      doAutoSubmit();
+    }
+  }, [timeRemaining, isSubmitting, currentQuestion, assessmentId, answers, questionStartTime, answerMutation, submitMutation]);
+
+  // Load existing answers when assessment data is loaded (for continue assessment)
+  useEffect(() => {
+    if (!assessmentData?.sections) return;
+
+    const existingAnswers = new Map<string, UserAnswer>();
+    assessmentData.sections.forEach((section) => {
+      section.questions.forEach((question) => {
+        // Check if question has existing answer
+        if (
+          question.selectedOptionIds?.length ||
+          question.textResponse ||
+          question.codeResponse
+        ) {
+          existingAnswers.set(question.id, {
+            selectedOptionIds: question.selectedOptionIds || [],
+            textResponse: question.textResponse || '',
+            codeResponse: question.codeResponse || '',
+            isSaved: true, // Already saved in backend
+            timeSpent: 0,
+          });
+        }
+      });
+    });
+
+    if (existingAnswers.size > 0) {
+      setAnswers(existingAnswers);
+    }
+  }, [assessmentData]);
 
   // Get all questions flat
   const getAllQuestions = useCallback((): QuestionForTestDto[] => {
@@ -146,7 +221,7 @@ export default function TakeTest() {
   const globalIndex = getGlobalQuestionIndex();
 
   // Save current answer before navigation
-  const saveCurrentAnswer = useCallback(() => {
+  const saveCurrentAnswer = useCallback(async () => {
     if (!currentQuestion || !assessmentId) return;
 
     const answer = answers.get(currentQuestion.id);
@@ -163,7 +238,20 @@ export default function TakeTest() {
       timeSpentSeconds: timeSpent,
     };
 
-    answerMutation.mutate(request);
+    // Create promise and store ref
+    const savePromise = new Promise<void>((resolve, reject) => {
+      answerMutation.mutate(request, {
+        onSuccess: () => resolve(),
+        onError: (error) => reject(error),
+      });
+    });
+    pendingSaveRef.current = savePromise;
+
+    try {
+      await savePromise;
+    } catch {
+      // Error handled by mutation
+    }
   }, [currentQuestion, assessmentId, answers, questionStartTime, answerMutation]);
 
   // Update answer
@@ -224,9 +312,22 @@ export default function TakeTest() {
   };
 
   // Submit assessment
-  const handleSubmitAssessment = () => {
-    saveCurrentAnswer();
-    submitMutation.mutate(assessmentId!);
+  const handleSubmitAssessment = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      // Wait for any pending save to complete
+      await saveCurrentAnswer();
+      if (pendingSaveRef.current) {
+        await pendingSaveRef.current;
+      }
+      // Small delay to ensure save is processed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      submitMutation.mutate(assessmentId!);
+    } catch {
+      setIsSubmitting(false);
+    }
   };
 
   // Format time
@@ -501,6 +602,16 @@ export default function TakeTest() {
     );
   }
 
+  // Show full screen loading when submitting
+  if (isSubmitting || submitMutation.isPending) {
+    return (
+      <div style={{ textAlign: 'center', padding: 100 }}>
+        <Spin size="large" />
+        <div style={{ marginTop: 16 }}>Submitting your test...</div>
+      </div>
+    );
+  }
+
   if (error || !assessmentData) {
     return (
       <Alert
@@ -707,7 +818,7 @@ export default function TakeTest() {
         onOk={handleSubmitAssessment}
         okText="Submit"
         cancelText="Continue"
-        confirmLoading={submitMutation.isPending}
+        confirmLoading={isSubmitting || submitMutation.isPending}
         okButtonProps={{ danger: true }}
       >
         <div style={{ padding: '16px 0' }}>

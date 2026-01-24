@@ -43,6 +43,7 @@ public class AssessmentService : IAssessmentService
                 Status = a.Status,
                 StatusName = a.Status.ToString(),
                 Title = a.Title,
+                TestTemplateId = a.TestTemplateId,
                 TestTemplateTitle = a.TestTemplate != null ? a.TestTemplate.Title : null,
                 Score = a.Score,
                 MaxScore = a.MaxScore,
@@ -80,6 +81,21 @@ public class AssessmentService : IAssessmentService
 
     public async Task<StartAssessmentResponse> StartAssessmentAsync(StartAssessmentRequest request)
     {
+        // Check for existing in-progress assessment for this employee and template
+        var existingAssessment = await _context.Assessments
+            .FirstOrDefaultAsync(a =>
+                a.EmployeeId == request.EmployeeId &&
+                a.TestTemplateId == request.TestTemplateId &&
+                a.Status == AssessmentStatus.InProgress);
+
+        if (existingAssessment != null)
+        {
+            // Return the existing in-progress assessment
+            var result = await GetInProgressAssessmentAsync(existingAssessment.Id);
+            if (result != null)
+                return result;
+        }
+
         // Get test template with all questions
         var template = await _context.TestTemplates
             .Include(t => t.Sections.OrderBy(s => s.DisplayOrder))
@@ -180,6 +196,19 @@ public class AssessmentService : IAssessmentService
             return null;
 
         var template = assessment.TestTemplate;
+
+        // Check if time has expired - auto-submit if so
+        if (template.TimeLimitMinutes.HasValue && assessment.StartedAt.HasValue)
+        {
+            var deadline = assessment.StartedAt.Value.AddMinutes(template.TimeLimitMinutes.Value);
+            if (DateTime.UtcNow > deadline)
+            {
+                // Time expired - auto-submit the assessment
+                await SubmitAssessmentAsync(assessmentId);
+                return null; // Return null to indicate assessment was auto-submitted
+            }
+        }
+
         var existingResponses = assessment.Responses.ToDictionary(r => r.QuestionId);
 
         var allQuestions = template.Sections
@@ -194,24 +223,34 @@ public class AssessmentService : IAssessmentService
             Description = s.Description,
             DisplayOrder = s.DisplayOrder,
             TimeLimitMinutes = s.TimeLimitMinutes,
-            Questions = s.Questions.Where(q => q.IsActive).Select(q => new QuestionForTestDto
+            Questions = s.Questions.Where(q => q.IsActive).Select(q =>
             {
-                Id = q.Id,
-                QuestionNumber = ++questionNumber,
-                Type = q.Type,
-                TypeName = q.Type.ToString(),
-                Content = q.Content,
-                CodeSnippet = q.CodeSnippet,
-                MediaUrl = q.MediaUrl,
-                Points = q.Points,
-                TimeLimitSeconds = q.TimeLimitSeconds,
-                SkillName = q.Skill?.Name ?? string.Empty,
-                Options = q.Options.Select(o => new OptionForTestDto
+                existingResponses.TryGetValue(q.Id, out var existingResponse);
+                return new QuestionForTestDto
                 {
-                    Id = o.Id,
-                    Content = o.Content,
-                    DisplayOrder = o.DisplayOrder
-                }).ToList()
+                    Id = q.Id,
+                    QuestionNumber = ++questionNumber,
+                    Type = q.Type,
+                    TypeName = q.Type.ToString(),
+                    Content = q.Content,
+                    CodeSnippet = q.CodeSnippet,
+                    MediaUrl = q.MediaUrl,
+                    Points = q.Points,
+                    TimeLimitSeconds = q.TimeLimitSeconds,
+                    SkillName = q.Skill?.Name ?? string.Empty,
+                    Options = q.Options.Select(o => new OptionForTestDto
+                    {
+                        Id = o.Id,
+                        Content = o.Content,
+                        DisplayOrder = o.DisplayOrder
+                    }).ToList(),
+                    // Populate existing answers
+                    SelectedOptionIds = !string.IsNullOrEmpty(existingResponse?.SelectedOptions)
+                        ? JsonSerializer.Deserialize<List<Guid>>(existingResponse.SelectedOptions)
+                        : null,
+                    TextResponse = existingResponse?.TextResponse,
+                    CodeResponse = existingResponse?.CodeResponse
+                };
             }).ToList()
         }).ToList();
 
@@ -341,6 +380,9 @@ public class AssessmentService : IAssessmentService
         var questionResults = new List<QuestionResultDto>();
         var skillScores = new Dictionary<Guid, (string Name, string Code, int Correct, int Total, int Score, int MaxScore)>();
 
+        // AI grading for essay questions
+        var essayQuestionTypes = new[] { QuestionType.ShortAnswer, QuestionType.LongAnswer, QuestionType.CodingChallenge };
+
         var questionNumber = 0;
         foreach (var question in allQuestions)
         {
@@ -390,6 +432,32 @@ public class AssessmentService : IAssessmentService
                 unanswered++;
                 questionResult.IsCorrect = false;
                 questionResult.PointsAwarded = 0;
+
+                // Create response record with 0 points for unanswered questions
+                response = new AssessmentResponse
+                {
+                    AssessmentId = assessmentId,
+                    QuestionId = question.Id,
+                    PointsAwarded = 0,
+                    IsCorrect = false,
+                    AnsweredAt = DateTime.UtcNow
+                };
+
+                // If essay question left blank, add feedback
+                if (essayQuestionTypes.Contains(question.Type))
+                {
+                    var blankFeedback = new AiFeedbackDto
+                    {
+                        Feedback = "Câu hỏi bị bỏ trống - 0 điểm.",
+                        StrengthPoints = new List<string>(),
+                        ImprovementAreas = new List<string> { "Bạn cần trả lời câu hỏi này để được chấm điểm." },
+                        DetailedAnalysis = "Không có câu trả lời được gửi cho câu hỏi này."
+                    };
+                    questionResult.AiFeedback = blankFeedback;
+                    response.AiFeedback = JsonSerializer.Serialize(blankFeedback);
+                }
+
+                _context.AssessmentResponses.Add(response);
             }
             else
             {
@@ -399,8 +467,91 @@ public class AssessmentService : IAssessmentService
                     questionResult.SelectedOptionIds = JsonSerializer.Deserialize<List<Guid>>(response.SelectedOptions);
                 }
 
-                if (response.IsCorrect.HasValue)
+                // Check if this is an essay/text question that needs AI grading
+                if (essayQuestionTypes.Contains(question.Type) && !string.IsNullOrEmpty(questionResult.UserAnswer))
                 {
+                    // Call AI to grade essay answer
+                    try
+                    {
+                        var gradeRequest = new AiGradeAnswerRequest
+                        {
+                            QuestionId = question.Id,
+                            QuestionContent = question.Content,
+                            ExpectedAnswer = question.ExpectedAnswer,
+                            GradingRubric = question.GradingRubric,
+                            StudentAnswer = questionResult.UserAnswer,
+                            MaxPoints = question.Points
+                        };
+
+                        var gradeResult = await _aiService.GradeAnswerAsync(gradeRequest);
+
+                        if (gradeResult.Success)
+                        {
+                            response.PointsAwarded = gradeResult.PointsAwarded;
+                            response.IsCorrect = gradeResult.PointsAwarded >= question.Points * 0.7;
+                            // Store full AI feedback as JSON
+                            var aiFeedbackDto = new AiFeedbackDto
+                            {
+                                Feedback = gradeResult.Feedback,
+                                StrengthPoints = gradeResult.StrengthPoints,
+                                ImprovementAreas = gradeResult.ImprovementAreas,
+                                DetailedAnalysis = gradeResult.DetailedAnalysis
+                            };
+                            response.AiFeedback = JsonSerializer.Serialize(aiFeedbackDto);
+
+                            questionResult.PointsAwarded = gradeResult.PointsAwarded;
+                            questionResult.IsCorrect = response.IsCorrect;
+                            questionResult.AiFeedback = new AiFeedbackDto
+                            {
+                                Feedback = gradeResult.Feedback,
+                                StrengthPoints = gradeResult.StrengthPoints,
+                                ImprovementAreas = gradeResult.ImprovementAreas,
+                                DetailedAnalysis = gradeResult.DetailedAnalysis
+                            };
+
+                            if (response.IsCorrect == true)
+                            {
+                                correctAnswers++;
+                                totalScore += gradeResult.PointsAwarded;
+                                skillData.Correct++;
+                                skillData.Score += gradeResult.PointsAwarded;
+                            }
+                            else
+                            {
+                                wrongAnswers++;
+                                totalScore += gradeResult.PointsAwarded; // Add partial score
+                                skillData.Score += gradeResult.PointsAwarded;
+                            }
+                        }
+                        else
+                        {
+                            // AI grading failed, mark as pending review
+                            pendingReview++;
+                            var failedFeedback = new AiFeedbackDto
+                            {
+                                Feedback = "Không thể chấm điểm tự động. Cần người đánh giá.",
+                                ImprovementAreas = new List<string> { gradeResult.Feedback }
+                            };
+                            questionResult.AiFeedback = failedFeedback;
+                            response.AiFeedback = JsonSerializer.Serialize(failedFeedback);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error and mark as pending review
+                        pendingReview++;
+                        var errorFeedback = new AiFeedbackDto
+                        {
+                            Feedback = "Lỗi khi chấm điểm tự động.",
+                            ImprovementAreas = new List<string> { ex.Message }
+                        };
+                        questionResult.AiFeedback = errorFeedback;
+                        response.AiFeedback = JsonSerializer.Serialize(errorFeedback);
+                    }
+                }
+                else if (response.IsCorrect.HasValue)
+                {
+                    // Multiple choice or already graded
                     if (response.IsCorrect.Value)
                     {
                         correctAnswers++;
@@ -415,7 +566,27 @@ public class AssessmentService : IAssessmentService
                     questionResult.IsCorrect = response.IsCorrect;
                     questionResult.PointsAwarded = response.PointsAwarded;
                 }
-                else
+                else if (essayQuestionTypes.Contains(question.Type) && string.IsNullOrEmpty(questionResult.UserAnswer))
+                {
+                    // Essay question left blank - 0 points
+                    response.PointsAwarded = 0;
+                    response.IsCorrect = false;
+                    response.AiFeedback = JsonSerializer.Serialize(new AiFeedbackDto
+                    {
+                        Feedback = "Câu hỏi bị bỏ trống - 0 điểm.",
+                        ImprovementAreas = new List<string> { "Bạn cần trả lời câu hỏi này để được chấm điểm." }
+                    });
+
+                    questionResult.PointsAwarded = 0;
+                    questionResult.IsCorrect = false;
+                    questionResult.AiFeedback = new AiFeedbackDto
+                    {
+                        Feedback = "Câu hỏi bị bỏ trống - 0 điểm.",
+                        ImprovementAreas = new List<string> { "Bạn cần trả lời câu hỏi này để được chấm điểm." }
+                    };
+                    wrongAnswers++;
+                }
+                else if (!essayQuestionTypes.Contains(question.Type))
                 {
                     pendingReview++;
                 }
@@ -569,6 +740,20 @@ public class AssessmentService : IAssessmentService
                     questionResult.PointsAwarded = response.PointsAwarded;
                 }
                 else pendingReview++;
+
+                // Parse AI feedback from database
+                if (!string.IsNullOrEmpty(response.AiFeedback))
+                {
+                    try
+                    {
+                        questionResult.AiFeedback = JsonSerializer.Deserialize<AiFeedbackDto>(response.AiFeedback);
+                    }
+                    catch
+                    {
+                        // If not valid JSON, create simple feedback object
+                        questionResult.AiFeedback = new AiFeedbackDto { Feedback = response.AiFeedback };
+                    }
+                }
             }
 
             var correctOptions = question.Options.Where(o => o.IsCorrect).ToList();

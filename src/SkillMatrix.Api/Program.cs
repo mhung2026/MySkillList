@@ -58,6 +58,9 @@ builder.Services.AddScoped<ITestTemplateService, TestTemplateService>();
 builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<IAssessmentService, AssessmentService>();
 
+// Background service to auto-submit expired assessments
+builder.Services.AddHostedService<AssessmentAutoSubmitService>();
+
 // Auth Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 

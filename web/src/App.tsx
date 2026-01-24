@@ -25,11 +25,13 @@ import TestTemplateDetail from './pages/tests/TestTemplateDetail';
 import AvailableTests from './pages/assessments/AvailableTests';
 import TakeTest from './pages/assessments/TakeTest';
 import TestResult from './pages/assessments/TestResult';
+import StartTest from './pages/assessments/StartTest';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Dashboard from './pages/dashboard/Dashboard';
 import SystemEnumManagement from './pages/admin/SystemEnumManagement';
 import PublicTest from './pages/public/PublicTest';
+import Profile from './pages/profile/Profile';
 import { UserRole } from './types';
 
 const { Header, Sider, Content } = Layout;
@@ -170,6 +172,7 @@ function AppLayout() {
         key: 'profile',
         icon: <UserOutlined />,
         label: 'Profile',
+        onClick: () => navigate('/profile'),
       },
       {
         type: 'divider' as const,
@@ -253,8 +256,10 @@ function AppLayout() {
               <Route path="/tests/templates" element={<TestTemplateList />} />
               <Route path="/tests/templates/:id" element={<TestTemplateDetail />} />
               <Route path="/assessments" element={<AvailableTests />} />
+              <Route path="/assessments/start-test/:templateId" element={<StartTest />} />
               <Route path="/assessments/take/:assessmentId" element={<TakeTest />} />
               <Route path="/assessments/result/:assessmentId" element={<TestResult />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/admin/enums" element={<SystemEnumManagement />} />
             </Routes>
           </div>

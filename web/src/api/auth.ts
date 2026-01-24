@@ -1,5 +1,13 @@
 import { apiClient } from './client';
-import type { LoginRequest, LoginResponse, RegisterRequest, UserDto } from '../types';
+import type {
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  UserDto,
+  EmployeeProfileDto,
+  UpdateProfileRequest,
+  ChangePasswordRequest,
+} from '../types';
 
 export const login = async (request: LoginRequest): Promise<LoginResponse> => {
   const response = await apiClient.post<LoginResponse>('/auth/login', request);
@@ -23,4 +31,24 @@ export const getAllUsers = async (): Promise<UserDto[]> => {
 
 export const seedUsers = async (): Promise<void> => {
   await apiClient.post('/auth/seed');
+};
+
+export const getProfile = async (userId: string): Promise<EmployeeProfileDto> => {
+  const response = await apiClient.get<EmployeeProfileDto>(`/auth/profile/${userId}`);
+  return response.data;
+};
+
+export const updateProfile = async (
+  userId: string,
+  request: UpdateProfileRequest
+): Promise<EmployeeProfileDto> => {
+  const response = await apiClient.put<EmployeeProfileDto>(`/auth/profile/${userId}`, request);
+  return response.data;
+};
+
+export const changePassword = async (
+  userId: string,
+  request: ChangePasswordRequest
+): Promise<void> => {
+  await apiClient.post(`/auth/change-password/${userId}`, request);
 };

@@ -50,6 +50,51 @@ export interface RegisterRequest {
   teamId?: string;
 }
 
+// Employment Status
+export enum EmploymentStatus {
+  Active = 1,
+  OnLeave = 2,
+  Resigned = 3,
+  Terminated = 4,
+}
+
+// Employee Profile
+export interface EmployeeProfileDto {
+  id: string;
+  email: string;
+  fullName: string;
+  avatarUrl?: string;
+  role: UserRole;
+  roleName: string;
+  status: EmploymentStatus;
+  statusName: string;
+  teamId?: string;
+  teamName?: string;
+  jobRoleId?: string;
+  jobRoleName?: string;
+  managerId?: string;
+  managerName?: string;
+  joinDate?: string;
+  yearsOfExperience: number;
+  totalSkills: number;
+  completedAssessments: number;
+  averageSkillLevel: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface UpdateProfileRequest {
+  fullName: string;
+  avatarUrl?: string;
+  joinDate?: string;
+  yearsOfExperience: number;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface PagedRequest {
   pageNumber?: number;
   pageSize?: number;
@@ -673,6 +718,7 @@ export interface AssessmentListDto {
   status: AssessmentStatus;
   statusName: string;
   title?: string;
+  testTemplateId?: string;
   testTemplateTitle?: string;
   score?: number;
   maxScore?: number;
@@ -722,6 +768,10 @@ export interface QuestionForTestDto {
   timeLimitSeconds?: number;
   skillName: string;
   options: OptionForTestDto[];
+  // Existing answer (for continue assessment)
+  selectedOptionIds?: string[];
+  textResponse?: string;
+  codeResponse?: string;
 }
 
 export interface OptionForTestDto {
@@ -798,7 +848,15 @@ export interface QuestionResultDto {
   isCorrect?: boolean;
   pointsAwarded?: number;
   explanation?: string;
+  aiFeedback?: AiFeedbackDto;
   options: OptionResultDto[];
+}
+
+export interface AiFeedbackDto {
+  feedback: string;
+  strengthPoints: string[];
+  improvementAreas: string[];
+  detailedAnalysis?: string;
 }
 
 export interface OptionResultDto {

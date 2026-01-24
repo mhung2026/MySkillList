@@ -49,6 +49,7 @@ public class AssessmentListDto
     public AssessmentStatus Status { get; set; }
     public string StatusName { get; set; } = string.Empty;
     public string? Title { get; set; }
+    public Guid? TestTemplateId { get; set; }
     public string? TestTemplateTitle { get; set; }
     public int? Score { get; set; }
     public int? MaxScore { get; set; }
@@ -113,6 +114,11 @@ public class QuestionForTestDto
     public int? TimeLimitSeconds { get; set; }
     public string SkillName { get; set; } = string.Empty;
     public List<OptionForTestDto> Options { get; set; } = new();
+
+    // Existing answer (for continue assessment)
+    public List<Guid>? SelectedOptionIds { get; set; }
+    public string? TextResponse { get; set; }
+    public string? CodeResponse { get; set; }
 }
 
 /// <summary>
@@ -255,8 +261,22 @@ public class QuestionResultDto
     public int? PointsAwarded { get; set; }
     public string? Explanation { get; set; }
 
+    // AI Feedback (for essay/text questions)
+    public AiFeedbackDto? AiFeedback { get; set; }
+
     // Options with correct marking
     public List<OptionResultDto> Options { get; set; } = new();
+}
+
+/// <summary>
+/// AI Feedback for essay/text questions
+/// </summary>
+public class AiFeedbackDto
+{
+    public string Feedback { get; set; } = string.Empty;
+    public List<string> StrengthPoints { get; set; } = new();
+    public List<string> ImprovementAreas { get; set; } = new();
+    public string? DetailedAnalysis { get; set; }
 }
 
 /// <summary>

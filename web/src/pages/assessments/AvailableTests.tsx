@@ -27,7 +27,6 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   SyncOutlined,
-  CopyOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { AvailableTestDto, AssessmentListDto } from '../../types';
@@ -110,23 +109,16 @@ export default function AvailableTests() {
     navigate(`/assessments/result/${assessmentId}`);
   };
 
-  const handleCopyLink = (assessmentId: string) => {
-    const link = `${window.location.origin}/test/${assessmentId}`;
-    navigator.clipboard.writeText(link).then(() => {
-      message.success('Link đã được sao chép!');
-    }).catch(() => {
-      message.error('Không thể sao chép link');
-    });
-  };
-
   const getStatusTag = (status: number) => {
+    // Backend enum: Draft=1, Pending=2, InProgress=3, Completed=4, Reviewed=5, Disputed=6, Resolved=7
     const statusMap: Record<number, { color: string; text: string; icon: React.ReactNode }> = {
-      0: { color: 'default', text: 'Scheduled', icon: <ClockCircleOutlined /> },
-      1: { color: 'processing', text: 'In Progress', icon: <SyncOutlined spin /> },
-      2: { color: 'success', text: 'Completed', icon: <CheckCircleOutlined /> },
-      3: { color: 'warning', text: 'Pending Review', icon: <ClockCircleOutlined /> },
-      4: { color: 'error', text: 'Failed', icon: <CloseCircleOutlined /> },
-      5: { color: 'success', text: 'Passed', icon: <TrophyOutlined /> },
+      1: { color: 'default', text: 'Draft', icon: <ClockCircleOutlined /> },
+      2: { color: 'default', text: 'Pending', icon: <ClockCircleOutlined /> },
+      3: { color: 'processing', text: 'In Progress', icon: <SyncOutlined /> },
+      4: { color: 'warning', text: 'Pending Review', icon: <ClockCircleOutlined /> },
+      5: { color: 'success', text: 'Reviewed', icon: <CheckCircleOutlined /> },
+      6: { color: 'error', text: 'Disputed', icon: <CloseCircleOutlined /> },
+      7: { color: 'success', text: 'Resolved', icon: <TrophyOutlined /> },
     };
     const config = statusMap[status] || { color: 'default', text: 'Unknown', icon: null };
     return (
@@ -276,8 +268,8 @@ export default function AvailableTests() {
       render: (_, record) => {
         return (
           <Space>
-            {record.status === 1 && (
-              // In Progress
+            {record.status === 3 && (
+              // In Progress (backend enum: InProgress=3)
               <Button
                 type="primary"
                 icon={<PlayCircleOutlined />}
@@ -286,62 +278,23 @@ export default function AvailableTests() {
                 Continue
               </Button>
             )}
-            {record.status >= 2 && (
-              // Completed or later
+            {record.status >= 4 && (
+              // Completed or later (backend enum: Completed=4, Reviewed=5, etc.)
               <Button icon={<FileTextOutlined />} onClick={() => handleViewResult(record.id)}>
                 View Result
               </Button>
             )}
-            <Button
-              icon={<CopyOutlined />}
-              onClick={() => handleCopyLink(record.id)}
-              title="Copy test link"
-            >
-              Copy Link
-            </Button>
           </Space>
         );
       },
     },
   ];
 
-  const inProgressAssessments = historyData?.items?.filter((a) => a.status === 1) || [];
-
   return (
     <div>
       <Title level={3}>
         <FileTextOutlined /> Skill Assessment Tests
       </Title>
-
-      {/* In Progress Alert */}
-      {inProgressAssessments.length > 0 && (
-        <Card
-          style={{
-            marginBottom: 16,
-            background: '#fff7e6',
-            borderColor: '#ffd591',
-          }}
-        >
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Text strong style={{ color: '#d46b08' }}>
-              <SyncOutlined spin /> You have {inProgressAssessments.length} test(s) in progress
-            </Text>
-            <Space wrap>
-              {inProgressAssessments.map((assessment) => (
-                <Button
-                  key={assessment.id}
-                  type="primary"
-                  ghost
-                  icon={<PlayCircleOutlined />}
-                  onClick={() => handleContinueTest(assessment.id)}
-                >
-                  Continue: {assessment.testTemplateTitle || assessment.title}
-                </Button>
-              ))}
-            </Space>
-          </Space>
-        </Card>
-      )}
 
       <Tabs
         defaultActiveKey="available"

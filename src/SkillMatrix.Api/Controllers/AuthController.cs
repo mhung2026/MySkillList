@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using SkillMatrix.Application.DTOs.Auth;
 using SkillMatrix.Application.Interfaces;
+using SkillMatrix.Infrastructure.Persistence;
 
 namespace SkillMatrix.Api.Controllers;
 
@@ -9,10 +11,12 @@ namespace SkillMatrix.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly SkillMatrixDbContext _context;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, SkillMatrixDbContext context)
     {
         _authService = authService;
+        _context = context;
     }
 
     /// <summary>
@@ -64,6 +68,30 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Get user profile
+    /// </summary>
+    [HttpGet("profile/{userId}")]
+    public async Task<ActionResult<EmployeeProfileDto>> GetProfile(Guid userId)
+    {
+        var profile = await _authService.GetProfileAsync(userId);
+        if (profile == null)
+            return NotFound(new { error = "User not found" });
+        return Ok(profile);
+    }
+
+    /// <summary>
+    /// Update user profile
+    /// </summary>
+    [HttpPut("profile/{userId}")]
+    public async Task<ActionResult<EmployeeProfileDto>> UpdateProfile(Guid userId, [FromBody] UpdateProfileRequest request)
+    {
+        var profile = await _authService.UpdateProfileAsync(userId, request);
+        if (profile == null)
+            return NotFound(new { error = "User not found" });
+        return Ok(profile);
+    }
+
+    /// <summary>
     /// Get all users (admin only)
     /// </summary>
     [HttpGet("users")]
@@ -81,5 +109,25 @@ public class AuthController : ControllerBase
     {
         await _authService.SeedDefaultUsersAsync();
         return Ok(new { message = "Default users created" });
+    }
+
+    /// <summary>
+    /// Run database migration for AI grading fields (temporary)
+    /// </summary>
+    [HttpPost("migrate-ai-fields")]
+    public async Task<ActionResult> MigrateAiFields()
+    {
+        try
+        {
+            await _context.Database.ExecuteSqlRawAsync(@"
+                ALTER TABLE ""Questions"" ADD COLUMN IF NOT EXISTS ""ExpectedAnswer"" TEXT;
+                ALTER TABLE ""AssessmentResponses"" ADD COLUMN IF NOT EXISTS ""AiFeedback"" TEXT;
+            ");
+            return Ok(new { message = "Migration completed successfully" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 }
