@@ -10,18 +10,18 @@ using SkillMatrix.Domain.Enums;
 namespace SkillMatrix.Application.Services.AI;
 
 /// <summary>
-/// Real AI service implementation calling Python Gemini API
+/// AI service implementation calling Python API for question generation
 /// </summary>
-public class GeminiAiQuestionGeneratorService : IAiQuestionGeneratorService
+public class PythonAiQuestionGeneratorService : IAiQuestionGeneratorService
 {
     private readonly HttpClient _httpClient;
-    private readonly ILogger<GeminiAiQuestionGeneratorService> _logger;
+    private readonly ILogger<PythonAiQuestionGeneratorService> _logger;
     private readonly AiServiceOptions _options;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public GeminiAiQuestionGeneratorService(
+    public PythonAiQuestionGeneratorService(
         HttpClient httpClient,
-        ILogger<GeminiAiQuestionGeneratorService> logger,
+        ILogger<PythonAiQuestionGeneratorService> logger,
         IOptions<AiServiceOptions> options)
     {
         _httpClient = httpClient;
@@ -116,13 +116,98 @@ public class GeminiAiQuestionGeneratorService : IAiQuestionGeneratorService
 
     public async Task<AiGradeAnswerResponse> GradeAnswerAsync(AiGradeAnswerRequest request)
     {
-        // TODO: Implement grading endpoint when Python API supports it
-        _logger.LogWarning("GradeAnswerAsync not yet implemented");
-        return new AiGradeAnswerResponse
+        try
         {
-            Success = false,
-            Feedback = "Grading not yet implemented"
-        };
+            _logger.LogInformation(
+                "Grading answer for question {QuestionId}, max points: {MaxPoints}",
+                request.QuestionId,
+                request.MaxPoints);
+
+            // Map C# request to Python API format
+            var pythonRequest = new
+            {
+                question_id = request.QuestionId.ToString(),
+                question_content = request.QuestionContent,
+                student_answer = request.StudentAnswer,
+                max_points = request.MaxPoints,
+                grading_rubric = request.GradingRubric,
+                expected_answer = request.ExpectedAnswer,
+                question_type = "ShortAnswer", // Default, can be extended
+                language = "en"
+            };
+
+            // Call Python API
+            var endpoint = $"{_options.BaseUrl}/api/v2/grade-answer";
+            _logger.LogDebug("Calling Python API: {Endpoint}", endpoint);
+
+            var response = await _httpClient.PostAsJsonAsync(endpoint, pythonRequest, _jsonOptions);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError(
+                    "Python API returned error {StatusCode}: {Error}",
+                    response.StatusCode,
+                    errorContent);
+
+                return new AiGradeAnswerResponse
+                {
+                    Success = false,
+                    Feedback = $"AI grading service error: {response.StatusCode}"
+                };
+            }
+
+            var pythonResponse = await response.Content.ReadFromJsonAsync<PythonGradeResponse>(_jsonOptions);
+
+            if (pythonResponse == null)
+            {
+                _logger.LogWarning("Python API returned null response");
+                return new AiGradeAnswerResponse
+                {
+                    Success = false,
+                    Feedback = "No grading result received"
+                };
+            }
+
+            // Map Python response to C# response
+            var result = new AiGradeAnswerResponse
+            {
+                Success = pythonResponse.Success,
+                PointsAwarded = pythonResponse.PointsAwarded,
+                MaxPoints = pythonResponse.MaxPoints,
+                Percentage = pythonResponse.Percentage,
+                Feedback = pythonResponse.Feedback ?? "",
+                StrengthPoints = pythonResponse.StrengthPoints ?? new List<string>(),
+                ImprovementAreas = pythonResponse.ImprovementAreas ?? new List<string>(),
+                DetailedAnalysis = pythonResponse.DetailedAnalysis
+            };
+
+            _logger.LogInformation(
+                "Grading complete: {Points}/{Max} ({Percentage}%)",
+                result.PointsAwarded,
+                result.MaxPoints,
+                result.Percentage);
+
+            return result;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "HTTP error calling Python grading service");
+            return new AiGradeAnswerResponse
+            {
+                Success = false,
+                Feedback = "Failed to connect to AI grading service"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error grading answer");
+            return new AiGradeAnswerResponse
+            {
+                Success = false,
+                Feedback = $"Unexpected error: {ex.Message}"
+            };
+        }
     }
 
     /// <summary>
@@ -200,7 +285,7 @@ public class GeminiAiQuestionGeneratorService : IAiQuestionGeneratorService
         var metadata = pythonResponse.Metadata != null
             ? new AiGenerationMetadata
             {
-                Model = pythonResponse.Metadata.AiModel ?? "gemini-2.0-flash-exp",
+                Model = pythonResponse.Metadata.AiModel ?? "gpt-4o",
                 GeneratedAt = DateTime.TryParse(pythonResponse.Metadata.GenerationTimestamp, out var dt)
                     ? dt
                     : DateTime.UtcNow,
@@ -401,6 +486,36 @@ internal class PythonMetadata
 
     [JsonPropertyName("language")]
     public string? Language { get; set; }
+}
+
+/// <summary>
+/// Python API grade answer response
+/// </summary>
+internal class PythonGradeResponse
+{
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+
+    [JsonPropertyName("points_awarded")]
+    public int PointsAwarded { get; set; }
+
+    [JsonPropertyName("max_points")]
+    public int MaxPoints { get; set; }
+
+    [JsonPropertyName("percentage")]
+    public double Percentage { get; set; }
+
+    [JsonPropertyName("feedback")]
+    public string? Feedback { get; set; }
+
+    [JsonPropertyName("strength_points")]
+    public List<string>? StrengthPoints { get; set; }
+
+    [JsonPropertyName("improvement_areas")]
+    public List<string>? ImprovementAreas { get; set; }
+
+    [JsonPropertyName("detailed_analysis")]
+    public string? DetailedAnalysis { get; set; }
 }
 
 #endregion

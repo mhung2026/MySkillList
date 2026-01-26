@@ -42,8 +42,8 @@ if (aiServiceOptions.UseMock)
 }
 else
 {
-    // Register HttpClient for Gemini AI service
-    builder.Services.AddHttpClient<IAiQuestionGeneratorService, GeminiAiQuestionGeneratorService>(client =>
+    // Register HttpClient for Python AI service
+    builder.Services.AddHttpClient<IAiQuestionGeneratorService, PythonAiQuestionGeneratorService>(client =>
     {
         client.BaseAddress = new Uri(aiServiceOptions.BaseUrl ?? "http://localhost:8002");
         client.Timeout = TimeSpan.FromSeconds(aiServiceOptions.TimeoutSeconds);

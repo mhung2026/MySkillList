@@ -1,6 +1,6 @@
 """
 AI Question Generation API V2
-Endpoints for generating questions with new schema
+Endpoints for generating questions and grading answers with new schema
 """
 
 from fastapi import APIRouter, HTTPException, status
@@ -38,14 +38,26 @@ class GenerateRequestV2(BaseModel):
     additional_context: Optional[str] = Field(None, max_length=2000, description="Additional context")
 
 class GradeAnswerRequest(BaseModel):
-    question_id: str = Field(..., description="Question ID")
+    """Request to grade a student's answer."""
+    question_id: Optional[str] = Field(None, description="Question ID (optional)")
     question_content: str = Field(..., description="The question text")
-    question_type: str = Field(..., description="Question type: ShortAnswer, LongAnswer, CodingChallenge")
+    student_answer: str = Field(..., description="Student's submitted answer")
+    max_points: int = Field(..., ge=1, le=100, description="Maximum points for this question")
+    grading_rubric: Optional[str] = Field(None, description="JSON string with grading criteria")
     expected_answer: Optional[str] = Field(None, description="Expected/model answer")
-    grading_rubric: Optional[str] = Field(None, description="Grading criteria/rubric")
-    student_answer: str = Field(..., description="Student's answer to grade")
-    max_points: int = Field(..., ge=1, description="Maximum points for this question")
-    language: str = Field("Vietnamese", description="Language for feedback")
+    question_type: Optional[str] = Field(None, description="Question type (ShortAnswer, LongAnswer, etc.)")
+    language: Optional[str] = Field("en", description="Response language (en/vi)")
+
+class GradeAnswerResponse(BaseModel):
+    """Response from grading an answer."""
+    success: bool
+    points_awarded: int
+    max_points: int
+    percentage: float
+    feedback: str
+    strength_points: List[str]
+    improvement_areas: List[str]
+    detailed_analysis: Optional[str] = None
 
 # Response Models
 class SkillResponse(BaseModel):
@@ -195,8 +207,9 @@ async def generate_questions_v2(request: GenerateRequestV2):
         if normalized.get("skills") and len(normalized["skills"]) > 0:
             skill_id = normalized["skills"][0]["skill_id"]
             skill_name = normalized["skills"][0]["skill_name"]
+            skill_code = normalized["skills"][0].get("skill_code", "")
 
-            logger.info(f"Fetching skill data for: {skill_name} ({skill_id})")
+            logger.info(f"Fetching skill data for: {skill_name} ({skill_code}) - {skill_id}")
             levels = getSkillLevelsBySkillId(skill_id)
 
             if not levels:
@@ -204,9 +217,11 @@ async def generate_questions_v2(request: GenerateRequestV2):
             else:
                 logger.info(f"Retrieved {len(levels)} levels for skill")
                 # Format skill data for AI generator
+                # Fields from DB: Level, Description, Autonomy, Influence, Complexity, BusinessSkills, Knowledge, BehavioralIndicators, EvidenceExamples
                 skill_data = {
                     "skill_id": skill_id,
                     "skill_name": skill_name,
+                    "skill_code": skill_code,
                     "levels": [
                         {
                             "level": l[0],
@@ -215,7 +230,9 @@ async def generate_questions_v2(request: GenerateRequestV2):
                             "influence": l[3],
                             "complexity": l[4],
                             "business_skills": l[5],
-                            "knowledge": l[6]
+                            "knowledge": l[6],
+                            "behavioral_indicators": l[7],
+                            "evidence_examples": l[8]
                         }
                         for l in levels
                     ]
@@ -312,3 +329,45 @@ async def health_check():
             "database": "disconnected",
             "error": str(e)
         }
+
+@router.post("/grade-answer", response_model=GradeAnswerResponse)
+async def grade_answer_endpoint(request: GradeAnswerRequest):
+    """
+    Grade a student's answer using AI.
+
+    This endpoint:
+    1. Takes the question, student answer, and grading criteria
+    2. Uses Azure OpenAI to evaluate the answer
+    3. Returns points, feedback, strengths, and improvement areas
+    """
+    try:
+        logger.info(f"Grading answer for question (max_points={request.max_points})")
+        logger.debug(f"Question: {request.question_content[:100]}...")
+        logger.debug(f"Student answer length: {len(request.student_answer)} chars")
+
+        # Call AI grader
+        result = await ai_grade_answer(
+            question_content=request.question_content,
+            student_answer=request.student_answer,
+            max_points=request.max_points,
+            grading_rubric=request.grading_rubric,
+            expected_answer=request.expected_answer,
+            question_type=request.question_type,
+            language=request.language or "en"
+        )
+
+        logger.info(f"Grading complete: {result['points_awarded']}/{result['max_points']} ({result['percentage']}%)")
+        return GradeAnswerResponse(**result)
+
+    except ValueError as e:
+        logger.error(f"Grading failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Grading failed: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during grading: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {str(e)}"
+        )
