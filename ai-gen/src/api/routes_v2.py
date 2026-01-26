@@ -16,6 +16,7 @@ from db_skill_reader import (
     getSkillLevelCount
 )
 from ..generators.question_generator_v2 import generate_questions_v2 as ai_generate_questions
+from ..generators.answer_grader import grade_answer as ai_grade_answer
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,16 @@ class GenerateRequestV2(BaseModel):
     target_proficiency_level: Optional[List[int]] = Field(None, description="SFIA levels 1-7 (optional)")
     difficulty: Optional[str] = Field(None, description="Difficulty: Easy/Medium/Hard (optional)")
     additional_context: Optional[str] = Field(None, max_length=2000, description="Additional context")
+
+class GradeAnswerRequest(BaseModel):
+    question_id: str = Field(..., description="Question ID")
+    question_content: str = Field(..., description="The question text")
+    question_type: str = Field(..., description="Question type: ShortAnswer, LongAnswer, CodingChallenge")
+    expected_answer: Optional[str] = Field(None, description="Expected/model answer")
+    grading_rubric: Optional[str] = Field(None, description="Grading criteria/rubric")
+    student_answer: str = Field(..., description="Student's answer to grade")
+    max_points: int = Field(..., ge=1, description="Maximum points for this question")
+    language: str = Field("Vietnamese", description="Language for feedback")
 
 # Response Models
 class SkillResponse(BaseModel):
@@ -237,6 +248,48 @@ async def generate_questions_v2(request: GenerateRequestV2):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate questions: {str(e)}"
+        )
+
+@router.post("/grade-answer")
+async def grade_answer_endpoint(request: GradeAnswerRequest):
+    """
+    Grade a student's essay/text answer using AI.
+
+    This endpoint:
+    1. Takes the question, expected answer, and student's answer
+    2. Uses AI to evaluate the answer
+    3. Returns score, feedback, and detailed analysis
+    """
+    try:
+        logger.info(f"Grading answer for question: {request.question_id}")
+        logger.debug(f"Question type: {request.question_type}, Max points: {request.max_points}")
+
+        # Call AI grading function
+        result = await ai_grade_answer(
+            question_id=request.question_id,
+            question_content=request.question_content,
+            question_type=request.question_type,
+            expected_answer=request.expected_answer,
+            grading_rubric=request.grading_rubric,
+            student_answer=request.student_answer,
+            max_points=request.max_points,
+            language=request.language
+        )
+
+        logger.info(f"Grading complete: {result['points_awarded']}/{request.max_points} points")
+        return result
+
+    except ValueError as e:
+        logger.error(f"Grading failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI grading failed: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during grading: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error during grading: {str(e)}"
         )
 
 @router.get("/health")
