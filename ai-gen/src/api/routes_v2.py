@@ -267,48 +267,6 @@ async def generate_questions_v2(request: GenerateRequestV2):
             detail=f"Failed to generate questions: {str(e)}"
         )
 
-@router.post("/grade-answer")
-async def grade_answer_endpoint(request: GradeAnswerRequest):
-    """
-    Grade a student's essay/text answer using AI.
-
-    This endpoint:
-    1. Takes the question, expected answer, and student's answer
-    2. Uses AI to evaluate the answer
-    3. Returns score, feedback, and detailed analysis
-    """
-    try:
-        logger.info(f"Grading answer for question: {request.question_id}")
-        logger.debug(f"Question type: {request.question_type}, Max points: {request.max_points}")
-
-        # Call AI grading function
-        result = await ai_grade_answer(
-            question_id=request.question_id,
-            question_content=request.question_content,
-            question_type=request.question_type,
-            expected_answer=request.expected_answer,
-            grading_rubric=request.grading_rubric,
-            student_answer=request.student_answer,
-            max_points=request.max_points,
-            language=request.language
-        )
-
-        logger.info(f"Grading complete: {result['points_awarded']}/{request.max_points} points")
-        return result
-
-    except ValueError as e:
-        logger.error(f"Grading failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"AI grading failed: {str(e)}"
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error during grading: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error during grading: {str(e)}"
-        )
-
 @router.get("/health")
 async def health_check():
     """Health check for V2 API."""

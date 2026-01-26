@@ -109,7 +109,7 @@ if __name__ == "__main__":
     import os
 
     # Get port from environment variable (Railway sets this automatically)
-    port = int(os.getenv("PORT", 8002))
+    port = int(os.getenv("PORT", 8000))
     host = os.getenv("HOST", "0.0.0.0")
 
     logger.info(f"Starting AI Question Generator API on {host}:{port}...")
