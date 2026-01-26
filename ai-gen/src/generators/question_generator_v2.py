@@ -99,9 +99,15 @@ ADDITIONAL CONTEXT:
 {context}
 """
 
-    # Build question type instructions
-    type_instructions = """
-QUESTION TYPES TO GENERATE:
+    # Calculate type distribution
+    num_types = len(question_types)
+    base_per_type = num_questions // num_types
+    remainder = num_questions % num_types
+
+    # Build question type instructions with distribution
+    type_instructions = f"""
+QUESTION TYPES TO GENERATE ({num_questions} questions total across {num_types} types):
+Distribution: Generate approximately {base_per_type} question(s) per type{f", with {remainder} extra distributed among types" if remainder > 0 else ""}.
 """
     for qtype in question_types:
         type_instructions += f"- {qtype}\n"
@@ -152,6 +158,16 @@ QUESTION TYPES TO GENERATE:
         elif qtype == "Rating":
             type_instructions += "  * 5 rating scale options, all marked as correct\n"
 
+    # Add distribution reminder
+    type_instructions += f"""
+TYPE DISTRIBUTION RULE:
+- Total questions required: {num_questions}
+- Number of types: {num_types}
+- Distribute questions across ALL listed types
+- Each type should have at least 1 question if possible
+- Vary the distribution naturally (e.g., for 5 questions with 3 types: 2-2-1 or 2-1-2)
+"""
+
     prompt = f"""You are an expert assessment question generator specializing in SFIA (Skills Framework for the Information Age) competency assessments.
 
 {skill_context}
@@ -159,7 +175,8 @@ QUESTION TYPES TO GENERATE:
 {additional_context_text}
 
 TASK:
-Generate exactly {num_questions} high-quality assessment questions in {lang_name}.
+Generate EXACTLY {num_questions} assessment questions in {lang_name}.
+⚠️ QUANTITY REQUIREMENT: You MUST generate exactly {num_questions} questions - no more, no less. This is mandatory.
 
 CRITICAL INSTRUCTIONS - BEHAVIOR-BASED ASSESSMENT:
 
@@ -220,17 +237,18 @@ Return ONLY valid JSON matching this exact schema (no markdown, no explanations)
 }}
 
 IMPORTANT RULES:
-1. Use the exact skill_id provided above for ALL questions (do not generate random UUIDs)
-2. For MultipleChoice: Exactly 1 option with is_correct=true
-3. For MultipleAnswer: 2+ options with is_correct=true
-4. For TrueFalse: Exactly 2 options (True/False)
-5. For ShortAnswer/LongAnswer: Include grading_rubric as JSON string
-6. For CodingChallenge: Include code_snippet and grading_rubric with test_cases
-7. For SituationalJudgment: 4 options with effectiveness_level, each representing distinct behavioral strategy mapped to SFIA level
-8. For Rating: 3-5 options, all with is_correct=true
-9. Use clear, professional language
-10. Ensure questions are at appropriate difficulty level
-11. Return ONLY the JSON, no markdown blocks or explanations
+1. ⚠️ MANDATORY: Generate EXACTLY {num_questions} questions. Count them before responding.
+2. Use the exact skill_id provided above for ALL questions (do not generate random UUIDs)
+3. For MultipleChoice: Exactly 1 option with is_correct=true
+4. For MultipleAnswer: 2+ options with is_correct=true
+5. For TrueFalse: Exactly 2 options (True/False)
+6. For ShortAnswer/LongAnswer: Include grading_rubric as JSON string
+7. For CodingChallenge: Include code_snippet and grading_rubric with test_cases
+8. For SituationalJudgment: 4 options with effectiveness_level, each representing distinct behavioral strategy mapped to SFIA level
+9. For Rating: 3-5 options, all with is_correct=true
+10. Use clear, professional language
+11. Ensure questions are at appropriate difficulty level
+12. Return ONLY the JSON, no markdown blocks or explanations
 
 Generate questions that are:
 - Behavior-revealing: expose what candidates actually DO, not what they know
@@ -239,6 +257,8 @@ Generate questions that are:
 - Trade-off driven: force meaningful decisions between competing values
 - Level-differentiated: options map clearly to SFIA behavioral signatures
 - Unambiguous: clear context with defined constraints
+
+FINAL CHECK: Your response MUST contain exactly {num_questions} question objects in the "questions" array.
 """
 
     return prompt
@@ -269,13 +289,19 @@ async def generate_questions_v2(
         # 2. Call Azure OpenAI API
         logger.info(f"Calling Azure OpenAI API with model: {LLM_MODEL}")
 
+        # Calculate max_tokens based on requested questions
+        # SJT questions are ~500-800 tokens each, other types ~200-400
+        num_questions = normalized_request["number_of_questions"]
+        estimated_tokens = num_questions * 800 + 500  # 800 per question + buffer
+        max_tokens = min(max(estimated_tokens, 4096), 16000)  # Between 4096 and 16000
+
         client = get_client()
         response = await client.chat.completions.create(
             model=LLM_MODEL,
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert assessment question generator. You always return valid JSON without markdown formatting."
+                    "content": "You are an expert assessment question generator. You always return valid JSON without markdown formatting. You MUST generate the exact number of questions requested."
                 },
                 {
                     "role": "user",
@@ -283,7 +309,7 @@ async def generate_questions_v2(
                 }
             ],
             temperature=0.7,
-            max_tokens=8192,
+            max_tokens=max_tokens,
             response_format={"type": "json_object"}
         )
 
@@ -318,7 +344,12 @@ async def generate_questions_v2(
                 raise ValueError("Response does not contain 'questions' array")
 
         questions = result["questions"]
-        logger.info(f"Generated {len(questions)} questions")
+        requested_count = normalized_request["number_of_questions"]
+        logger.info(f"Generated {len(questions)} questions (requested: {requested_count})")
+
+        # Warn if count mismatch
+        if len(questions) != requested_count:
+            logger.warning(f"Question count mismatch: got {len(questions)}, expected {requested_count}")
 
         # 5.5. Ensure each question has skill_id from request
         skill_id_from_request = None
