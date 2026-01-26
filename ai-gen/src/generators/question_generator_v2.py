@@ -159,10 +159,13 @@ Distribution: Generate approximately {base_per_type} question(s) per type{f", wi
             type_instructions += "  * 5 rating scale options, all marked as correct\n"
 
     # Add distribution reminder
+    allowed_types_str = ", ".join(question_types)
     type_instructions += f"""
 TYPE DISTRIBUTION RULE:
 - Total questions required: {num_questions}
 - Number of types: {num_types}
+- ⚠️ ONLY USE THESE EXACT TYPES: [{allowed_types_str}]
+- DO NOT generate any other question types
 - Distribute questions across ALL listed types
 - Each type should have at least 1 question if possible
 - Vary the distribution naturally (e.g., for 5 questions with 3 types: 2-2-1 or 2-1-2)
@@ -270,6 +273,7 @@ async def generate_questions_v2(
 ) -> Dict[str, Any]:
     """
     Generate questions using Azure OpenAI with V2 schema.
+    Implements retry logic to ensure exact question count.
 
     Args:
         normalized_request: Validated request from request_validator
@@ -278,80 +282,124 @@ async def generate_questions_v2(
     Returns:
         Dict with 'questions' and 'metadata' matching output_question_schema_v2
     """
-    logger.info("Starting AI question generation with Azure OpenAI")
+    requested_count = normalized_request["number_of_questions"]
+    logger.info(f"Starting AI question generation: {requested_count} questions requested")
     logger.debug(f"Request: {normalized_request}")
 
+    all_questions = []
+    max_attempts = 3
+    attempt = 0
+
     try:
-        # 1. Build prompt
-        prompt = build_prompt_v2(normalized_request, skill_data)
-        logger.debug(f"Prompt built: {len(prompt)} characters")
+        while len(all_questions) < requested_count and attempt < max_attempts:
+            attempt += 1
+            remaining = requested_count - len(all_questions)
 
-        # 2. Call Azure OpenAI API
-        logger.info(f"Calling Azure OpenAI API with model: {LLM_MODEL}")
+            # Adjust request for remaining questions
+            adjusted_request = normalized_request.copy()
+            adjusted_request["number_of_questions"] = remaining
 
-        # Calculate max_tokens based on requested questions
-        # SJT questions are ~500-800 tokens each, other types ~200-400
-        num_questions = normalized_request["number_of_questions"]
-        estimated_tokens = num_questions * 800 + 500  # 800 per question + buffer
-        max_tokens = min(max(estimated_tokens, 4096), 16000)  # Between 4096 and 16000
+            logger.info(f"Attempt {attempt}/{max_attempts}: Generating {remaining} questions")
 
-        client = get_client()
-        response = await client.chat.completions.create(
-            model=LLM_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert assessment question generator. You always return valid JSON without markdown formatting. You MUST generate the exact number of questions requested."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.7,
-            max_tokens=max_tokens,
-            response_format={"type": "json_object"}
-        )
+            # Build prompt
+            prompt = build_prompt_v2(adjusted_request, skill_data)
+            logger.debug(f"Prompt built: {len(prompt)} characters")
 
-        logger.info("Received response from Azure OpenAI")
+            # Calculate max_tokens - be generous
+            # SJT questions are ~600-1000 tokens each
+            estimated_tokens = remaining * 1000 + 1000  # 1000 per question + buffer
+            max_tokens = min(max(estimated_tokens, 8192), 16000)
 
-        # 3. Parse response
-        response_text = response.choices[0].message.content.strip()
-        logger.debug(f"Response length: {len(response_text)} characters")
+            client = get_client()
+            response = await client.chat.completions.create(
+                model=LLM_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"You are an expert assessment question generator. Return valid JSON only. CRITICAL: Generate EXACTLY {remaining} questions - count them before responding."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.7,
+                max_tokens=max_tokens,
+                response_format={"type": "json_object"}
+            )
 
-        # Remove markdown code blocks if present
-        if response_text.startswith("```"):
-            logger.debug("Removing markdown code blocks")
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
+            logger.info("Received response from Azure OpenAI")
 
-        # 4. Parse JSON
-        try:
-            result = json.loads(response_text)
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON parse error: {e}")
-            logger.error(f"Response text: {response_text[:500]}...")
-            raise ValueError(f"Failed to parse AI response as JSON: {str(e)}")
+            # Parse response
+            response_text = response.choices[0].message.content.strip()
+            logger.debug(f"Response length: {len(response_text)} characters")
 
-        # 5. Validate structure
-        if "questions" not in result:
-            logger.warning("Response missing 'questions' key, attempting to wrap")
-            if isinstance(result, list):
-                result = {"questions": result}
-            else:
-                raise ValueError("Response does not contain 'questions' array")
+            # Remove markdown code blocks if present
+            if response_text.startswith("```"):
+                logger.debug("Removing markdown code blocks")
+                response_text = response_text.split("```")[1]
+                if response_text.startswith("json"):
+                    response_text = response_text[4:]
+                response_text = response_text.strip()
 
-        questions = result["questions"]
-        requested_count = normalized_request["number_of_questions"]
-        logger.info(f"Generated {len(questions)} questions (requested: {requested_count})")
+            # Parse JSON
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON parse error: {e}")
+                logger.error(f"Response text: {response_text[:500]}...")
+                if attempt < max_attempts:
+                    logger.info("Retrying due to JSON parse error...")
+                    continue
+                raise ValueError(f"Failed to parse AI response as JSON: {str(e)}")
 
-        # Warn if count mismatch
-        if len(questions) != requested_count:
-            logger.warning(f"Question count mismatch: got {len(questions)}, expected {requested_count}")
+            # Validate structure
+            if "questions" not in result:
+                logger.warning("Response missing 'questions' key, attempting to wrap")
+                if isinstance(result, list):
+                    result = {"questions": result}
+                else:
+                    if attempt < max_attempts:
+                        logger.info("Retrying due to invalid structure...")
+                        continue
+                    raise ValueError("Response does not contain 'questions' array")
 
-        # 5.5. Ensure each question has skill_id from request
+            batch_questions = result["questions"]
+            logger.info(f"Attempt {attempt}: Got {len(batch_questions)} questions (needed {remaining})")
+
+            # Filter out questions with invalid types
+            allowed_types = set(adjusted_request["question_type"])
+            valid_questions = []
+            invalid_count = 0
+            for q in batch_questions:
+                q_type = q.get("type", "")
+                if q_type in allowed_types:
+                    valid_questions.append(q)
+                else:
+                    invalid_count += 1
+                    logger.warning(f"Filtered out question with invalid type: '{q_type}' (allowed: {allowed_types})")
+
+            if invalid_count > 0:
+                logger.info(f"Filtered {invalid_count} questions with wrong types, kept {len(valid_questions)}")
+
+            # Add to collection
+            all_questions.extend(valid_questions)
+
+            # If we got enough, break
+            if len(all_questions) >= requested_count:
+                break
+
+        # Trim if we got too many
+        if len(all_questions) > requested_count:
+            logger.info(f"Trimming from {len(all_questions)} to {requested_count} questions")
+            all_questions = all_questions[:requested_count]
+
+        logger.info(f"Final result: {len(all_questions)} questions (requested: {requested_count})")
+
+        if len(all_questions) < requested_count:
+            logger.warning(f"Could not generate enough questions after {max_attempts} attempts")
+
+        # Ensure each question has skill_id from request
         skill_id_from_request = None
         if skill_data and "skill_id" in skill_data:
             skill_id_from_request = skill_data["skill_id"]
@@ -360,14 +408,16 @@ async def generate_questions_v2(
 
         # Inject skill_id into each question if not already present or if null
         if skill_id_from_request:
-            for question in questions:
+            for question in all_questions:
                 if not question.get("skill_id") or question.get("skill_id") == "null":
                     question["skill_id"] = skill_id_from_request
                     logger.debug(f"Injected skill_id {skill_id_from_request} into question")
 
-        # 6. Add metadata
+        # Add metadata
         metadata = {
-            "total_questions": len(questions),
+            "total_questions": len(all_questions),
+            "requested_questions": requested_count,
+            "generation_attempts": attempt,
             "generation_timestamp": datetime.now().isoformat(),
             "ai_model": LLM_MODEL,
             "skill_id": skill_data.get("skill_id") if skill_data else None,
@@ -375,9 +425,9 @@ async def generate_questions_v2(
             "language": normalized_request["language"]
         }
 
-        # 7. Return V2 format
+        # Return V2 format
         output = {
-            "questions": questions,
+            "questions": all_questions,
             "metadata": metadata
         }
 
