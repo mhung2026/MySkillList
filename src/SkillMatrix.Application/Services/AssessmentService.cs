@@ -542,7 +542,7 @@ public class AssessmentService : IAssessmentService
                         DetailedAnalysis = "Không có câu trả lời được gửi cho câu hỏi này."
                     };
                     questionResult.AiFeedback = blankFeedback;
-                    response.AiFeedback = JsonSerializer.Serialize(blankFeedback);
+                    response.AiGrading = JsonSerializer.Serialize(blankFeedback);
                 }
 
                 _context.AssessmentResponses.Add(response);
@@ -565,7 +565,7 @@ public class AssessmentService : IAssessmentService
                         {
                             QuestionId = question.Id,
                             QuestionContent = question.Content,
-                            ExpectedAnswer = question.ExpectedAnswer,
+                            ExpectedAnswer = null, // Not stored in Question entity, AI uses GradingRubric
                             GradingRubric = question.GradingRubric,
                             StudentAnswer = questionResult.UserAnswer,
                             MaxPoints = question.Points
@@ -585,7 +585,7 @@ public class AssessmentService : IAssessmentService
                                 ImprovementAreas = gradeResult.ImprovementAreas,
                                 DetailedAnalysis = gradeResult.DetailedAnalysis
                             };
-                            response.AiFeedback = JsonSerializer.Serialize(aiFeedbackDto);
+                            response.AiGrading = JsonSerializer.Serialize(aiFeedbackDto);
 
                             questionResult.PointsAwarded = gradeResult.PointsAwarded;
                             questionResult.IsCorrect = response.IsCorrect;
@@ -621,7 +621,7 @@ public class AssessmentService : IAssessmentService
                                 ImprovementAreas = new List<string> { gradeResult.Feedback }
                             };
                             questionResult.AiFeedback = failedFeedback;
-                            response.AiFeedback = JsonSerializer.Serialize(failedFeedback);
+                            response.AiGrading = JsonSerializer.Serialize(failedFeedback);
                         }
                     }
                     catch (Exception ex)
@@ -634,7 +634,7 @@ public class AssessmentService : IAssessmentService
                             ImprovementAreas = new List<string> { ex.Message }
                         };
                         questionResult.AiFeedback = errorFeedback;
-                        response.AiFeedback = JsonSerializer.Serialize(errorFeedback);
+                        response.AiGrading = JsonSerializer.Serialize(errorFeedback);
                     }
                 }
                 else if (response.IsCorrect.HasValue)
@@ -659,7 +659,7 @@ public class AssessmentService : IAssessmentService
                     // Essay question left blank - 0 points
                     response.PointsAwarded = 0;
                     response.IsCorrect = false;
-                    response.AiFeedback = JsonSerializer.Serialize(new AiFeedbackDto
+                    response.AiGrading = JsonSerializer.Serialize(new AiFeedbackDto
                     {
                         Feedback = "Câu hỏi bị bỏ trống - 0 điểm.",
                         ImprovementAreas = new List<string> { "Bạn cần trả lời câu hỏi này để được chấm điểm." }
@@ -830,16 +830,16 @@ public class AssessmentService : IAssessmentService
                 else pendingReview++;
 
                 // Parse AI feedback from database
-                if (!string.IsNullOrEmpty(response.AiFeedback))
+                if (!string.IsNullOrEmpty(response.AiGrading))
                 {
                     try
                     {
-                        questionResult.AiFeedback = JsonSerializer.Deserialize<AiFeedbackDto>(response.AiFeedback);
+                        questionResult.AiFeedback = JsonSerializer.Deserialize<AiFeedbackDto>(response.AiGrading);
                     }
                     catch
                     {
                         // If not valid JSON, create simple feedback object
-                        questionResult.AiFeedback = new AiFeedbackDto { Feedback = response.AiFeedback };
+                        questionResult.AiFeedback = new AiFeedbackDto { Feedback = response.AiGrading };
                     }
                 }
             }

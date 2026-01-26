@@ -84,20 +84,6 @@ A FastAPI service for generating assessment questions based on skill definitions
   }
   ```
 
-- `POST /get-keywords-table`: Get keywords table for document templates
-  ```json
-  // Request
-  {
-    "doc_template": "SAMPLE_TEMPLATE"
-  }
-
-  // Response
-  {
-    "doc_template": "SAMPLE_TEMPLATE",
-    "keywords_table": "{\"keywords\": [\"sample\", \"template\", \"test\"]}"
-  }
-  ```
-
 ### Health Check
 - `GET /health`: Check API health status
 - `GET /test`: Simple test endpoint
@@ -107,7 +93,6 @@ A FastAPI service for generating assessment questions based on skill definitions
 The API reads from PostgreSQL database with tables:
 - `public.Skills`: Skill definitions
 - `public.SkillLevelDefinitions`: Detailed level definitions for each skill
-- `public.ConfigDocTemplate`: Document template configurations
 
 Skill data is automatically formatted to match `input_skill_schema.json` for question generation.
       "name": "Skill Name",

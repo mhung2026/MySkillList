@@ -56,13 +56,15 @@ def build_prompt_v2(
     if skill_data:
         skill_name = skill_data.get("skill_name", "")
         skill_id_for_prompt = skill_data.get("skill_id")
+        skill_code = skill_data.get("skill_code", "")
         levels = skill_data.get("levels", [])
 
         skill_context = f"""
 SKILL: {skill_name}
+SKILL_CODE: {skill_code}
 SKILL_ID: {skill_id_for_prompt}
 
-PROFICIENCY LEVELS:
+PROFICIENCY LEVELS (SFIA Framework 1-7):
 """
         for level_data in levels:
             level_num = level_data["level"]
@@ -70,13 +72,21 @@ PROFICIENCY LEVELS:
             autonomy = level_data.get("autonomy", "")
             influence = level_data.get("influence", "")
             complexity = level_data.get("complexity", "")
+            business_skills = level_data.get("business_skills", "")
+            knowledge = level_data.get("knowledge", "")
+            behavioral_indicators = level_data.get("behavioral_indicators", "")
+            evidence_examples = level_data.get("evidence_examples", "")
 
             skill_context += f"""
-Level {level_num}:
-- Description: {desc}
-- Autonomy: {autonomy}
-- Influence: {influence}
-- Complexity: {complexity}
+=== Level {level_num} ===
+Description: {desc}
+Autonomy: {autonomy}
+Influence: {influence}
+Complexity: {complexity}
+Business Skills: {business_skills}
+Knowledge Required: {knowledge}
+Behavioral Indicators: {behavioral_indicators}
+Evidence Examples: {evidence_examples}
 """
     else:
         skill_context = "SKILL: General technical skill assessment\n"
@@ -112,11 +122,37 @@ QUESTION TYPES TO GENERATE:
         elif qtype == "Scenario":
             type_instructions += "  * Complex scenario with grading_rubric\n"
         elif qtype == "SituationalJudgment":
-            type_instructions += "  * 4 options with effectiveness_level (MostEffective/Effective/Ineffective/CounterProductive)\n"
+            type_instructions += """  * FORCED-CHOICE BEHAVIORAL ASSESSMENT (SJT)
+  * FIXED CONTEXT - Scenario MUST explicitly define:
+    - Task type (bug fix, feature, analysis, decision, coordination)
+    - Constraints (deadline, documentation availability, risk level)
+    - Authority conditions (leader available/unavailable)
+    - Scope clarity (clear/ambiguous)
+  * INSTRUCTION: "Choose the action you are MOST LIKELY to take in real life"
+  * EXACTLY 4 OPTIONS - Each option MUST:
+    - Be realistic and defensible (no obviously good/bad answers)
+    - Represent ONE dominant behavior dimension:
+      * Dependency (waiting for approval, close supervision)
+      * Autonomy (acting within scope, self-direction)
+      * Risk avoidance (minimizing exposure)
+      * Speed bias (acting before validation)
+      * Peer reliance (seeking consensus)
+    - Map to a SINGLE SFIA level:
+      * L1: Requires close supervision
+      * L2: Follows instructions, seeks confirmation
+      * L3: Works independently within defined scope
+      * L4: Takes responsibility for approach and quality
+  * TRADE-OFF ENFORCEMENT - Question MUST force trade-off between:
+    - Autonomy ↔ Safety
+    - Speed ↔ Quality
+    - Responsibility ↔ Escalation
+    - Initiative ↔ Compliance
+  * effectiveness_level maps to SFIA: MostEffective=L4, Effective=L3, Ineffective=L2, CounterProductive=L1
+"""
         elif qtype == "Rating":
             type_instructions += "  * 5 rating scale options, all marked as correct\n"
 
-    prompt = f"""You are an expert assessment question generator.
+    prompt = f"""You are an expert assessment question generator specializing in SFIA (Skills Framework for the Information Age) competency assessments.
 
 {skill_context}
 
@@ -124,6 +160,28 @@ QUESTION TYPES TO GENERATE:
 
 TASK:
 Generate exactly {num_questions} high-quality assessment questions in {lang_name}.
+
+CRITICAL INSTRUCTIONS - BEHAVIOR-BASED ASSESSMENT:
+
+CORE PRINCIPLE: Measure what the person is LIKELY TO DO under responsibility, NOT what they know is correct.
+
+AVOID in all questions:
+- Moral language ("you should", "it's wrong to")
+- "Best practice" framing
+- Knowledge recall (definitions, theory)
+- Obvious good/bad answers
+- Socially desirable answer patterns
+
+USE skill knowledge as follows:
+1. "Behavioral Indicators" → craft realistic workplace scenarios
+2. "Evidence Examples" → create authentic situational contexts
+3. "Autonomy/Influence/Complexity" → calibrate decision scope per level
+4. "Knowledge Required" → inform scenario background, NOT test recall
+
+LEVEL TARGETING:
+- L1-2: Scenarios requiring guidance, following instructions, seeking confirmation
+- L3-4: Scenarios requiring independent judgment within defined scope
+- L5-7: Scenarios requiring strategic decisions, organizational impact, leading others
 
 {type_instructions}
 
@@ -168,17 +226,19 @@ IMPORTANT RULES:
 4. For TrueFalse: Exactly 2 options (True/False)
 5. For ShortAnswer/LongAnswer: Include grading_rubric as JSON string
 6. For CodingChallenge: Include code_snippet and grading_rubric with test_cases
-7. For SituationalJudgment: 4 options with effectiveness_level
+7. For SituationalJudgment: 4 options with effectiveness_level, each representing distinct behavioral strategy mapped to SFIA level
 8. For Rating: 3-5 options, all with is_correct=true
 9. Use clear, professional language
 10. Ensure questions are at appropriate difficulty level
 11. Return ONLY the JSON, no markdown blocks or explanations
 
 Generate questions that are:
-- Practical and relevant to real-world scenarios
-- Clear and unambiguous
-- Appropriate for the skill level
-- Diverse in coverage across proficiency levels
+- Behavior-revealing: expose what candidates actually DO, not what they know
+- Realistic: authentic workplace scenarios with concrete constraints
+- Defensible options: every choice is rational in some context
+- Trade-off driven: force meaningful decisions between competing values
+- Level-differentiated: options map clearly to SFIA behavioral signatures
+- Unambiguous: clear context with defined constraints
 """
 
     return prompt

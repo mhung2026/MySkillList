@@ -116,6 +116,7 @@ public class QuestionsController : ControllerBase
         {
             SkillId = request.SkillId,
             SkillName = request.SkillName,
+            SkillCode = request.SkillCode,
             TargetLevel = request.TargetLevel,
             QuestionCount = request.QuestionCount > 0 ? request.QuestionCount : 5,
             QuestionTypes = request.QuestionTypes,

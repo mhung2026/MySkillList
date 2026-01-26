@@ -636,6 +636,8 @@ export interface AiGenerateQuestionsRequest {
   language: string;               // Required
   questionCount: number;          // Required
   skillId?: string;               // Optional
+  skillName?: string;             // Optional - Skill name for AI context
+  skillCode?: string;             // Optional - Skill code (e.g., ACIN, PROG)
   targetLevel?: ProficiencyLevel; // Optional
   difficulty?: DifficultyLevel;   // Optional
   additionalContext?: string;     // Optional

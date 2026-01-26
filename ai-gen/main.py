@@ -10,8 +10,7 @@ from datetime import datetime
 from src.validators.input_validator import validate_input_skill
 from src.validators.output_validator import validate_output_questions
 from src.generators.question_generator import generate_questions as generate_questions_from_llm
-from config.settings import DEBUG, GEMINI_API_KEY, OPENAI_API_KEY
-# from src.custom import getKeywordsTable, getSkillData, getAllSkillsList
+from config.settings import DEBUG, OPENAI_API_KEY
 
 # Import V2 routes
 from src.api import routes_v2
@@ -87,7 +86,6 @@ async def startup_event():
     logger.info("=" * 50)
     logger.info(f"DEBUG mode: {DEBUG}")
     logger.info(f"OpenAI API configured: {OPENAI_API_KEY is not None and len(OPENAI_API_KEY or '') > 0}")
-    logger.info(f"Gemini API configured: {GEMINI_API_KEY is not None}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -116,8 +114,7 @@ async def health_check():
     """Check API health status."""
     try:
         # Check OpenAI API key (primary) or Gemini (fallback)
-        api_ready = (OPENAI_API_KEY is not None and len(OPENAI_API_KEY) > 0) or \
-                    (GEMINI_API_KEY is not None and len(GEMINI_API_KEY) > 0)
+        api_ready = (OPENAI_API_KEY is not None and len(OPENAI_API_KEY) > 0)
     except:
         api_ready = False
 
@@ -218,68 +215,10 @@ async def generate_questions_endpoint(request: GenerateRequest = Body(...)):
         questions=questions
     )
 
-class DocTemplateRequest(BaseModel):
-    doc_template: str
-
-class SkillRequest(BaseModel):
-    skill_id: Optional[str] = None
-
 @app.get("/test", tags=["Test"])
 async def test_endpoint():
     """Simple test endpoint."""
     return {"message": "Test endpoint working"}
-
-@app.post("/get-keywords-table", tags=["Database"])
-async def get_keywords_table_endpoint(request: DocTemplateRequest):
-    """Get keywords table for a document template."""
-    try:
-        result = getKeywordsTable(request.doc_template)
-        if result is None:
-            raise HTTPException(status_code=404, detail=f"Document template '{request.doc_template}' not found")
-        return {"doc_template": request.doc_template, "keywords_table": result[0]}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Database error in get_keywords_table_endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-@app.get("/skills", tags=["Skills"])
-async def get_skills_list_endpoint():
-    """Get list of all available skills."""
-    try:
-        skills = getAllSkillsList()
-        return {"skills": skills, "total": len(skills)}
-    except Exception as e:
-        logger.error(f"Database error in get_skills_list_endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-@app.post("/get-skill-data", tags=["Skills"])
-async def get_skill_data_endpoint(request: SkillRequest = None):
-    """Get skill data formatted for question generation."""
-    try:
-        skill_data = getSkillData(request.skill_id if request else None)
-        if skill_data is None:
-            raise HTTPException(status_code=404, detail="No skill data found")
-        return skill_data
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Database error in get_skill_data_endpoint: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-@app.exception_handler(HTTPException)
-# async def get_keywords_table_endpoint(request: DocTemplateRequest):
-#     """Get keywords table for a document template."""
-#     try:
-#         result = getKeywordsTable(request.doc_template)
-#         if result is None:
-#             raise HTTPException(status_code=404, detail=f"Document template '{request.doc_template}' not found")
-#         return {"doc_template": request.doc_template, "keywords_table": result[0]}
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         logger.error(f"Database error in get_keywords_table_endpoint: {e}")
-#         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

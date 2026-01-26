@@ -244,8 +244,24 @@ export default function TestTemplateDetail() {
   };
 
   const handleAiGenerate = (values: Omit<GenerateAiQuestionsRequest, 'sectionId'>) => {
+    // Get skill name and code if skillId is selected
+    let skillName: string | undefined;
+    let skillCode: string | undefined;
+
+    if (values.skillId && skillsData?.data?.items) {
+      const selectedSkill = skillsData.data.items.find(
+        (s: SkillListDto) => s.id === values.skillId
+      );
+      if (selectedSkill) {
+        skillName = selectedSkill.name;
+        skillCode = selectedSkill.code;
+      }
+    }
+
     generateAiMutation.mutate({
       ...values,
+      skillName,
+      skillCode,
       sectionId: selectedSectionId,
     });
   };
