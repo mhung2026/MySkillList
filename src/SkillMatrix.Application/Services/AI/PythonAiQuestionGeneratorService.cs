@@ -10,18 +10,18 @@ using SkillMatrix.Domain.Enums;
 namespace SkillMatrix.Application.Services.AI;
 
 /// <summary>
-/// Real AI service implementation calling Python Gemini API
+/// AI service implementation calling Python API for question generation
 /// </summary>
-public class GeminiAiQuestionGeneratorService : IAiQuestionGeneratorService
+public class PythonAiQuestionGeneratorService : IAiQuestionGeneratorService
 {
     private readonly HttpClient _httpClient;
-    private readonly ILogger<GeminiAiQuestionGeneratorService> _logger;
+    private readonly ILogger<PythonAiQuestionGeneratorService> _logger;
     private readonly AiServiceOptions _options;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public GeminiAiQuestionGeneratorService(
+    public PythonAiQuestionGeneratorService(
         HttpClient httpClient,
-        ILogger<GeminiAiQuestionGeneratorService> logger,
+        ILogger<PythonAiQuestionGeneratorService> logger,
         IOptions<AiServiceOptions> options)
     {
         _httpClient = httpClient;
@@ -285,7 +285,7 @@ public class GeminiAiQuestionGeneratorService : IAiQuestionGeneratorService
         var metadata = pythonResponse.Metadata != null
             ? new AiGenerationMetadata
             {
-                Model = pythonResponse.Metadata.AiModel ?? "gemini-2.0-flash-exp",
+                Model = pythonResponse.Metadata.AiModel ?? "gpt-4o",
                 GeneratedAt = DateTime.TryParse(pythonResponse.Metadata.GenerationTimestamp, out var dt)
                     ? dt
                     : DateTime.UtcNow,
