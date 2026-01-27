@@ -233,12 +233,12 @@ def getSkillLevelDefinitionById(definition_id):
     return result
 
 
-def getCourseraCoursesBySkillCode(skill_code, limit=15):
+def getCourseraCoursesBySkillId(skill_id, limit=15):
     """
-    Get Coursera courses linked to a SFIA skill via SFIASkillCoursera junction table.
+    Get Coursera courses for a skill. CourseraCourse.SkillId maps directly to Skills.Id.
 
     Args:
-        skill_code (str): SFIA skill code (e.g., 'ACIN')
+        skill_id (str): Skill UUID (e.g., '30000000-0000-0000-0000-000000000078')
         limit (int): Max number of courses to return (default 15)
 
     Returns:
@@ -249,31 +249,30 @@ def getCourseraCoursesBySkillCode(skill_code, limit=15):
             cur.execute(
                 """
                 SELECT
-                    c."Id",
-                    c."Title",
-                    c."Url",
-                    c."Organization",
-                    c."Description",
-                    c."Rating",
-                    c."ReviewsCount",
-                    c."Duration",
-                    c."Level",
-                    c."Language",
-                    c."Skills",
-                    c."Syllabus",
-                    c."Prerequisites",
-                    c."CertificateAvailable"
-                FROM public."CourseraCourse" c
-                JOIN public."SFIASkillCoursera" s ON c."SkillId" = s."SkillId"
-                WHERE s."SkillCode" = %s
-                ORDER BY c."Rating" DESC NULLS LAST, c."ReviewsCount" DESC NULLS LAST
+                    "Id",
+                    "Title",
+                    "Url",
+                    "Organization",
+                    "Description",
+                    "Rating",
+                    "ReviewsCount",
+                    "Duration",
+                    "Level",
+                    "Language",
+                    "Skills",
+                    "Syllabus",
+                    "Prerequisites",
+                    "CertificateAvailable"
+                FROM public."CourseraCourse"
+                WHERE "SkillId" = %s
+                ORDER BY "Rating" DESC NULLS LAST, "ReviewsCount" DESC NULLS LAST
                 LIMIT %s
-                """, (skill_code, limit))
+                """, (skill_id, limit))
 
             columns = [desc[0] for desc in cur.description]
             rows = cur.fetchall()
             results = [dict(zip(columns, row)) for row in rows]
-            LOGGER.debug(f"Retrieved {len(results)} Coursera courses for skill code: {skill_code}")
+            LOGGER.debug(f"Retrieved {len(results)} Coursera courses for skill ID: {skill_id}")
 
     return results
 

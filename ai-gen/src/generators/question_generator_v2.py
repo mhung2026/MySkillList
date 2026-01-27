@@ -180,25 +180,71 @@ TYPE DISTRIBUTION RULE:
 - Vary the distribution naturally (e.g., for 5 questions with 3 types: 2-2-1 or 2-1-2)
 """
 
-    # Build level targeting instructions based on target_proficiency_level
+    # Extract available levels from skill data (levels that exist in DB)
+    skill_available_levels = []
+    if skill_data and "levels" in skill_data:
+        skill_available_levels = sorted([l["level"] for l in skill_data["levels"]])
+
+    # Build level targeting instructions based on target_proficiency_level AND available levels
     if target_proficiency_levels is not None and target_proficiency_levels > 0:
         max_level = min(target_proficiency_levels, 7)  # Cap at 7
-        levels_list = list(range(1, max_level + 1))
+
+        if skill_available_levels:
+            # Only target levels that actually exist in the skill's definition
+            levels_list = [l for l in skill_available_levels if l <= max_level]
+            if not levels_list:
+                # All available levels are above target - use all available
+                levels_list = skill_available_levels
+        else:
+            # No skill data available - fall back to full range
+            levels_list = list(range(1, max_level + 1))
+
         levels_str = ", ".join(str(l) for l in levels_list)
+        num_levels = len(levels_list)
+        min_level = min(levels_list)
 
         # Calculate minimum questions per level for coverage
-        min_per_level = max(1, num_questions // max_level)
+        min_per_level = max(1, num_questions // num_levels)
+
+        # Build behavioral signatures only for relevant levels
+        level_signatures = {
+            1: "L1 (Follow): Waits for instruction, avoids decisions, requires close supervision",
+            2: "L2 (Assist): Follows guidance, seeks confirmation, works under routine direction",
+            3: "L3 (Apply): Acts independently within defined scope, uses discretion",
+            4: "L4 (Enable): Owns approach and quality, substantial responsibility",
+            5: "L5 (Ensure/Advise): Influences others, ensures consistency across organization",
+            6: "L6 (Initiate/Influence): Initiates change under uncertainty, significant responsibility",
+            7: "L7 (Set Strategy): Sets long-term direction and vision, organization-wide impact",
+        }
+        relevant_signatures = "\n".join(f"- {level_signatures[l]}" for l in levels_list if l in level_signatures)
 
         level_targeting_instructions = f"""LEVEL TARGETING (MANDATORY):
 ⚠️ TARGET PROFICIENCY LEVEL: {max_level}
+⚠️ SKILL'S DEFINED LEVELS: [{levels_str}] (this skill only has definitions at these levels)
 ⚠️ ALLOWED LEVELS: Only generate questions with target_level in [{levels_str}]
-⚠️ DO NOT generate any question with target_level > {max_level}
+⚠️ DO NOT generate any question with target_level outside [{levels_str}]
 
 LEVEL COVERAGE REQUIREMENT:
-- You MUST cover ALL levels from 1 to {max_level}
+- You MUST cover ALL of these levels: [{levels_str}]
 - Each level MUST have at least 1 question
-- Distribute {num_questions} questions across {max_level} levels
+- Distribute {num_questions} questions across {num_levels} levels
 - Suggested minimum per level: {min_per_level} question(s)
+
+LEVEL BEHAVIORAL SIGNATURES:
+{relevant_signatures}
+
+For this assessment targeting Level {max_level} (starting from Level {min_level}):
+- Include questions at each defined level to verify progressive competency
+- Questions at lower levels verify foundational capability
+- Questions at higher levels verify advanced capability
+"""
+    elif skill_available_levels:
+        # No target level specified but we know the skill's available levels
+        levels_str = ", ".join(str(l) for l in skill_available_levels)
+        level_targeting_instructions = f"""LEVEL TARGETING:
+- This skill has definitions at levels: [{levels_str}]
+- Only generate questions with target_level in [{levels_str}]
+- Distribute questions across these available levels
 
 LEVEL BEHAVIORAL SIGNATURES:
 - L1 (Follow): Waits for instruction, avoids decisions, requires close supervision
@@ -208,14 +254,9 @@ LEVEL BEHAVIORAL SIGNATURES:
 - L5 (Ensure/Advise): Influences others, ensures consistency across organization
 - L6 (Initiate/Influence): Initiates change under uncertainty, significant responsibility
 - L7 (Set Strategy): Sets long-term direction and vision, organization-wide impact
-
-For this assessment targeting Level {max_level}:
-- Include foundational questions at L1-L2 (basic competency verification)
-- Include core questions at L3-L4 (independent work capability)
-{"- Include advanced questions at L5-" + str(max_level) + " (leadership/strategic capability)" if max_level >= 5 else ""}
 """
     else:
-        # Default behavior when no target level specified - allow all levels
+        # Default behavior when no target level and no skill data
         level_targeting_instructions = """LEVEL TARGETING:
 - L1-2: Scenarios requiring guidance, following instructions, seeking confirmation
 - L3-4: Scenarios requiring independent judgment within defined scope
@@ -435,7 +476,8 @@ async def generate_questions_v2(
             if invalid_count > 0:
                 logger.info(f"Filtered {invalid_count} questions with wrong types, kept {len(valid_questions)}")
 
-            # Filter out questions with target_level exceeding target_proficiency_level
+            # Filter out questions with target_level outside allowed range
+            # Considers both target_proficiency_level AND skill's available levels
             target_proficiency_raw = adjusted_request.get("target_proficiency_level")
             # Normalize: could be List[int] or int
             if isinstance(target_proficiency_raw, list) and len(target_proficiency_raw) > 0:
@@ -445,20 +487,32 @@ async def generate_questions_v2(
             else:
                 target_proficiency = None
 
-            if target_proficiency is not None and target_proficiency > 0:
-                max_allowed_level = min(target_proficiency, 7)
+            # Build set of allowed levels
+            allowed_levels_set = None
+            if skill_data and "levels" in skill_data:
+                skill_levels = sorted([l["level"] for l in skill_data["levels"]])
+                if target_proficiency is not None and target_proficiency > 0:
+                    allowed_levels_set = set(l for l in skill_levels if l <= min(target_proficiency, 7))
+                    if not allowed_levels_set:
+                        allowed_levels_set = set(skill_levels)
+                else:
+                    allowed_levels_set = set(skill_levels)
+            elif target_proficiency is not None and target_proficiency > 0:
+                allowed_levels_set = set(range(1, min(target_proficiency, 7) + 1))
+
+            if allowed_levels_set:
                 level_filtered = []
                 level_invalid_count = 0
                 for q in valid_questions:
                     q_level = q.get("target_level", 1)
-                    if isinstance(q_level, int) and 1 <= q_level <= max_allowed_level:
+                    if isinstance(q_level, int) and q_level in allowed_levels_set:
                         level_filtered.append(q)
                     else:
                         level_invalid_count += 1
-                        logger.warning(f"Filtered out question with target_level={q_level} (max allowed: {max_allowed_level})")
+                        logger.warning(f"Filtered out question with target_level={q_level} (allowed: {sorted(allowed_levels_set)})")
 
                 if level_invalid_count > 0:
-                    logger.info(f"Filtered {level_invalid_count} questions exceeding target level, kept {len(level_filtered)}")
+                    logger.info(f"Filtered {level_invalid_count} questions outside allowed levels, kept {len(level_filtered)}")
                 valid_questions = level_filtered
 
             # Add to collection

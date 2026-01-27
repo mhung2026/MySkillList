@@ -14,7 +14,7 @@ from db_skill_reader import (
     getDistinctSkillsWithLevels,
     getSkillLevelsBySkillId,
     getSkillLevelCount,
-    getCourseraCoursesBySkillCode
+    getCourseraCoursesBySkillId
 )
 from ..generators.question_generator_v2 import generate_questions_v2 as ai_generate_questions
 from ..generators.answer_grader import grade_answer as ai_grade_answer
@@ -606,11 +606,11 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
         if request.available_resources:
             resources_dict = [r.dict() for r in request.available_resources]
 
-        # Auto-fetch Coursera courses from DB if skill_code is provided
+        # Auto-fetch Coursera courses from DB if skill_id is provided
         coursera_courses = []
-        if request.skill_code:
+        if request.skill_id:
             try:
-                raw_courses = getCourseraCoursesBySkillCode(request.skill_code)
+                raw_courses = getCourseraCoursesBySkillId(request.skill_id)
                 for c in raw_courses:
                     coursera_courses.append({
                         "id": f"coursera-{c['Id']}",
@@ -628,7 +628,7 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
                         "syllabus": c.get("Syllabus"),
                         "prerequisites": c.get("Prerequisites"),
                     })
-                logger.info(f"Fetched {len(coursera_courses)} Coursera courses for skill code {request.skill_code}")
+                logger.info(f"Fetched {len(coursera_courses)} Coursera courses for skill ID {request.skill_id}")
             except Exception as e:
                 logger.warning(f"Failed to fetch Coursera courses: {e}")
 
@@ -746,6 +746,7 @@ class EvaluationDetails(BaseModel):
     """Detailed evaluation information."""
     method: str
     threshold: float
+    start_level: Optional[int] = None
     breakdown: List[EvaluationBreakdownItem]
     message: Optional[str] = None
 
@@ -754,7 +755,8 @@ class EvaluateAssessmentResponse(BaseModel):
     """Response from assessment evaluation."""
     skill_id: str
     skill_name: Optional[str] = None
-    current_level: int = Field(..., ge=0, le=7, description="Determined SFIA level (0 if L1 not passed)")
+    current_level: int = Field(..., ge=0, le=7, description="Determined SFIA level (0 if first level not passed)")
+    min_defined_level: int = Field(..., ge=1, le=7, description="Skill's lowest defined SFIA level (consecutive check starts here)")
     level_results: Dict[str, LevelResultItem]
     consecutive_levels_passed: int
     highest_level_with_responses: int
@@ -801,6 +803,16 @@ async def evaluate_assessment_endpoint(request: EvaluateAssessmentRequest):
         logger.info(f"Evaluating assessment for skill: {request.skill_id}")
         logger.debug(f"Number of responses: {len(request.responses)}")
 
+        # Query DB for skill's available levels
+        available_levels = None
+        try:
+            levels = getSkillLevelsBySkillId(request.skill_id)
+            if levels:
+                available_levels = sorted([l[0] for l in levels])
+                logger.info(f"Skill {request.skill_id} has defined levels: {available_levels}")
+        except Exception as e:
+            logger.warning(f"Could not fetch skill levels from DB: {e}")
+
         # Convert to dict format for evaluator
         assessment_data = {
             "skill_id": request.skill_id,
@@ -808,9 +820,9 @@ async def evaluate_assessment_endpoint(request: EvaluateAssessmentRequest):
             "responses": [r.dict() for r in request.responses]
         }
 
-        result = evaluate_assessment(assessment_data)
+        result = evaluate_assessment(assessment_data, available_levels=available_levels)
 
-        logger.info(f"Evaluation complete: CurrentLevel = {result['current_level']}")
+        logger.info(f"Evaluation complete: CurrentLevel = {result['current_level']} (min_defined_level={result['min_defined_level']})")
         return EvaluateAssessmentResponse(**result)
 
     except Exception as e:
@@ -834,20 +846,47 @@ async def evaluate_multiple_assessments_endpoint(request: EvaluateMultipleSkills
     try:
         logger.info(f"Evaluating {len(request.assessments)} skill assessments")
 
-        # Convert to dict format
-        assessments_data = [
-            {
+        # Evaluate each skill individually with its available levels from DB
+        results = []
+        total_levels = 0
+        skills_with_level = 0
+
+        for a in request.assessments:
+            # Query DB for each skill's available levels
+            available_levels = None
+            try:
+                levels = getSkillLevelsBySkillId(a.skill_id)
+                if levels:
+                    available_levels = sorted([l[0] for l in levels])
+            except Exception as e:
+                logger.warning(f"Could not fetch levels for skill {a.skill_id}: {e}")
+
+            assessment_data = {
                 "skill_id": a.skill_id,
                 "skill_name": a.skill_name,
                 "responses": [r.dict() for r in a.responses]
             }
-            for a in request.assessments
-        ]
 
-        result = evaluate_multiple_skills(assessments_data)
+            result = evaluate_assessment(assessment_data, available_levels=available_levels)
+            results.append(result)
 
-        logger.info(f"Multiple evaluations complete: {len(result['results'])} skills, avg level = {result['summary']['average_level']}")
-        return EvaluateMultipleSkillsResponse(**result)
+            if result["current_level"] > 0:
+                total_levels += result["current_level"]
+                skills_with_level += 1
+
+        average_level = round(total_levels / skills_with_level, 1) if skills_with_level > 0 else 0
+
+        final_result = {
+            "results": results,
+            "summary": {
+                "total_skills": len(request.assessments),
+                "skills_evaluated": skills_with_level,
+                "average_level": average_level
+            }
+        }
+
+        logger.info(f"Multiple evaluations complete: {len(results)} skills, avg level = {average_level}")
+        return EvaluateMultipleSkillsResponse(**final_result)
 
     except Exception as e:
         logger.error(f"Multiple assessment evaluation failed: {e}", exc_info=True)

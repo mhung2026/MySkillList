@@ -1,7 +1,8 @@
 """
 Assessment Evaluator
 Evaluates assessment responses and determines CurrentLevel using SFIA framework
-Bottom-up consecutive logic: CurrentLevel = highest level L where ALL levels 1→L have ≥70% correct
+Bottom-up consecutive logic: CurrentLevel = highest level L where ALL levels min→L have ≥70% correct
+(min = skill's lowest defined SFIA level, NOT always 1)
 """
 
 import logging
@@ -15,7 +16,8 @@ LEVEL_PASS_THRESHOLD = 0.70
 
 
 def evaluate_assessment(
-    assessment_data: Dict[str, Any]
+    assessment_data: Dict[str, Any],
+    available_levels: Optional[List[int]] = None
 ) -> Dict[str, Any]:
     """
     Evaluate assessment responses and determine CurrentLevel.
@@ -23,7 +25,8 @@ def evaluate_assessment(
     Uses bottom-up consecutive logic:
     - Groups responses by target_level
     - Calculates % correct per level
-    - CurrentLevel = highest consecutive level with ≥70% correct (starting from L1)
+    - CurrentLevel = highest consecutive level with ≥70% correct
+      starting from the skill's minimum defined level (NOT always L1)
 
     Args:
         assessment_data: {
@@ -40,26 +43,22 @@ def evaluate_assessment(
                 }
             ]
         }
+        available_levels: Optional list of SFIA levels defined for this skill
+            (e.g., [4,5,6] for a skill that only exists at L4-L6).
+            If not provided, derived from the responses.
 
     Returns:
         {
             "skill_id": "uuid",
             "skill_name": "optional",
-            "current_level": 1-7 or 0 (if L1 not passed),
-            "level_results": {
-                "1": {"total": 5, "correct": 4, "percentage": 80.0, "passed": true},
-                "2": {"total": 3, "correct": 2, "percentage": 66.7, "passed": false},
-                ...
-            },
-            "consecutive_levels_passed": 1,
-            "highest_level_with_responses": 4,
-            "total_questions": 15,
-            "overall_score_percentage": 72.5,
-            "evaluation_details": {
-                "method": "bottom_up_consecutive",
-                "threshold": 70,
-                "breakdown": [...]
-            }
+            "current_level": 0-7 (0 if first level not passed),
+            "min_defined_level": 1-7 (skill's lowest defined level),
+            "level_results": { ... },
+            "consecutive_levels_passed": int,
+            "highest_level_with_responses": int,
+            "total_questions": int,
+            "overall_score_percentage": float,
+            "evaluation_details": { ... }
         }
     """
     skill_id = assessment_data.get("skill_id")
@@ -67,11 +66,13 @@ def evaluate_assessment(
     responses = assessment_data.get("responses", [])
 
     if not responses:
+        start_level = min(available_levels) if available_levels and len(available_levels) > 0 else 1
         logger.warning("No responses provided for evaluation")
         return {
             "skill_id": skill_id,
             "skill_name": skill_name,
             "current_level": 0,
+            "min_defined_level": start_level,
             "level_results": {},
             "consecutive_levels_passed": 0,
             "highest_level_with_responses": 0,
@@ -80,6 +81,7 @@ def evaluate_assessment(
             "evaluation_details": {
                 "method": "bottom_up_consecutive",
                 "threshold": LEVEL_PASS_THRESHOLD * 100,
+                "start_level": start_level,
                 "breakdown": [],
                 "message": "No responses to evaluate"
             }
@@ -137,12 +139,25 @@ def evaluate_assessment(
             "passed": passed
         }
 
+    # Determine start level for consecutive check
+    # Priority: available_levels from DB > levels found in responses > default 1
+    if available_levels and len(available_levels) > 0:
+        start_level = min(available_levels)
+    elif level_responses:
+        start_level = min(level_responses.keys())
+    else:
+        start_level = 1
+
+    logger.info(f"Consecutive check starting from Level {start_level} "
+                f"(available_levels={available_levels}, response_levels={sorted(level_responses.keys()) if level_responses else []})")
+
     # Determine CurrentLevel using bottom-up consecutive logic
+    # Starting from the skill's minimum defined level, not always L1
     current_level = 0
     consecutive_passed = 0
     breakdown = []
 
-    for level in range(1, 8):
+    for level in range(start_level, 8):
         level_key = str(level)
         if level_key not in level_results:
             # No questions at this level - stop consecutive check
@@ -156,7 +171,7 @@ def evaluate_assessment(
         result = level_results[level_key]
         if result["passed"]:
             current_level = level
-            consecutive_passed = level
+            consecutive_passed += 1
             breakdown.append({
                 "level": level,
                 "status": "passed",
@@ -183,6 +198,7 @@ def evaluate_assessment(
         "skill_id": skill_id,
         "skill_name": skill_name,
         "current_level": current_level,
+        "min_defined_level": start_level,
         "level_results": level_results,
         "consecutive_levels_passed": consecutive_passed,
         "highest_level_with_responses": highest_level_with_responses,
@@ -191,6 +207,7 @@ def evaluate_assessment(
         "evaluation_details": {
             "method": "bottom_up_consecutive",
             "threshold": LEVEL_PASS_THRESHOLD * 100,
+            "start_level": start_level,
             "breakdown": breakdown
         }
     }

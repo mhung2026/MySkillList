@@ -570,54 +570,59 @@ Rank learning resources by relevance for a skill gap.
 Evaluate an assessment and determine CurrentLevel using SFIA bottom-up consecutive logic.
 
 **Logic:**
+- Looks up the skill's defined levels from DB (e.g., Strategic Planning only has levels [4,5,6,7])
 - Groups responses by target_level
 - Calculates % correct per level (70% threshold)
-- CurrentLevel = highest CONSECUTIVE level where ALL levels 1→L pass
+- CurrentLevel = highest CONSECUTIVE level where ALL levels from **min_defined_level** through L pass
+- **NOT** always from L1 -- starts from the skill's lowest defined level
 
-**Example:**
-- L1=80%, L2=75%, L3=60%, L4=85% → CurrentLevel = 2 (L3 failed, chain breaks)
-- L1=65%, L2=90%, L3=90% → CurrentLevel = 0 (L1 failed, no consecutive pass)
+**Example (skill with levels [4,5,6]):**
+- L4=80%, L5=75%, L6=60% → CurrentLevel = 5 (L6 failed, chain breaks)
+- L4=60%, L5=90%, L6=90% → CurrentLevel = 0 (L4 failed, chain never starts)
+
+**Example (skill with levels [1,2,3,4]):**
+- L1=80%, L2=75%, L3=60%, L4=85% → CurrentLevel = 2 (same as before)
 
 **Request:**
 ```json
 {
   "skill_id": "30000000-0000-0000-0000-000000000001",
-  "skill_name": "System Design",
+  "skill_name": "Strategic Planning",
   "responses": [
     {
       "question_id": "q1",
       "question_type": "MultipleChoice",
-      "target_level": 1,
+      "target_level": 4,
       "is_correct": true
     },
     {
       "question_id": "q2",
       "question_type": "MultipleChoice",
-      "target_level": 1,
+      "target_level": 4,
       "is_correct": true
     },
     {
       "question_id": "q3",
       "question_type": "MultipleChoice",
-      "target_level": 2,
+      "target_level": 5,
       "is_correct": true
     },
     {
       "question_id": "q4",
       "question_type": "MultipleChoice",
-      "target_level": 2,
+      "target_level": 5,
       "is_correct": false
     },
     {
       "question_id": "q5",
       "question_type": "SituationalJudgment",
-      "target_level": 3,
+      "target_level": 6,
       "is_correct": true
     },
     {
       "question_id": "q6",
       "question_type": "ShortAnswer",
-      "target_level": 3,
+      "target_level": 6,
       "score": 80,
       "max_score": 100
     }
@@ -629,7 +634,7 @@ Evaluate an assessment and determine CurrentLevel using SFIA bottom-up consecuti
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| skill_id | string | Yes | Skill ID being assessed |
+| skill_id | string | Yes | Skill ID being assessed (used to look up defined levels from DB) |
 | skill_name | string | No | Skill name (optional) |
 | responses | array | Yes | List of assessment responses |
 
@@ -650,22 +655,23 @@ Evaluate an assessment and determine CurrentLevel using SFIA bottom-up consecuti
 ```json
 {
   "skill_id": "30000000-0000-0000-0000-000000000001",
-  "skill_name": "System Design",
-  "current_level": 2,
+  "skill_name": "Strategic Planning",
+  "current_level": 4,
+  "min_defined_level": 4,
   "level_results": {
-    "1": {
+    "4": {
       "total": 2,
       "correct": 2,
       "percentage": 100.0,
       "passed": true
     },
-    "2": {
+    "5": {
       "total": 2,
       "correct": 1,
       "percentage": 50.0,
       "passed": false
     },
-    "3": {
+    "6": {
       "total": 2,
       "correct": 2,
       "percentage": 100.0,
@@ -673,29 +679,42 @@ Evaluate an assessment and determine CurrentLevel using SFIA bottom-up consecuti
     }
   },
   "consecutive_levels_passed": 1,
-  "highest_level_with_responses": 3,
+  "highest_level_with_responses": 6,
   "total_questions": 6,
   "overall_score_percentage": 83.3,
   "evaluation_details": {
     "method": "bottom_up_consecutive",
     "threshold": 70,
+    "start_level": 4,
     "breakdown": [
       {
-        "level": 1,
+        "level": 4,
         "status": "passed",
         "percentage": 100.0,
-        "message": "Level 1 passed (100.0% >= 70%)"
+        "message": "Level 4 passed (100.0% >= 70%)"
       },
       {
-        "level": 2,
+        "level": 5,
         "status": "failed",
         "percentage": 50.0,
-        "message": "Level 2 failed (50.0% < 70%)"
+        "message": "Level 5 failed (50.0% < 70%)"
       }
     ]
   }
 }
 ```
+
+**New Response Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| min_defined_level | int | Skill's lowest defined SFIA level (consecutive check starts here) |
+| evaluation_details.start_level | int | Same as min_defined_level (included in details for clarity) |
+
+**Notes:**
+- The endpoint queries `SkillLevelDefinitions` by `skill_id` to determine the skill's available levels
+- If no DB data found, falls back to deriving start level from the responses
+- 92.5% of SFIA skills start above Level 1 (e.g., Strategic Planning starts at L4)
 
 ### POST /evaluate-assessments
 Evaluate multiple skill assessments at once.
@@ -705,19 +724,19 @@ Evaluate multiple skill assessments at once.
 {
   "assessments": [
     {
-      "skill_id": "skill-1",
-      "skill_name": "System Design",
+      "skill_id": "skill-itsp",
+      "skill_name": "Strategic Planning",
       "responses": [
-        {"question_id": "q1", "question_type": "MultipleChoice", "target_level": 1, "is_correct": true},
-        {"question_id": "q2", "question_type": "MultipleChoice", "target_level": 2, "is_correct": true}
+        {"question_id": "q1", "question_type": "MultipleChoice", "target_level": 4, "is_correct": true},
+        {"question_id": "q2", "question_type": "MultipleChoice", "target_level": 5, "is_correct": true}
       ]
     },
     {
-      "skill_id": "skill-2",
-      "skill_name": "Python",
+      "skill_id": "skill-prog",
+      "skill_name": "Programming",
       "responses": [
-        {"question_id": "q3", "question_type": "MultipleChoice", "target_level": 1, "is_correct": true},
-        {"question_id": "q4", "question_type": "CodingChallenge", "target_level": 2, "score": 85, "max_score": 100}
+        {"question_id": "q3", "question_type": "MultipleChoice", "target_level": 2, "is_correct": true},
+        {"question_id": "q4", "question_type": "CodingChallenge", "target_level": 3, "score": 85, "max_score": 100}
       ]
     }
   ]
@@ -729,23 +748,25 @@ Evaluate multiple skill assessments at once.
 {
   "results": [
     {
-      "skill_id": "skill-1",
-      "skill_name": "System Design",
-      "current_level": 2,
+      "skill_id": "skill-itsp",
+      "skill_name": "Strategic Planning",
+      "current_level": 5,
+      "min_defined_level": 4,
       "level_results": {...},
       "consecutive_levels_passed": 2,
-      "highest_level_with_responses": 2,
+      "highest_level_with_responses": 5,
       "total_questions": 2,
       "overall_score_percentage": 100.0,
       "evaluation_details": {...}
     },
     {
-      "skill_id": "skill-2",
-      "skill_name": "Python",
-      "current_level": 2,
+      "skill_id": "skill-prog",
+      "skill_name": "Programming",
+      "current_level": 3,
+      "min_defined_level": 2,
       "level_results": {...},
       "consecutive_levels_passed": 2,
-      "highest_level_with_responses": 2,
+      "highest_level_with_responses": 3,
       "total_questions": 2,
       "overall_score_percentage": 100.0,
       "evaluation_details": {...}
@@ -754,7 +775,7 @@ Evaluate multiple skill assessments at once.
   "summary": {
     "total_skills": 2,
     "skills_evaluated": 2,
-    "average_level": 2.0
+    "average_level": 4.0
   }
 }
 ```
