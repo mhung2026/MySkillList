@@ -66,7 +66,10 @@ def getSkillLevelDefinitions(skill_id=None, level=None):
 
 def getSkillLevelsBySkillId(skill_id):
     """
-    Get all level definitions for a specific skill.
+    Get level definitions for a specific skill, filtered by ApplicableLevels.
+
+    Only returns levels listed in the skill's ApplicableLevels column (e.g., "4,5,6,7").
+    If ApplicableLevels is NULL, returns all levels for backward compatibility.
 
     Args:
         skill_id (str): The skill ID to query
@@ -94,6 +97,12 @@ def getSkillLevelsBySkillId(skill_id):
                     AND NOT s."IsDeleted"
                     AND s."IsActive" = true
                     AND sld."SkillId" = %s
+                    AND (
+                        s."ApplicableLevels" IS NULL
+                        OR sld."Level" = ANY(
+                            SELECT unnest(string_to_array(s."ApplicableLevels", ','))::int
+                        )
+                    )
                 ORDER BY sld."Level"
                 """, (skill_id,))
             results = cur.fetchall()

@@ -186,6 +186,16 @@ TYPE DISTRIBUTION RULE:
         skill_available_levels = sorted([l["level"] for l in skill_data["levels"]])
 
     # Build level targeting instructions based on target_proficiency_level AND available levels
+    level_signatures = {
+        1: "L1 (Follow): Waits for instruction, avoids decisions, requires close supervision",
+        2: "L2 (Assist): Follows guidance, seeks confirmation, works under routine direction",
+        3: "L3 (Apply): Acts independently within defined scope, uses discretion",
+        4: "L4 (Enable): Owns approach and quality, substantial responsibility",
+        5: "L5 (Ensure/Advise): Influences others, ensures consistency across organization",
+        6: "L6 (Initiate/Influence): Initiates change under uncertainty, significant responsibility",
+        7: "L7 (Set Strategy): Sets long-term direction and vision, organization-wide impact",
+    }
+
     if target_proficiency_levels is not None and target_proficiency_levels > 0:
         max_level = min(target_proficiency_levels, 7)  # Cap at 7
 
@@ -196,8 +206,14 @@ TYPE DISTRIBUTION RULE:
                 # All available levels are above target - use all available
                 levels_list = skill_available_levels
         else:
-            # No skill data available - fall back to full range
+            # No skill data available - fall back to range up to target
             levels_list = list(range(1, max_level + 1))
+
+        # Trim to closest-to-target levels when num_questions < num_levels
+        # E.g., skill L1-5, target=5, 3 questions → gen L3,L4,L5 (closest to target)
+        if num_questions < len(levels_list):
+            levels_list = levels_list[-num_questions:]
+            logger.info(f"Trimmed levels to {levels_list} (num_questions={num_questions} < available levels)")
 
         levels_str = ", ".join(str(l) for l in levels_list)
         num_levels = len(levels_list)
@@ -206,16 +222,6 @@ TYPE DISTRIBUTION RULE:
         # Calculate minimum questions per level for coverage
         min_per_level = max(1, num_questions // num_levels)
 
-        # Build behavioral signatures only for relevant levels
-        level_signatures = {
-            1: "L1 (Follow): Waits for instruction, avoids decisions, requires close supervision",
-            2: "L2 (Assist): Follows guidance, seeks confirmation, works under routine direction",
-            3: "L3 (Apply): Acts independently within defined scope, uses discretion",
-            4: "L4 (Enable): Owns approach and quality, substantial responsibility",
-            5: "L5 (Ensure/Advise): Influences others, ensures consistency across organization",
-            6: "L6 (Initiate/Influence): Initiates change under uncertainty, significant responsibility",
-            7: "L7 (Set Strategy): Sets long-term direction and vision, organization-wide impact",
-        }
         relevant_signatures = "\n".join(f"- {level_signatures[l]}" for l in levels_list if l in level_signatures)
 
         level_targeting_instructions = f"""LEVEL TARGETING (MANDATORY):
@@ -239,21 +245,25 @@ For this assessment targeting Level {max_level} (starting from Level {min_level}
 - Questions at higher levels verify advanced capability
 """
     elif skill_available_levels:
-        # No target level specified but we know the skill's available levels
-        levels_str = ", ".join(str(l) for l in skill_available_levels)
+        # No target level specified - use ALL available levels from DB
+        levels_list = skill_available_levels
+
+        # Trim to highest N levels when num_questions < num_levels
+        if num_questions < len(levels_list):
+            levels_list = levels_list[-num_questions:]
+            logger.info(f"No target: trimmed levels to {levels_list} (num_questions={num_questions})")
+
+        levels_str = ", ".join(str(l) for l in levels_list)
+        num_levels = len(levels_list)
+        relevant_signatures = "\n".join(f"- {level_signatures[l]}" for l in levels_list if l in level_signatures)
+
         level_targeting_instructions = f"""LEVEL TARGETING:
 - This skill has definitions at levels: [{levels_str}]
 - Only generate questions with target_level in [{levels_str}]
 - Distribute questions across these available levels
 
 LEVEL BEHAVIORAL SIGNATURES:
-- L1 (Follow): Waits for instruction, avoids decisions, requires close supervision
-- L2 (Assist): Follows guidance, seeks confirmation, works under routine direction
-- L3 (Apply): Acts independently within defined scope, uses discretion
-- L4 (Enable): Owns approach and quality, substantial responsibility
-- L5 (Ensure/Advise): Influences others, ensures consistency across organization
-- L6 (Initiate/Influence): Initiates change under uncertainty, significant responsibility
-- L7 (Set Strategy): Sets long-term direction and vision, organization-wide impact
+{relevant_signatures}
 """
     else:
         # Default behavior when no target level and no skill data
@@ -342,7 +352,7 @@ IMPORTANT RULES:
 10. Use clear, professional language
 11. Ensure questions are at appropriate difficulty level
 12. Return ONLY the JSON, no markdown blocks or explanations
-13. ⚠️ LEVEL COVERAGE: If target_proficiency_level is specified, ensure ALL levels from 1 to that level are covered with at least 1 question each
+13. ⚠️ LEVEL COVERAGE: If target_proficiency_level is specified, ensure ALL ALLOWED levels are covered with at least 1 question each (start from the skill's minimum defined level, NOT from level 1)
 
 Generate questions that are:
 - Behavior-revealing: expose what candidates actually DO, not what they know
@@ -478,6 +488,7 @@ async def generate_questions_v2(
 
             # Filter out questions with target_level outside allowed range
             # Considers both target_proficiency_level AND skill's available levels
+            # Also trims to closest-to-target levels when num_questions < num_levels
             target_proficiency_raw = adjusted_request.get("target_proficiency_level")
             # Normalize: could be List[int] or int
             if isinstance(target_proficiency_raw, list) and len(target_proficiency_raw) > 0:
@@ -487,18 +498,25 @@ async def generate_questions_v2(
             else:
                 target_proficiency = None
 
-            # Build set of allowed levels
+            # Build set of allowed levels (matching prompt builder logic)
             allowed_levels_set = None
             if skill_data and "levels" in skill_data:
                 skill_levels = sorted([l["level"] for l in skill_data["levels"]])
                 if target_proficiency is not None and target_proficiency > 0:
-                    allowed_levels_set = set(l for l in skill_levels if l <= min(target_proficiency, 7))
-                    if not allowed_levels_set:
-                        allowed_levels_set = set(skill_levels)
+                    eligible = [l for l in skill_levels if l <= min(target_proficiency, 7)]
+                    if not eligible:
+                        eligible = skill_levels
                 else:
-                    allowed_levels_set = set(skill_levels)
+                    eligible = skill_levels
+                # Trim to closest-to-target when fewer questions than levels
+                if requested_count < len(eligible):
+                    eligible = eligible[-requested_count:]
+                allowed_levels_set = set(eligible)
             elif target_proficiency is not None and target_proficiency > 0:
-                allowed_levels_set = set(range(1, min(target_proficiency, 7) + 1))
+                eligible = list(range(1, min(target_proficiency, 7) + 1))
+                if requested_count < len(eligible):
+                    eligible = eligible[-requested_count:]
+                allowed_levels_set = set(eligible)
 
             if allowed_levels_set:
                 level_filtered = []
@@ -546,6 +564,13 @@ async def generate_questions_v2(
                     question["skill_id"] = skill_id_from_request
                     logger.debug(f"Injected skill_id {skill_id_from_request} into question")
 
+        # Compute available levels from skill data
+        available_levels = None
+        min_defined_level = None
+        if skill_data and "levels" in skill_data:
+            available_levels = sorted([l["level"] for l in skill_data["levels"]])
+            min_defined_level = available_levels[0] if available_levels else None
+
         # Add metadata
         metadata = {
             "total_questions": len(all_questions),
@@ -556,7 +581,9 @@ async def generate_questions_v2(
             "skill_id": skill_data.get("skill_id") if skill_data else None,
             "skill_name": skill_data.get("skill_name") if skill_data else None,
             "language": normalized_request["language"],
-            "target_proficiency_level": normalized_request.get("target_proficiency_level")
+            "target_proficiency_level": normalized_request.get("target_proficiency_level"),
+            "available_levels": available_levels,
+            "min_defined_level": min_defined_level
         }
 
         # Return V2 format
