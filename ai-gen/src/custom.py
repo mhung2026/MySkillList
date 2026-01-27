@@ -107,7 +107,10 @@ def getSkillData(skill_id: str = None):
                            sld."BehavioralIndicators", sld."EvidenceExamples"
                     FROM public."Skills" s
                     JOIN public."SkillLevelDefinitions" sld ON s."Id" = sld."SkillId"
-                    WHERE s."Id" = %s AND NOT s."IsDeleted" AND NOT sld."IsDeleted"
+                    WHERE s."Id" = %s
+                        AND NOT s."IsDeleted"
+                        AND NOT sld."IsDeleted"
+                        AND s."IsActive" = true
                     ORDER BY sld."Level";
                 """, (skill_id,))
             else:
@@ -119,7 +122,9 @@ def getSkillData(skill_id: str = None):
                            sld."BehavioralIndicators", sld."EvidenceExamples"
                     FROM public."Skills" s
                     JOIN public."SkillLevelDefinitions" sld ON s."Id" = sld."SkillId"
-                    WHERE NOT s."IsDeleted" AND NOT sld."IsDeleted"
+                    WHERE NOT s."IsDeleted"
+                        AND NOT sld."IsDeleted"
+                        AND s."IsActive" = true
                     ORDER BY s."Id", sld."Level"
                     LIMIT 10;
                 """)
@@ -177,6 +182,7 @@ def getAllSkillsList():
                 SELECT s."Id", s."Name", s."Code"
                 FROM public."Skills" s
                 WHERE NOT s."IsDeleted"
+                    AND s."IsActive" = true
                 ORDER BY s."Name";
             """)
             skills = cur.fetchall()

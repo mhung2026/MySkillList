@@ -67,6 +67,9 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 // Dashboard Services
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 
+// Employee Profile Services
+builder.Services.AddScoped<IEmployeeProfileService, EmployeeProfileService>();
+
 // Configuration Services
 builder.Services.AddScoped<SystemEnumService>();
 

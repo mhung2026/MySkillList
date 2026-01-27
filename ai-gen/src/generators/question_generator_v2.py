@@ -99,9 +99,15 @@ ADDITIONAL CONTEXT:
 {context}
 """
 
-    # Build question type instructions
-    type_instructions = """
-QUESTION TYPES TO GENERATE:
+    # Calculate type distribution
+    num_types = len(question_types)
+    base_per_type = num_questions // num_types
+    remainder = num_questions % num_types
+
+    # Build question type instructions with distribution
+    type_instructions = f"""
+QUESTION TYPES TO GENERATE ({num_questions} questions total across {num_types} types):
+Distribution: Generate approximately {base_per_type} question(s) per type{f", with {remainder} extra distributed among types" if remainder > 0 else ""}.
 """
     for qtype in question_types:
         type_instructions += f"- {qtype}\n"
@@ -152,6 +158,19 @@ QUESTION TYPES TO GENERATE:
         elif qtype == "Rating":
             type_instructions += "  * 5 rating scale options, all marked as correct\n"
 
+    # Add distribution reminder
+    allowed_types_str = ", ".join(question_types)
+    type_instructions += f"""
+TYPE DISTRIBUTION RULE:
+- Total questions required: {num_questions}
+- Number of types: {num_types}
+- ⚠️ ONLY USE THESE EXACT TYPES: [{allowed_types_str}]
+- DO NOT generate any other question types
+- Distribute questions across ALL listed types
+- Each type should have at least 1 question if possible
+- Vary the distribution naturally (e.g., for 5 questions with 3 types: 2-2-1 or 2-1-2)
+"""
+
     prompt = f"""You are an expert assessment question generator specializing in SFIA (Skills Framework for the Information Age) competency assessments.
 
 {skill_context}
@@ -159,7 +178,8 @@ QUESTION TYPES TO GENERATE:
 {additional_context_text}
 
 TASK:
-Generate exactly {num_questions} high-quality assessment questions in {lang_name}.
+Generate EXACTLY {num_questions} assessment questions in {lang_name}.
+⚠️ QUANTITY REQUIREMENT: You MUST generate exactly {num_questions} questions - no more, no less. This is mandatory.
 
 CRITICAL INSTRUCTIONS - BEHAVIOR-BASED ASSESSMENT:
 
@@ -220,17 +240,18 @@ Return ONLY valid JSON matching this exact schema (no markdown, no explanations)
 }}
 
 IMPORTANT RULES:
-1. Use the exact skill_id provided above for ALL questions (do not generate random UUIDs)
-2. For MultipleChoice: Exactly 1 option with is_correct=true
-3. For MultipleAnswer: 2+ options with is_correct=true
-4. For TrueFalse: Exactly 2 options (True/False)
-5. For ShortAnswer/LongAnswer: Include grading_rubric as JSON string
-6. For CodingChallenge: Include code_snippet and grading_rubric with test_cases
-7. For SituationalJudgment: 4 options with effectiveness_level, each representing distinct behavioral strategy mapped to SFIA level
-8. For Rating: 3-5 options, all with is_correct=true
-9. Use clear, professional language
-10. Ensure questions are at appropriate difficulty level
-11. Return ONLY the JSON, no markdown blocks or explanations
+1. ⚠️ MANDATORY: Generate EXACTLY {num_questions} questions. Count them before responding.
+2. Use the exact skill_id provided above for ALL questions (do not generate random UUIDs)
+3. For MultipleChoice: Exactly 1 option with is_correct=true
+4. For MultipleAnswer: 2+ options with is_correct=true
+5. For TrueFalse: Exactly 2 options (True/False)
+6. For ShortAnswer/LongAnswer: Include grading_rubric as JSON string
+7. For CodingChallenge: Include code_snippet and grading_rubric with test_cases
+8. For SituationalJudgment: 4 options with effectiveness_level, each representing distinct behavioral strategy mapped to SFIA level
+9. For Rating: 3-5 options, all with is_correct=true
+10. Use clear, professional language
+11. Ensure questions are at appropriate difficulty level
+12. Return ONLY the JSON, no markdown blocks or explanations
 
 Generate questions that are:
 - Behavior-revealing: expose what candidates actually DO, not what they know
@@ -239,6 +260,8 @@ Generate questions that are:
 - Trade-off driven: force meaningful decisions between competing values
 - Level-differentiated: options map clearly to SFIA behavioral signatures
 - Unambiguous: clear context with defined constraints
+
+FINAL CHECK: Your response MUST contain exactly {num_questions} question objects in the "questions" array.
 """
 
     return prompt
@@ -250,6 +273,7 @@ async def generate_questions_v2(
 ) -> Dict[str, Any]:
     """
     Generate questions using Azure OpenAI with V2 schema.
+    Implements retry logic to ensure exact question count.
 
     Args:
         normalized_request: Validated request from request_validator
@@ -258,69 +282,124 @@ async def generate_questions_v2(
     Returns:
         Dict with 'questions' and 'metadata' matching output_question_schema_v2
     """
-    logger.info("Starting AI question generation with Azure OpenAI")
+    requested_count = normalized_request["number_of_questions"]
+    logger.info(f"Starting AI question generation: {requested_count} questions requested")
     logger.debug(f"Request: {normalized_request}")
 
+    all_questions = []
+    max_attempts = 3
+    attempt = 0
+
     try:
-        # 1. Build prompt
-        prompt = build_prompt_v2(normalized_request, skill_data)
-        logger.debug(f"Prompt built: {len(prompt)} characters")
+        while len(all_questions) < requested_count and attempt < max_attempts:
+            attempt += 1
+            remaining = requested_count - len(all_questions)
 
-        # 2. Call Azure OpenAI API
-        logger.info(f"Calling Azure OpenAI API with model: {LLM_MODEL}")
+            # Adjust request for remaining questions
+            adjusted_request = normalized_request.copy()
+            adjusted_request["number_of_questions"] = remaining
 
-        client = get_client()
-        response = await client.chat.completions.create(
-            model=LLM_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert assessment question generator. You always return valid JSON without markdown formatting."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.7,
-            max_tokens=8192,
-            response_format={"type": "json_object"}
-        )
+            logger.info(f"Attempt {attempt}/{max_attempts}: Generating {remaining} questions")
 
-        logger.info("Received response from Azure OpenAI")
+            # Build prompt
+            prompt = build_prompt_v2(adjusted_request, skill_data)
+            logger.debug(f"Prompt built: {len(prompt)} characters")
 
-        # 3. Parse response
-        response_text = response.choices[0].message.content.strip()
-        logger.debug(f"Response length: {len(response_text)} characters")
+            # Calculate max_tokens - be generous
+            # SJT questions are ~600-1000 tokens each
+            estimated_tokens = remaining * 1000 + 1000  # 1000 per question + buffer
+            max_tokens = min(max(estimated_tokens, 8192), 16000)
 
-        # Remove markdown code blocks if present
-        if response_text.startswith("```"):
-            logger.debug("Removing markdown code blocks")
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
+            client = get_client()
+            response = await client.chat.completions.create(
+                model=LLM_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"You are an expert assessment question generator. Return valid JSON only. CRITICAL: Generate EXACTLY {remaining} questions - count them before responding."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.7,
+                max_tokens=max_tokens,
+                response_format={"type": "json_object"}
+            )
 
-        # 4. Parse JSON
-        try:
-            result = json.loads(response_text)
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON parse error: {e}")
-            logger.error(f"Response text: {response_text[:500]}...")
-            raise ValueError(f"Failed to parse AI response as JSON: {str(e)}")
+            logger.info("Received response from Azure OpenAI")
 
-        # 5. Validate structure
-        if "questions" not in result:
-            logger.warning("Response missing 'questions' key, attempting to wrap")
-            if isinstance(result, list):
-                result = {"questions": result}
-            else:
-                raise ValueError("Response does not contain 'questions' array")
+            # Parse response
+            response_text = response.choices[0].message.content.strip()
+            logger.debug(f"Response length: {len(response_text)} characters")
 
-        questions = result["questions"]
-        logger.info(f"Generated {len(questions)} questions")
+            # Remove markdown code blocks if present
+            if response_text.startswith("```"):
+                logger.debug("Removing markdown code blocks")
+                response_text = response_text.split("```")[1]
+                if response_text.startswith("json"):
+                    response_text = response_text[4:]
+                response_text = response_text.strip()
 
-        # 5.5. Ensure each question has skill_id from request
+            # Parse JSON
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON parse error: {e}")
+                logger.error(f"Response text: {response_text[:500]}...")
+                if attempt < max_attempts:
+                    logger.info("Retrying due to JSON parse error...")
+                    continue
+                raise ValueError(f"Failed to parse AI response as JSON: {str(e)}")
+
+            # Validate structure
+            if "questions" not in result:
+                logger.warning("Response missing 'questions' key, attempting to wrap")
+                if isinstance(result, list):
+                    result = {"questions": result}
+                else:
+                    if attempt < max_attempts:
+                        logger.info("Retrying due to invalid structure...")
+                        continue
+                    raise ValueError("Response does not contain 'questions' array")
+
+            batch_questions = result["questions"]
+            logger.info(f"Attempt {attempt}: Got {len(batch_questions)} questions (needed {remaining})")
+
+            # Filter out questions with invalid types
+            allowed_types = set(adjusted_request["question_type"])
+            valid_questions = []
+            invalid_count = 0
+            for q in batch_questions:
+                q_type = q.get("type", "")
+                if q_type in allowed_types:
+                    valid_questions.append(q)
+                else:
+                    invalid_count += 1
+                    logger.warning(f"Filtered out question with invalid type: '{q_type}' (allowed: {allowed_types})")
+
+            if invalid_count > 0:
+                logger.info(f"Filtered {invalid_count} questions with wrong types, kept {len(valid_questions)}")
+
+            # Add to collection
+            all_questions.extend(valid_questions)
+
+            # If we got enough, break
+            if len(all_questions) >= requested_count:
+                break
+
+        # Trim if we got too many
+        if len(all_questions) > requested_count:
+            logger.info(f"Trimming from {len(all_questions)} to {requested_count} questions")
+            all_questions = all_questions[:requested_count]
+
+        logger.info(f"Final result: {len(all_questions)} questions (requested: {requested_count})")
+
+        if len(all_questions) < requested_count:
+            logger.warning(f"Could not generate enough questions after {max_attempts} attempts")
+
+        # Ensure each question has skill_id from request
         skill_id_from_request = None
         if skill_data and "skill_id" in skill_data:
             skill_id_from_request = skill_data["skill_id"]
@@ -329,14 +408,16 @@ async def generate_questions_v2(
 
         # Inject skill_id into each question if not already present or if null
         if skill_id_from_request:
-            for question in questions:
+            for question in all_questions:
                 if not question.get("skill_id") or question.get("skill_id") == "null":
                     question["skill_id"] = skill_id_from_request
                     logger.debug(f"Injected skill_id {skill_id_from_request} into question")
 
-        # 6. Add metadata
+        # Add metadata
         metadata = {
-            "total_questions": len(questions),
+            "total_questions": len(all_questions),
+            "requested_questions": requested_count,
+            "generation_attempts": attempt,
             "generation_timestamp": datetime.now().isoformat(),
             "ai_model": LLM_MODEL,
             "skill_id": skill_data.get("skill_id") if skill_data else None,
@@ -344,9 +425,9 @@ async def generate_questions_v2(
             "language": normalized_request["language"]
         }
 
-        # 7. Return V2 format
+        # Return V2 format
         output = {
-            "questions": questions,
+            "questions": all_questions,
             "metadata": metadata
         }
 
