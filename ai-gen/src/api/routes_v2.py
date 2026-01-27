@@ -51,7 +51,7 @@ class GradeAnswerRequest(BaseModel):
     max_points: int = Field(..., ge=1, description="Maximum points for this question")
     grading_rubric: Optional[Any] = Field(None, description="Grading criteria (JSON string or dict)")
     expected_answer: Optional[str] = Field(None, description="Expected/model answer")
-    question_type: Optional[str] = Field(None, description="Question type (ShortAnswer, LongAnswer, Scenario, etc.)")
+    question_type: Optional[Any] = Field(None, description="Question type (string name or integer code)")
     language: Optional[str] = Field("en", description="Response language (en/vi)")
 
 class GradeAnswerResponse(BaseModel):
@@ -317,8 +317,28 @@ async def grade_answer_endpoint(request: GradeAnswerRequest):
         elif grading_rubric is not None and not isinstance(grading_rubric, str):
             grading_rubric = str(grading_rubric)
 
+        # Normalize question_type: int → string name
+        question_type = request.question_type
+        if isinstance(question_type, int):
+            # Map question type codes to names
+            QUESTION_TYPE_MAP = {
+                1: "MultipleChoice",
+                2: "MultipleSelect",
+                3: "TrueFalse",
+                4: "ShortAnswer",
+                5: "LongAnswer",
+                6: "CodingChallenge",
+                7: "Scenario",
+                8: "Matching",
+                9: "FillInBlank",
+                10: "Ordering",
+            }
+            question_type = QUESTION_TYPE_MAP.get(question_type, str(question_type))
+        elif question_type is not None and not isinstance(question_type, str):
+            question_type = str(question_type)
+
         logger.info(f"Grading answer for question (max_points={request.max_points}, "
-                     f"answer_len={len(submitted_answer)}, type={request.question_type})")
+                     f"answer_len={len(submitted_answer)}, type={question_type})")
         logger.debug(f"Question: {request.question_content[:100]}...")
 
         # Call AI grader
@@ -328,7 +348,7 @@ async def grade_answer_endpoint(request: GradeAnswerRequest):
             max_points=request.max_points,
             grading_rubric=grading_rubric,
             expected_answer=request.expected_answer,
-            question_type=request.question_type,
+            question_type=question_type,
             language=request.language or "en"
         )
 
