@@ -10,9 +10,7 @@ import {
   Tag,
   Row,
   Col,
-  Progress,
   Collapse,
-  Empty,
 } from 'antd';
 import {
   TrophyOutlined,
@@ -21,6 +19,7 @@ import {
   CheckCircleOutlined,
   WarningOutlined,
   RiseOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../contexts/AuthContext';
 import './SelfAssessment.css';
