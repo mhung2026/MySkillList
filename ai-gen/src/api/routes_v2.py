@@ -606,14 +606,14 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
         if request.available_resources:
             resources_dict = [r.dict() for r in request.available_resources]
 
-        # Auto-fetch real Coursera courses from DB
+        # Fetch real Coursera courses from DB by skill_id
         coursera_items = []
         if request.skill_id:
             try:
                 raw_courses = getCourseraCoursesBySkillId(request.skill_id)
-                for c in raw_courses:
+                for i, c in enumerate(raw_courses, 1):
                     coursera_items.append({
-                        "order": 0,  # will be re-ordered below
+                        "order": i,
                         "title": c.get("Title") or "Untitled Course",
                         "description": c.get("Description") or "",
                         "item_type": "Course",
@@ -633,7 +633,7 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
             except Exception as e:
                 logger.warning(f"Failed to fetch Coursera courses: {e}")
 
-        # Generate AI learning path (non-course activities only)
+        # Generate AI learning path metadata (title, description, milestones, rationale)
         result = await generate_learning_path(
             employee_name=request.employee_name,
             skill_name=request.skill_name,
@@ -646,15 +646,10 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
             language=request.language or "en"
         )
 
-        # Append real Coursera courses to learning_items
-        ai_items = result.get("learning_items", [])
-        all_items = ai_items + coursera_items
-        # Re-order sequentially
-        for i, item in enumerate(all_items, 1):
-            item["order"] = i
-        result["learning_items"] = all_items
+        # learning_items = ONLY real Coursera courses from DB
+        result["learning_items"] = coursera_items
 
-        logger.info(f"Learning path generated: {len(ai_items)} AI items + {len(coursera_items)} Coursera courses")
+        logger.info(f"Learning path generated with {len(coursera_items)} Coursera courses from DB")
         return GenerateLearningPathResponse(**result)
 
     except ValueError as e:
