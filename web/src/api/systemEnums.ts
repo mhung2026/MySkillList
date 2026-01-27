@@ -58,7 +58,7 @@ export const systemEnumApi = {
 
   // Delete an enum value
   delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`${BASE_URL}/${id}`);
+    await apiClient.post(`${BASE_URL}/${id}/delete`);
   },
 
   // Reorder enum values

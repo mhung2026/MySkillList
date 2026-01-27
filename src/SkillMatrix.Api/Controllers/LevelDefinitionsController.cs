@@ -68,7 +68,7 @@ public class LevelDefinitionsController : ControllerBase
         }
     }
 
-    [HttpDelete("{id:guid}")]
+    [HttpPost("{id:guid}/delete")]
     public async Task<ActionResult> Delete(Guid id)
     {
         try

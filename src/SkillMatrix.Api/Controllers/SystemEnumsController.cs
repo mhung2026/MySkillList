@@ -116,7 +116,7 @@ public class SystemEnumsController : ControllerBase
     /// <summary>
     /// Delete an enum value (soft delete)
     /// </summary>
-    [HttpDelete("{id:guid}")]
+    [HttpPost("{id:guid}/delete")]
     public async Task<ActionResult> Delete(Guid id)
     {
         try

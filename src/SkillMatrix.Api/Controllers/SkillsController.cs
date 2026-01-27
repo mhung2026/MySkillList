@@ -81,7 +81,7 @@ public class SkillsController : ControllerBase
     /// <summary>
     /// Soft delete skill
     /// </summary>
-    [HttpDelete("{id:guid}")]
+    [HttpPost("{id:guid}/delete")]
     public async Task<ActionResult<ApiResponse<bool>>> Delete(Guid id)
     {
         var result = await _service.DeleteAsync(id);
@@ -148,7 +148,7 @@ public class SkillsController : ControllerBase
     /// <summary>
     /// Delete level definition
     /// </summary>
-    [HttpDelete("level-definitions/{id:guid}")]
+    [HttpPost("level-definitions/{id:guid}/delete")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteLevelDefinition(Guid id)
     {
         var result = await _service.DeleteLevelDefinitionAsync(id);

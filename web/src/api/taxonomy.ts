@@ -52,7 +52,7 @@ export const skillDomainApi = {
   },
 
   delete: async (id: string) => {
-    const response = await apiClient.delete<ApiResponse<boolean>>(`/skilldomains/${id}`);
+    const response = await apiClient.post<ApiResponse<boolean>>(`/skilldomains/${id}/delete`);
     return response.data;
   },
 
@@ -100,7 +100,7 @@ export const skillSubcategoryApi = {
   },
 
   delete: async (id: string) => {
-    const response = await apiClient.delete<ApiResponse<boolean>>(`/skillsubcategories/${id}`);
+    const response = await apiClient.post<ApiResponse<boolean>>(`/skillsubcategories/${id}/delete`);
     return response.data;
   },
 
@@ -141,7 +141,7 @@ export const skillApi = {
   },
 
   delete: async (id: string) => {
-    const response = await apiClient.delete<ApiResponse<boolean>>(`/skills/${id}`);
+    const response = await apiClient.post<ApiResponse<boolean>>(`/skills/${id}/delete`);
     return response.data;
   },
 
@@ -201,7 +201,7 @@ export const skillLevelApi = {
   },
 
   delete: async (id: string) => {
-    const response = await apiClient.delete<ApiResponse<boolean>>(`/skills/level-definitions/${id}`);
+    const response = await apiClient.post<ApiResponse<boolean>>(`/skills/level-definitions/${id}/delete`);
     return response.data;
   },
 };
@@ -234,7 +234,7 @@ export const levelDefinitionApi = {
   },
 
   delete: async (id: string) => {
-    const response = await apiClient.delete(`/leveldefinitions/${id}`);
+    const response = await apiClient.post(`/leveldefinitions/${id}/delete`);
     return response.data;
   },
 

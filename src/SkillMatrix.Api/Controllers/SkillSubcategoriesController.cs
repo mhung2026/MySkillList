@@ -84,7 +84,7 @@ public class SkillSubcategoriesController : ControllerBase
     /// <summary>
     /// Soft delete subcategory
     /// </summary>
-    [HttpDelete("{id:guid}")]
+    [HttpPost("{id:guid}/delete")]
     public async Task<ActionResult<ApiResponse<bool>>> Delete(Guid id)
     {
         var result = await _service.DeleteAsync(id);

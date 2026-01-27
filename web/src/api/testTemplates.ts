@@ -53,7 +53,7 @@ export const updateTestTemplate = async (
 };
 
 export const deleteTestTemplate = async (id: string): Promise<void> => {
-  await apiClient.delete(`/testtemplates/${id}`);
+  await apiClient.post(`/testtemplates/${id}/delete`);
 };
 
 export const toggleTestTemplateActive = async (id: string): Promise<void> => {
@@ -83,7 +83,7 @@ export const updateTestSection = async (
 };
 
 export const deleteTestSection = async (id: string): Promise<void> => {
-  await apiClient.delete(`/testtemplates/sections/${id}`);
+  await apiClient.post(`/testtemplates/sections/${id}/delete`);
 };
 
 // AI Generation
@@ -124,7 +124,7 @@ export const updateQuestion = async (
 };
 
 export const deleteQuestion = async (id: string): Promise<void> => {
-  await apiClient.delete(`/questions/${id}`);
+  await apiClient.post(`/questions/${id}/delete`);
 };
 
 export const toggleQuestionActive = async (id: string): Promise<void> => {

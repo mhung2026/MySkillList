@@ -70,7 +70,7 @@ public class TestTemplatesController : ControllerBase
     /// <summary>
     /// Delete test template (soft delete)
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpPost("{id}/delete")]
     public async Task<ActionResult> Delete(Guid id)
     {
         var success = await _service.DeleteAsync(id);
@@ -124,7 +124,7 @@ public class TestTemplatesController : ControllerBase
     /// <summary>
     /// Delete section
     /// </summary>
-    [HttpDelete("sections/{id}")]
+    [HttpPost("sections/{id}/delete")]
     public async Task<ActionResult> DeleteSection(Guid id)
     {
         var success = await _service.DeleteSectionAsync(id);

@@ -69,7 +69,7 @@ public class QuestionsController : ControllerBase
     /// <summary>
     /// Delete question (soft delete)
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpPost("{id}/delete")]
     public async Task<ActionResult> Delete(Guid id)
     {
         var success = await _service.DeleteAsync(id);

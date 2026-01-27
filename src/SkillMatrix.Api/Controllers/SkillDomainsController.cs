@@ -81,7 +81,7 @@ public class SkillDomainsController : ControllerBase
     /// <summary>
     /// Soft delete skill domain (set IsDeleted = true)
     /// </summary>
-    [HttpDelete("{id:guid}")]
+    [HttpPost("{id:guid}/delete")]
     public async Task<ActionResult<ApiResponse<bool>>> Delete(Guid id)
     {
         var result = await _service.DeleteAsync(id);
