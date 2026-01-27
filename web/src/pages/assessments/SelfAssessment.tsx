@@ -22,7 +22,6 @@ import {
   WarningOutlined,
   RiseOutlined,
 } from '@ant-design/icons';
-import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../../contexts/AuthContext';
 import './SelfAssessment.css';
 
