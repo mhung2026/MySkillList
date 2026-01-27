@@ -4,6 +4,7 @@ using SkillMatrix.Application.DTOs.Assessment;
 using SkillMatrix.Application.DTOs.Common;
 using SkillMatrix.Application.Interfaces;
 using SkillMatrix.Domain.Entities.Assessment;
+using SkillMatrix.Domain.Entities.Learning;
 using SkillMatrix.Domain.Enums;
 using SkillMatrix.Infrastructure.Persistence;
 
@@ -705,6 +706,10 @@ public class AssessmentService : IAssessmentService
 
         await _context.SaveChangesAsync();
 
+        // === AUTO GAP ANALYSIS ===
+        // After assessment completes, update EmployeeSkill and recalculate gaps
+        await UpdateEmployeeSkillsAndGapsAsync(assessment.EmployeeId, skillScores);
+
         var passingScore = assessment.TestTemplate?.PassingScore ?? 70;
 
         return new AssessmentResultDto
@@ -982,4 +987,122 @@ public class AssessmentService : IAssessmentService
             }).ToList()
         };
     }
+
+    #region Auto Gap Trigger
+
+    /// <summary>
+    /// Update EmployeeSkill levels and create/update/resolve SkillGaps after assessment completion
+    /// </summary>
+    private async Task UpdateEmployeeSkillsAndGapsAsync(
+        Guid employeeId,
+        Dictionary<Guid, (string Name, string Code, int Correct, int Total, int Score, int MaxScore)> skillScores)
+    {
+        if (!skillScores.Any())
+            return;
+
+        var employee = await _context.Employees
+            .Include(e => e.JobRole)
+                .ThenInclude(r => r!.SkillRequirements)
+            .FirstOrDefaultAsync(e => e.Id == employeeId && !e.IsDeleted);
+
+        if (employee?.JobRole == null)
+            return;
+
+        var roleRequirements = employee.JobRole.SkillRequirements
+            .Where(r => !r.IsDeleted)
+            .ToDictionary(r => r.SkillId);
+
+        foreach (var (skillId, scores) in skillScores)
+        {
+            var percentage = scores.MaxScore > 0 ? (double)scores.Score / scores.MaxScore * 100 : 0;
+            var assessedLevel = MapPercentageToLevel(percentage);
+
+            // Update EmployeeSkill.TestValidatedLevel
+            var employeeSkill = await _context.EmployeeSkills
+                .FirstOrDefaultAsync(es => es.EmployeeId == employeeId && es.SkillId == skillId && !es.IsDeleted);
+
+            if (employeeSkill != null)
+            {
+                employeeSkill.PreviousLevel = employeeSkill.CurrentLevel;
+                employeeSkill.TestValidatedLevel = assessedLevel;
+                employeeSkill.CurrentLevel = assessedLevel;
+                employeeSkill.LastAssessedAt = DateTime.UtcNow;
+                employeeSkill.IsValidated = true;
+            }
+
+            // Create/Update/Resolve SkillGap based on role requirements
+            if (roleRequirements.TryGetValue(skillId, out var req))
+            {
+                var requiredLevel = req.MinimumLevel;
+                var gap = await _context.SkillGaps
+                    .FirstOrDefaultAsync(g =>
+                        g.EmployeeId == employeeId &&
+                        g.SkillId == skillId &&
+                        !g.IsDeleted);
+
+                if (assessedLevel < requiredLevel)
+                {
+                    var gapSize = (int)requiredLevel - (int)assessedLevel;
+
+                    if (gap == null)
+                    {
+                        // Create new gap
+                        gap = new SkillGap
+                        {
+                            EmployeeId = employeeId,
+                            SkillId = skillId,
+                            JobRoleId = employee.JobRoleId,
+                            CurrentLevel = assessedLevel,
+                            RequiredLevel = requiredLevel,
+                            GapSize = gapSize,
+                            Priority = CalculateGapPriority(gapSize, req.IsMandatory),
+                            IdentifiedAt = DateTime.UtcNow
+                        };
+                        _context.SkillGaps.Add(gap);
+                    }
+                    else if (gap.ResolvedAt == null)
+                    {
+                        // Update existing gap
+                        gap.CurrentLevel = assessedLevel;
+                        gap.RequiredLevel = requiredLevel;
+                        gap.GapSize = gapSize;
+                        gap.Priority = CalculateGapPriority(gapSize, req.IsMandatory);
+                        gap.UpdatedAt = DateTime.UtcNow;
+                    }
+                }
+                else if (gap != null && gap.ResolvedAt == null)
+                {
+                    // Resolve gap - employee now meets requirement
+                    gap.CurrentLevel = assessedLevel;
+                    gap.GapSize = 0;
+                    gap.ResolvedAt = DateTime.UtcNow;
+                    gap.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private static ProficiencyLevel MapPercentageToLevel(double percentage) => percentage switch
+    {
+        >= 95 => ProficiencyLevel.SetStrategy,    // 7
+        >= 85 => ProficiencyLevel.Initiate,       // 6
+        >= 75 => ProficiencyLevel.EnsureAdvise,   // 5
+        >= 65 => ProficiencyLevel.Enable,         // 4
+        >= 50 => ProficiencyLevel.Apply,          // 3
+        >= 35 => ProficiencyLevel.Assist,         // 2
+        >= 20 => ProficiencyLevel.Follow,         // 1
+        _ => ProficiencyLevel.None                // 0
+    };
+
+    private static GapPriority CalculateGapPriority(int gapSize, bool isMandatory) => (gapSize, isMandatory) switch
+    {
+        ( >= 3, true) => GapPriority.Critical,
+        ( >= 2, true) => GapPriority.High,
+        ( >= 2, false) => GapPriority.Medium,
+        _ => GapPriority.Low
+    };
+
+    #endregion
 }

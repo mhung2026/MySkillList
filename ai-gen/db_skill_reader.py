@@ -43,6 +43,7 @@ def getSkillLevelDefinitions(skill_id=None, level=None):
                 JOIN public."Skills" s ON sld."SkillId" = s."Id"
                 WHERE NOT sld."IsDeleted"
                     AND NOT s."IsDeleted"
+                    AND s."IsActive" = true
             """
 
             params = []
@@ -88,7 +89,10 @@ def getSkillLevelsBySkillId(skill_id):
                     sld."BehavioralIndicators",
                     sld."EvidenceExamples"
                 FROM public."SkillLevelDefinitions" sld
+                JOIN public."Skills" s ON sld."SkillId" = s."Id"
                 WHERE NOT sld."IsDeleted"
+                    AND NOT s."IsDeleted"
+                    AND s."IsActive" = true
                     AND sld."SkillId" = %s
                 ORDER BY sld."Level"
                 """, (skill_id,))
@@ -125,6 +129,7 @@ def getSkillDefinitionsByLevel(level):
                 JOIN public."Skills" s ON sld."SkillId" = s."Id"
                 WHERE NOT sld."IsDeleted"
                     AND NOT s."IsDeleted"
+                    AND s."IsActive" = true
                     AND sld."Level" = %s
                 ORDER BY s."Name"
                 """, (level,))
@@ -175,6 +180,7 @@ def getDistinctSkillsWithLevels():
                 JOIN public."SkillLevelDefinitions" sld ON s."Id" = sld."SkillId"
                 WHERE NOT s."IsDeleted"
                     AND NOT sld."IsDeleted"
+                    AND s."IsActive" = true
                 GROUP BY s."Id", s."Name", s."Code"
                 ORDER BY s."Name"
                 """)
@@ -214,6 +220,8 @@ def getSkillLevelDefinitionById(definition_id):
                 FROM public."SkillLevelDefinitions" sld
                 JOIN public."Skills" s ON sld."SkillId" = s."Id"
                 WHERE NOT sld."IsDeleted"
+                    AND NOT s."IsDeleted"
+                    AND s."IsActive" = true
                     AND sld."Id" = %s
                 """, (definition_id,))
             result = cur.fetchone()
