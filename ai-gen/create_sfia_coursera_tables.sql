@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public."CourseraCourse" (
     "ReviewsCount" INTEGER,
     "EnrollmentCount" INTEGER,
     "Duration" VARCHAR(100),
-    "Level" VARCHAR(50),
+    "Level" VARCHAR(150),
     "Language" VARCHAR(100),
     "Subtitles" TEXT[], -- Array of subtitle languages
     "Skills" TEXT[], -- Array of skills/tags
