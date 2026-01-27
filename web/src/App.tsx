@@ -14,6 +14,7 @@ import {
   LogoutOutlined,
   DashboardOutlined,
   OrderedListOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import SkillDomainList from './pages/taxonomy/SkillDomainList';
@@ -26,6 +27,7 @@ import AvailableTests from './pages/assessments/AvailableTests';
 import TakeTest from './pages/assessments/TakeTest';
 import TestResult from './pages/assessments/TestResult';
 import StartTest from './pages/assessments/StartTest';
+import SelfAssessment from './pages/assessments/SelfAssessment';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Dashboard from './pages/dashboard/Dashboard';
@@ -163,6 +165,11 @@ function AppLayout() {
         icon: <UserOutlined />,
         label: <Link to="/assessments">My Tests</Link>,
       },
+      {
+        key: '/assessments/self-assessment',
+        icon: <TrophyOutlined />,
+        label: <Link to="/assessments/self-assessment">Self Assessment</Link>,
+      },
     ],
   });
 
@@ -256,6 +263,7 @@ function AppLayout() {
               <Route path="/tests/templates" element={<TestTemplateList />} />
               <Route path="/tests/templates/:id" element={<TestTemplateDetail />} />
               <Route path="/assessments" element={<AvailableTests />} />
+              <Route path="/assessments/self-assessment" element={<SelfAssessment />} />
               <Route path="/assessments/start-test/:templateId" element={<StartTest />} />
               <Route path="/assessments/take/:assessmentId" element={<TakeTest />} />
               <Route path="/assessments/result/:assessmentId" element={<TestResult />} />
