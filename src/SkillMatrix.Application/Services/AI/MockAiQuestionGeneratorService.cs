@@ -122,7 +122,7 @@ public class MockAiQuestionGeneratorService : IAiQuestionGeneratorService
         await Task.Delay(100); // Simulate processing
 
         var hasKeywords = !string.IsNullOrEmpty(request.ExpectedAnswer) &&
-                         request.StudentAnswer.Split(' ')
+                         request.SubmittedAnswer.Split(' ')
                              .Any(w => request.ExpectedAnswer.Contains(w, StringComparison.OrdinalIgnoreCase));
 
         var baseScore = hasKeywords ? 0.7 : 0.4;
@@ -139,7 +139,7 @@ public class MockAiQuestionGeneratorService : IAiQuestionGeneratorService
             Feedback = GenerateMockFeedback(percentage),
             StrengthPoints = GenerateMockStrengths(percentage),
             ImprovementAreas = GenerateMockImprovements(percentage),
-            DetailedAnalysis = $"[Mock Analysis] Answer length: {request.StudentAnswer.Length} chars. " +
+            DetailedAnalysis = $"[Mock Analysis] Answer length: {request.SubmittedAnswer.Length} chars. " +
                               $"Keyword match: {(hasKeywords ? "Yes" : "No")}."
         };
     }

@@ -163,14 +163,14 @@ Generate assessment questions using AI.
 ## 3. Answer Grading Endpoint
 
 ### POST /grade-answer
-Grade a student's answer using AI.
+Grade a submitted answer using AI.
 
 **Request:**
 ```json
 {
   "question_id": "q_001",
   "question_content": "Explain the difference between a list and a tuple in Python.",
-  "student_answer": "A list is mutable, meaning you can change its contents. A tuple is immutable. Lists use [], tuples use ().",
+  "submitted_answer": "A list is mutable, meaning you can change its contents. A tuple is immutable. Lists use [], tuples use ().",
   "max_points": 10,
   "grading_rubric": "{\"criteria\": [{\"description\": \"Explains mutability\", \"points\": 4}, {\"description\": \"Syntax difference\", \"points\": 3}, {\"description\": \"Performance mention\", \"points\": 3}]}",
   "expected_answer": "Lists are mutable, tuples are immutable. Lists use [], tuples use ().",
@@ -184,7 +184,7 @@ Grade a student's answer using AI.
 |-------|------|----------|-------------|
 | question_id | string | No | Question identifier |
 | question_content | string | Yes | The question text |
-| student_answer | string | Yes | Student's submitted answer |
+| submitted_answer | string | Yes | Candidate's submitted answer |
 | max_points | int | Yes | 1-100 |
 | grading_rubric | string | No | JSON string with grading criteria |
 | expected_answer | string | No | Model answer |
@@ -207,7 +207,7 @@ Grade a student's answer using AI.
     "Could mention performance/memory differences",
     "Could provide use case examples"
   ],
-  "detailed_analysis": "The student demonstrated understanding of the fundamental difference..."
+  "detailed_analysis": "The candidate demonstrated understanding of the fundamental difference..."
 }
 ```
 
@@ -344,40 +344,21 @@ Analyze multiple skill gaps at once.
 ### POST /generate-learning-path
 Generate an AI-powered learning path.
 
+**Coursera integration:** When `skill_code` is provided, the endpoint auto-fetches Coursera courses from the database via `SFIASkillCoursera` junction table (up to 15 courses, sorted by rating). These are merged with any caller-provided `available_resources` and fed to the AI, which prioritizes real courses over generic suggestions.
+
 **Request:**
 ```json
 {
   "employee_name": "Nguyen Van A",
-  "skill_id": "30000000-0000-0000-0000-000000000001",
-  "skill_name": "System Design",
-  "skill_code": "SYSDES",
-  "current_level": 2,
-  "target_level": 4,
-  "skill_description": "Designing scalable system architectures",
-  "available_resources": [
-    {
-      "id": "res-001",
-      "title": "System Design Interview Course",
-      "type": "Course",
-      "description": "Comprehensive course on system design",
-      "estimated_hours": 40,
-      "difficulty": "Medium",
-      "from_level": 2,
-      "to_level": 4
-    },
-    {
-      "id": "res-002",
-      "title": "Designing Data-Intensive Applications",
-      "type": "Book",
-      "description": "Essential book for distributed systems",
-      "estimated_hours": 30,
-      "difficulty": "Hard",
-      "from_level": 3,
-      "to_level": 5
-    }
-  ],
+  "skill_id": "30000000-0000-0000-0000-000000000078",
+  "skill_name": "Accessibility and inclusion",
+  "skill_code": "ACIN",
+  "current_level": 1,
+  "target_level": 3,
+  "skill_description": "Designing accessible and inclusive digital products",
+  "available_resources": null,
   "time_constraint_months": 6,
-  "language": "vi"
+  "language": "en"
 }
 ```
 
@@ -387,11 +368,11 @@ Generate an AI-powered learning path.
 | employee_name | string | Yes | Employee name |
 | skill_id | string | No | Skill UUID |
 | skill_name | string | Yes | Skill name |
-| skill_code | string | Yes | Skill code |
+| skill_code | string | Yes | SFIA skill code (used to auto-fetch Coursera courses) |
 | current_level | int | Yes | 0-7 |
 | target_level | int | Yes | 1-7 |
 | skill_description | string | No | Description of skill |
-| available_resources | LearningResourceInfo[] | No | Available resources to consider |
+| available_resources | LearningResourceInfo[] | No | Additional resources (merged with auto-fetched Coursera courses) |
 | time_constraint_months | int | No | 1-24 months |
 | language | string | No | "en" or "vi" |
 
@@ -411,78 +392,96 @@ Generate an AI-powered learning path.
 ```json
 {
   "success": true,
-  "path_title": "Lộ trình phát triển System Design từ Level 2 đến Level 4",
-  "path_description": "Lộ trình học tập toàn diện giúp bạn nâng cao kỹ năng System Design trong 6 tháng, từ mức Assist lên mức Enable với khả năng thiết kế hệ thống độc lập.",
-  "estimated_total_hours": 120,
-  "estimated_duration_weeks": 24,
+  "path_title": "Accessibility and Inclusion Skill Development Path",
+  "path_description": "This learning path is designed to advance from foundational understanding to independently applying accessibility and inclusion principles.",
+  "estimated_total_hours": 40,
+  "estimated_duration_weeks": 6,
   "learning_items": [
     {
       "order": 1,
-      "title": "Fundamentals of Distributed Systems",
-      "description": "Nắm vững các khái niệm cơ bản về hệ thống phân tán: CAP theorem, consistency models, partitioning strategies.",
+      "title": "An Introduction to Accessibility and Inclusive Design",
+      "description": "Learn the fundamental principles of accessibility and inclusive design.",
       "item_type": "Course",
-      "estimated_hours": 20,
-      "target_level_after": 3,
-      "success_criteria": "Có thể giải thích CAP theorem và áp dụng vào việc chọn database phù hợp",
-      "resource_id": null
+      "estimated_hours": 10,
+      "target_level_after": 2,
+      "success_criteria": "Complete the course and pass all assessments.",
+      "resource_id": "coursera-1",
+      "url": "https://www.coursera.org/learn/accessibility"
     },
     {
       "order": 2,
-      "title": "System Design Interview Course",
-      "description": "Học cách thiết kế các hệ thống phổ biến: URL shortener, chat system, social media feed.",
+      "title": "Making Accessible Designs",
+      "description": "Create user-friendly designs that meet accessibility standards.",
       "item_type": "Course",
-      "estimated_hours": 40,
-      "target_level_after": 3,
-      "success_criteria": "Hoàn thành khóa học và thiết kế được 5 systems",
-      "resource_id": "res-001"
+      "estimated_hours": 2,
+      "target_level_after": 2,
+      "success_criteria": "Complete the course and apply basic accessibility principles in a design exercise.",
+      "resource_id": "coursera-3",
+      "url": "https://www.coursera.org/learn/making-accessible-designs"
     },
     {
       "order": 3,
-      "title": "Đọc sách Designing Data-Intensive Applications",
-      "description": "Đi sâu vào các pattern và best practices cho data systems.",
-      "item_type": "Book",
-      "estimated_hours": 30,
-      "target_level_after": 4,
-      "success_criteria": "Tóm tắt được key concepts từ mỗi chapter",
-      "resource_id": "res-002"
+      "title": "Accessibility Audit Project",
+      "description": "Conduct an accessibility audit of a selected digital product to identify barriers and propose solutions.",
+      "item_type": "Project",
+      "estimated_hours": 10,
+      "target_level_after": 3,
+      "success_criteria": "Deliver a comprehensive audit report with actionable recommendations.",
+      "resource_id": null,
+      "url": null
     },
     {
       "order": 4,
-      "title": "Hands-on System Design Project",
-      "description": "Thiết kế và implement một microservices system cho e-commerce platform.",
-      "item_type": "Project",
-      "estimated_hours": 30,
-      "target_level_after": 4,
-      "success_criteria": "Hoàn thành design document và working prototype",
-      "resource_id": null
+      "title": "Defining Diversity, Equity and Inclusion in Organizations",
+      "description": "Understand the core definitions and importance of DEI in organizational contexts.",
+      "item_type": "Course",
+      "estimated_hours": 6,
+      "target_level_after": 3,
+      "success_criteria": "Complete the course and reflect on how DEI principles align with accessibility.",
+      "resource_id": "coursera-2",
+      "url": "https://www.coursera.org/learn/defining-diversity-equity-and-inclusion-in-organizations"
+    },
+    {
+      "order": 5,
+      "title": "Accessibility Mentorship Session",
+      "description": "Participate in a 1:1 mentorship session with an experienced accessibility practitioner.",
+      "item_type": "Mentorship",
+      "estimated_hours": 2,
+      "target_level_after": 3,
+      "success_criteria": "Engage in a productive discussion and document actionable insights.",
+      "resource_id": null,
+      "url": null
     }
   ],
   "milestones": [
     {
-      "after_item": 2,
-      "description": "Checkpoint: Có thể độc lập thiết kế medium-complexity systems",
-      "expected_level": 3
+      "after_item": 1,
+      "description": "Complete foundational learning in accessibility principles.",
+      "expected_level": 2
     },
     {
-      "after_item": 4,
-      "description": "Final: Đạt Level 4 - có thể lead system design và mentor người khác",
-      "expected_level": 4
+      "after_item": 3,
+      "description": "Apply accessibility principles to a real-world scenario through an audit project.",
+      "expected_level": 3
     }
   ],
-  "ai_rationale": "Lộ trình này được thiết kế theo nguyên tắc progressive learning - bắt đầu từ fundamentals, sau đó áp dụng qua structured course, đi sâu với reading material, và cuối cùng consolidate kiến thức qua hands-on project. Thời gian 6 tháng là hợp lý cho gap 2 levels với workload ~5 giờ/tuần.",
+  "ai_rationale": "This path progressively builds on foundational knowledge, moving from theoretical understanding to practical application. Real Coursera courses are prioritized, with projects and mentorship filling gaps.",
   "key_success_factors": [
-    "Dành ít nhất 5 giờ/tuần cho học tập",
-    "Áp dụng ngay kiến thức vào công việc hàng ngày",
-    "Tìm mentor để review designs",
-    "Tham gia tech discussions trong team"
+    "Structured progression from theory to application",
+    "Hands-on project for real-world practice",
+    "Mentorship for personalized insights"
   ],
   "potential_challenges": [
-    "Cân bằng giữa learning và delivery pressure",
-    "Thiếu cơ hội thực hành với large-scale systems",
-    "Cần access vào cloud resources cho hands-on practice"
+    "Balancing time commitment with work responsibilities",
+    "Adapting theoretical knowledge to practical scenarios"
   ]
 }
 ```
+
+**Notes:**
+- `resource_id` with prefix `coursera-` indicates auto-fetched Coursera course (e.g., `coursera-1`)
+- `url` contains the actual Coursera course link when the item comes from a real course
+- Items with `resource_id: null` and `url: null` are AI-generated suggestions (projects, mentorship, etc.)
 
 ### POST /rank-resources
 Rank learning resources by relevance for a skill gap.
@@ -560,6 +559,203 @@ Rank learning resources by relevance for a skill gap.
     "Missing hands-on project or lab component",
     "No mentorship or coaching resource available"
   ]
+}
+```
+
+---
+
+## 7. Assessment Evaluation Endpoints
+
+### POST /evaluate-assessment
+Evaluate an assessment and determine CurrentLevel using SFIA bottom-up consecutive logic.
+
+**Logic:**
+- Groups responses by target_level
+- Calculates % correct per level (70% threshold)
+- CurrentLevel = highest CONSECUTIVE level where ALL levels 1→L pass
+
+**Example:**
+- L1=80%, L2=75%, L3=60%, L4=85% → CurrentLevel = 2 (L3 failed, chain breaks)
+- L1=65%, L2=90%, L3=90% → CurrentLevel = 0 (L1 failed, no consecutive pass)
+
+**Request:**
+```json
+{
+  "skill_id": "30000000-0000-0000-0000-000000000001",
+  "skill_name": "System Design",
+  "responses": [
+    {
+      "question_id": "q1",
+      "question_type": "MultipleChoice",
+      "target_level": 1,
+      "is_correct": true
+    },
+    {
+      "question_id": "q2",
+      "question_type": "MultipleChoice",
+      "target_level": 1,
+      "is_correct": true
+    },
+    {
+      "question_id": "q3",
+      "question_type": "MultipleChoice",
+      "target_level": 2,
+      "is_correct": true
+    },
+    {
+      "question_id": "q4",
+      "question_type": "MultipleChoice",
+      "target_level": 2,
+      "is_correct": false
+    },
+    {
+      "question_id": "q5",
+      "question_type": "SituationalJudgment",
+      "target_level": 3,
+      "is_correct": true
+    },
+    {
+      "question_id": "q6",
+      "question_type": "ShortAnswer",
+      "target_level": 3,
+      "score": 80,
+      "max_score": 100
+    }
+  ]
+}
+```
+
+**Request Schema:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| skill_id | string | Yes | Skill ID being assessed |
+| skill_name | string | No | Skill name (optional) |
+| responses | array | Yes | List of assessment responses |
+
+**Response Item Schema:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| question_id | string | Yes | Question ID |
+| question_type | string | Yes | MultipleChoice, SituationalJudgment, ShortAnswer, etc. |
+| target_level | int | Yes | Target SFIA level (1-7) |
+| is_correct | bool | No* | For objective types (MultipleChoice, TrueFalse, etc.) |
+| score | float | No* | For graded types (ShortAnswer, LongAnswer, etc.) |
+| max_score | float | No | Max possible score (default: 100) |
+
+*Either `is_correct` or `score` should be provided depending on question type.
+
+**Response:**
+```json
+{
+  "skill_id": "30000000-0000-0000-0000-000000000001",
+  "skill_name": "System Design",
+  "current_level": 2,
+  "level_results": {
+    "1": {
+      "total": 2,
+      "correct": 2,
+      "percentage": 100.0,
+      "passed": true
+    },
+    "2": {
+      "total": 2,
+      "correct": 1,
+      "percentage": 50.0,
+      "passed": false
+    },
+    "3": {
+      "total": 2,
+      "correct": 2,
+      "percentage": 100.0,
+      "passed": true
+    }
+  },
+  "consecutive_levels_passed": 1,
+  "highest_level_with_responses": 3,
+  "total_questions": 6,
+  "overall_score_percentage": 83.3,
+  "evaluation_details": {
+    "method": "bottom_up_consecutive",
+    "threshold": 70,
+    "breakdown": [
+      {
+        "level": 1,
+        "status": "passed",
+        "percentage": 100.0,
+        "message": "Level 1 passed (100.0% >= 70%)"
+      },
+      {
+        "level": 2,
+        "status": "failed",
+        "percentage": 50.0,
+        "message": "Level 2 failed (50.0% < 70%)"
+      }
+    ]
+  }
+}
+```
+
+### POST /evaluate-assessments
+Evaluate multiple skill assessments at once.
+
+**Request:**
+```json
+{
+  "assessments": [
+    {
+      "skill_id": "skill-1",
+      "skill_name": "System Design",
+      "responses": [
+        {"question_id": "q1", "question_type": "MultipleChoice", "target_level": 1, "is_correct": true},
+        {"question_id": "q2", "question_type": "MultipleChoice", "target_level": 2, "is_correct": true}
+      ]
+    },
+    {
+      "skill_id": "skill-2",
+      "skill_name": "Python",
+      "responses": [
+        {"question_id": "q3", "question_type": "MultipleChoice", "target_level": 1, "is_correct": true},
+        {"question_id": "q4", "question_type": "CodingChallenge", "target_level": 2, "score": 85, "max_score": 100}
+      ]
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "results": [
+    {
+      "skill_id": "skill-1",
+      "skill_name": "System Design",
+      "current_level": 2,
+      "level_results": {...},
+      "consecutive_levels_passed": 2,
+      "highest_level_with_responses": 2,
+      "total_questions": 2,
+      "overall_score_percentage": 100.0,
+      "evaluation_details": {...}
+    },
+    {
+      "skill_id": "skill-2",
+      "skill_name": "Python",
+      "current_level": 2,
+      "level_results": {...},
+      "consecutive_levels_passed": 2,
+      "highest_level_with_responses": 2,
+      "total_questions": 2,
+      "overall_score_percentage": 100.0,
+      "evaluation_details": {...}
+    }
+  ],
+  "summary": {
+    "total_skills": 2,
+    "skills_evaluated": 2,
+    "average_level": 2.0
+  }
 }
 ```
 

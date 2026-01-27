@@ -312,7 +312,7 @@ public class AiGradeAnswerRequest
     public string QuestionContent { get; set; } = string.Empty;
     public string? ExpectedAnswer { get; set; }
     public string? GradingRubric { get; set; }
-    public string StudentAnswer { get; set; } = string.Empty;
+    public string SubmittedAnswer { get; set; } = string.Empty;
     public int MaxPoints { get; set; }
 }
 

@@ -44,13 +44,13 @@ A FastAPI service for generating assessment questions based on skill definitions
   ```
 
 ### Answer Grading
-- `POST /api/v2/grade-answer`: Grade a student's answer.
+- `POST /api/v2/grade-answer`: Grade a submitted answer.
 
   Request body:
   ```json
   {
     "question_content": "Explain the benefits of...",
-    "student_answer": "The main benefits are...",
+    "submitted_answer": "The main benefits are...",
     "max_points": 10,
     "grading_rubric": "Clear explanation of concepts..."
   }

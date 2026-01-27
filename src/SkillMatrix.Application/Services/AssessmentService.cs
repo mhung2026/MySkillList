@@ -568,7 +568,7 @@ public class AssessmentService : IAssessmentService
                             QuestionContent = question.Content,
                             ExpectedAnswer = null, // Not stored in Question entity, AI uses GradingRubric
                             GradingRubric = question.GradingRubric,
-                            StudentAnswer = questionResult.UserAnswer,
+                            SubmittedAnswer = questionResult.UserAnswer,
                             MaxPoints = question.Points
                         };
 

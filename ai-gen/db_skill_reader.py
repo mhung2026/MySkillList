@@ -233,6 +233,51 @@ def getSkillLevelDefinitionById(definition_id):
     return result
 
 
+def getCourseraCoursesBySkillCode(skill_code, limit=15):
+    """
+    Get Coursera courses linked to a SFIA skill via SFIASkillCoursera junction table.
+
+    Args:
+        skill_code (str): SFIA skill code (e.g., 'ACIN')
+        limit (int): Max number of courses to return (default 15)
+
+    Returns:
+        list: List of dicts with course data
+    """
+    with getConn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    c."Id",
+                    c."Title",
+                    c."Url",
+                    c."Organization",
+                    c."Description",
+                    c."Rating",
+                    c."ReviewsCount",
+                    c."Duration",
+                    c."Level",
+                    c."Language",
+                    c."Skills",
+                    c."Syllabus",
+                    c."Prerequisites",
+                    c."CertificateAvailable"
+                FROM public."CourseraCourse" c
+                JOIN public."SFIASkillCoursera" s ON c."SkillId" = s."SkillId"
+                WHERE s."SkillCode" = %s
+                ORDER BY c."Rating" DESC NULLS LAST, c."ReviewsCount" DESC NULLS LAST
+                LIMIT %s
+                """, (skill_code, limit))
+
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+            results = [dict(zip(columns, row)) for row in rows]
+            LOGGER.debug(f"Retrieved {len(results)} Coursera courses for skill code: {skill_code}")
+
+    return results
+
+
 # Example usage and testing
 if __name__ == "__main__":
     import sys

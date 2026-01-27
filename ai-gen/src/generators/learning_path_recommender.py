@@ -61,11 +61,27 @@ def build_learning_path_prompt(
     # Format available resources if provided
     resources_text = ""
     if available_resources and len(available_resources) > 0:
-        resources_text = "\nAVAILABLE LEARNING RESOURCES:\n"
-        for i, res in enumerate(available_resources[:10], 1):  # Limit to 10
-            resources_text += f"{i}. {res.get('title', 'Untitled')} - {res.get('type', 'Unknown')} ({res.get('estimated_hours', '?')} hours)\n"
+        resources_text = "\nAVAILABLE LEARNING RESOURCES (use these REAL courses in your learning path when relevant):\n"
+        for i, res in enumerate(available_resources[:15], 1):
+            source = res.get('source', '')
+            source_tag = f" [{source}]" if source else ""
+            org = res.get('organization', '')
+            org_tag = f" by {org}" if org else ""
+            rating = res.get('rating')
+            rating_tag = f" | Rating: {rating}/5" if rating else ""
+            hours = res.get('estimated_hours', '?')
+            level = res.get('difficulty', '')
+            level_tag = f" | Level: {level}" if level else ""
+
+            resources_text += f"{i}. {res.get('title', 'Untitled')}{source_tag}{org_tag} ({hours} hours{level_tag}{rating_tag})\n"
+            resources_text += f"   ID: {res.get('id', '')}\n"
+            if res.get('url'):
+                resources_text += f"   URL: {res['url']}\n"
             if res.get('description'):
-                resources_text += f"   Description: {res['description'][:100]}...\n"
+                resources_text += f"   Description: {res['description'][:200]}\n"
+            if res.get('syllabus') and isinstance(res['syllabus'], list):
+                syllabus_preview = ", ".join(str(s) for s in res['syllabus'][:5])
+                resources_text += f"   Syllabus: {syllabus_preview}\n"
 
     time_text = ""
     if time_constraint_months:
@@ -109,7 +125,8 @@ Return ONLY valid JSON matching this exact schema (no markdown):
       "estimated_hours": <number>,
       "target_level_after": <number 1-7>,
       "success_criteria": "How to know this is complete in {lang_name}",
-      "resource_id": "<id if matching available resource, null otherwise>"
+      "resource_id": "<id if matching available resource, null otherwise>",
+      "url": "<URL if available resource has one, null otherwise>"
     }}
   ],
   "milestones": [
@@ -129,6 +146,9 @@ IMPORTANT:
 - Each level advancement typically needs 20-40 hours of learning
 - Include at least one hands-on project
 - Mix theoretical and practical learning
+- PRIORITIZE real available resources listed above over generic suggestions
+- When using a real resource, include its resource_id and url exactly as provided
+- You may add additional generic items to fill gaps not covered by available resources
 - All text in {lang_name}
 - Return ONLY valid JSON
 """
@@ -264,7 +284,8 @@ async def rank_learning_resources(
             "success": True,
             "ranked_resources": [],
             "top_recommendations": [],
-            "coverage_assessment": "No resources available to rank."
+            "coverage_assessment": "No resources available to rank.",
+            "gaps_in_resources": []
         }
 
     lang_name = "English" if language == "en" else "Vietnamese"

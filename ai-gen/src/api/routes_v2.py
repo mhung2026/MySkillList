@@ -13,12 +13,14 @@ from ..validators.request_validator import validate_and_normalize, RequestValida
 from db_skill_reader import (
     getDistinctSkillsWithLevels,
     getSkillLevelsBySkillId,
-    getSkillLevelCount
+    getSkillLevelCount,
+    getCourseraCoursesBySkillCode
 )
 from ..generators.question_generator_v2 import generate_questions_v2 as ai_generate_questions
 from ..generators.answer_grader import grade_answer as ai_grade_answer
 from ..generators.skill_gap_analyzer import analyze_skill_gap, analyze_multiple_gaps
 from ..generators.learning_path_recommender import generate_learning_path, rank_learning_resources
+from ..generators.assessment_evaluator import evaluate_assessment, evaluate_multiple_skills
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +42,10 @@ class GenerateRequestV2(BaseModel):
     additional_context: Optional[str] = Field(None, max_length=2000, description="Additional context")
 
 class GradeAnswerRequest(BaseModel):
-    """Request to grade a student's answer."""
+    """Request to grade a submitted answer."""
     question_id: Optional[str] = Field(None, description="Question ID (optional)")
     question_content: str = Field(..., description="The question text")
-    student_answer: str = Field(..., description="Student's submitted answer")
+    submitted_answer: str = Field(..., description="Candidate's submitted answer")
     max_points: int = Field(..., ge=1, le=100, description="Maximum points for this question")
     grading_rubric: Optional[str] = Field(None, description="JSON string with grading criteria")
     expected_answer: Optional[str] = Field(None, description="Expected/model answer")
@@ -293,22 +295,22 @@ async def health_check():
 @router.post("/grade-answer", response_model=GradeAnswerResponse)
 async def grade_answer_endpoint(request: GradeAnswerRequest):
     """
-    Grade a student's answer using AI.
+    Grade a submitted answer using AI.
 
     This endpoint:
-    1. Takes the question, student answer, and grading criteria
+    1. Takes the question, submitted answer, and grading criteria
     2. Uses Azure OpenAI to evaluate the answer
     3. Returns points, feedback, strengths, and improvement areas
     """
     try:
         logger.info(f"Grading answer for question (max_points={request.max_points})")
         logger.debug(f"Question: {request.question_content[:100]}...")
-        logger.debug(f"Student answer length: {len(request.student_answer)} chars")
+        logger.debug(f"Submitted answer length: {len(request.submitted_answer)} chars")
 
         # Call AI grader
         result = await ai_grade_answer(
             question_content=request.question_content,
-            student_answer=request.student_answer,
+            submitted_answer=request.submitted_answer,
             max_points=request.max_points,
             grading_rubric=request.grading_rubric,
             expected_answer=request.expected_answer,
@@ -542,6 +544,49 @@ class RankResourcesResponse(BaseModel):
     gaps_in_resources: List[str]
 
 
+def _parse_duration_to_hours(duration_str: str | None) -> int | None:
+    """Parse Coursera duration strings to approximate hours.
+
+    Handles formats like:
+    - '6 hours to complete'
+    - '1 week at 10 hours a week'
+    - '3 months at 5 hours a week'
+    - '2 weeks'
+    """
+    if not duration_str:
+        return None
+    d = duration_str.lower().strip()
+    import re
+
+    # Try "X week/month at Y hours a week" pattern first
+    match_detailed = re.match(r'(\d+)\s*(week|month)s?\s+at\s+(\d+)\s*hours?\s+a\s+week', d)
+    if match_detailed:
+        num = int(match_detailed.group(1))
+        unit = match_detailed.group(2)
+        hours_per_week = int(match_detailed.group(3))
+        weeks = num if unit == "week" else num * 4
+        return weeks * hours_per_week
+
+    # Try simple "X hours to complete" or "X hours"
+    match_hours = re.match(r'(\d+)\s*hours?', d)
+    if match_hours:
+        return int(match_hours.group(1))
+
+    # Try simple "X weeks/months/days"
+    match_simple = re.match(r'(\d+)\s*(week|month|day)s?', d)
+    if not match_simple:
+        return None
+    num = int(match_simple.group(1))
+    unit = match_simple.group(2)
+    if unit == "day":
+        return num * 2
+    elif unit == "week":
+        return num * 5  # ~5 hours/week default
+    elif unit == "month":
+        return num * 20  # ~20 hours/month
+    return None
+
+
 @router.post("/generate-learning-path", response_model=GenerateLearningPathResponse)
 async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
     """
@@ -556,10 +601,39 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
     try:
         logger.info(f"Generating learning path for {request.skill_name}: {request.current_level} -> {request.target_level}")
 
-        # Convert resources to dict format
-        resources_dict = None
+        # Convert caller-provided resources to dict format
+        resources_dict = []
         if request.available_resources:
             resources_dict = [r.dict() for r in request.available_resources]
+
+        # Auto-fetch Coursera courses from DB if skill_code is provided
+        coursera_courses = []
+        if request.skill_code:
+            try:
+                raw_courses = getCourseraCoursesBySkillCode(request.skill_code)
+                for c in raw_courses:
+                    coursera_courses.append({
+                        "id": f"coursera-{c['Id']}",
+                        "title": c.get("Title") or "Untitled Course",
+                        "type": "Course",
+                        "source": "Coursera",
+                        "url": c.get("Url"),
+                        "organization": c.get("Organization"),
+                        "description": c.get("Description"),
+                        "estimated_hours": _parse_duration_to_hours(c.get("Duration")),
+                        "difficulty": c.get("Level"),
+                        "rating": float(c["Rating"]) if c.get("Rating") else None,
+                        "reviews_count": c.get("ReviewsCount"),
+                        "certificate_available": c.get("CertificateAvailable"),
+                        "syllabus": c.get("Syllabus"),
+                        "prerequisites": c.get("Prerequisites"),
+                    })
+                logger.info(f"Fetched {len(coursera_courses)} Coursera courses for skill code {request.skill_code}")
+            except Exception as e:
+                logger.warning(f"Failed to fetch Coursera courses: {e}")
+
+        # Merge: caller resources + Coursera courses
+        all_resources = resources_dict + coursera_courses if (resources_dict or coursera_courses) else None
 
         result = await generate_learning_path(
             employee_name=request.employee_name,
@@ -568,7 +642,7 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
             current_level=request.current_level,
             target_level=request.target_level,
             skill_description=request.skill_description,
-            available_resources=resources_dict,
+            available_resources=all_resources,
             time_constraint_months=request.time_constraint_months,
             language=request.language or "en"
         )
@@ -628,4 +702,156 @@ async def rank_resources_endpoint(request: RankResourcesRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error: {str(e)}"
+        )
+
+
+# ============================================================================
+# ASSESSMENT EVALUATION ENDPOINTS
+# ============================================================================
+
+class AssessmentResponseItem(BaseModel):
+    """Individual response item in an assessment."""
+    question_id: str = Field(..., description="Question ID")
+    question_type: str = Field(..., description="Question type (MultipleChoice, SituationalJudgment, etc.)")
+    target_level: int = Field(..., ge=1, le=7, description="Target SFIA level for this question")
+    is_correct: Optional[bool] = Field(None, description="Whether the answer is correct (for objective types)")
+    score: Optional[float] = Field(None, ge=0, le=100, description="Score awarded (for graded types)")
+    max_score: Optional[float] = Field(100, description="Maximum possible score (for graded types)")
+
+
+class EvaluateAssessmentRequest(BaseModel):
+    """Request to evaluate an assessment and determine CurrentLevel."""
+    skill_id: str = Field(..., description="Skill ID being assessed")
+    skill_name: Optional[str] = Field(None, description="Skill name (optional)")
+    responses: List[AssessmentResponseItem] = Field(..., min_items=1, description="List of assessment responses")
+
+
+class LevelResultItem(BaseModel):
+    """Result for a single level."""
+    total: int
+    correct: int
+    percentage: float
+    passed: bool
+
+
+class EvaluationBreakdownItem(BaseModel):
+    """Breakdown item for evaluation details."""
+    level: int
+    status: str
+    percentage: Optional[float] = None
+    message: str
+
+
+class EvaluationDetails(BaseModel):
+    """Detailed evaluation information."""
+    method: str
+    threshold: float
+    breakdown: List[EvaluationBreakdownItem]
+    message: Optional[str] = None
+
+
+class EvaluateAssessmentResponse(BaseModel):
+    """Response from assessment evaluation."""
+    skill_id: str
+    skill_name: Optional[str] = None
+    current_level: int = Field(..., ge=0, le=7, description="Determined SFIA level (0 if L1 not passed)")
+    level_results: Dict[str, LevelResultItem]
+    consecutive_levels_passed: int
+    highest_level_with_responses: int
+    total_questions: int
+    overall_score_percentage: float
+    evaluation_details: EvaluationDetails
+
+
+class EvaluateMultipleSkillsRequest(BaseModel):
+    """Request to evaluate multiple skill assessments."""
+    assessments: List[EvaluateAssessmentRequest] = Field(..., min_items=1, description="List of skill assessments")
+
+
+class EvaluationSummary(BaseModel):
+    """Summary of multiple skill evaluations."""
+    total_skills: int
+    skills_evaluated: int
+    average_level: float
+
+
+class EvaluateMultipleSkillsResponse(BaseModel):
+    """Response from multiple skill evaluations."""
+    results: List[EvaluateAssessmentResponse]
+    summary: EvaluationSummary
+
+
+@router.post("/evaluate-assessment", response_model=EvaluateAssessmentResponse)
+async def evaluate_assessment_endpoint(request: EvaluateAssessmentRequest):
+    """
+    Evaluate an assessment and determine CurrentLevel using SFIA bottom-up logic.
+
+    This endpoint:
+    1. Groups responses by target_level
+    2. Calculates % correct per level (70% threshold)
+    3. Determines CurrentLevel = highest CONSECUTIVE level where ALL levels 1→L pass
+
+    Example:
+    - If L1=80%, L2=75%, L3=60%, L4=85% → CurrentLevel = 2
+      (L3 failed, so consecutive chain breaks at L2)
+    - If L1=65%, L2=90%, L3=90% → CurrentLevel = 0
+      (L1 failed, so no consecutive levels passed)
+    """
+    try:
+        logger.info(f"Evaluating assessment for skill: {request.skill_id}")
+        logger.debug(f"Number of responses: {len(request.responses)}")
+
+        # Convert to dict format for evaluator
+        assessment_data = {
+            "skill_id": request.skill_id,
+            "skill_name": request.skill_name,
+            "responses": [r.dict() for r in request.responses]
+        }
+
+        result = evaluate_assessment(assessment_data)
+
+        logger.info(f"Evaluation complete: CurrentLevel = {result['current_level']}")
+        return EvaluateAssessmentResponse(**result)
+
+    except Exception as e:
+        logger.error(f"Assessment evaluation failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Evaluation failed: {str(e)}"
+        )
+
+
+@router.post("/evaluate-assessments", response_model=EvaluateMultipleSkillsResponse)
+async def evaluate_multiple_assessments_endpoint(request: EvaluateMultipleSkillsRequest):
+    """
+    Evaluate multiple skill assessments at once.
+
+    This endpoint:
+    1. Evaluates each skill assessment independently
+    2. Returns individual results for each skill
+    3. Provides summary with average level across all skills
+    """
+    try:
+        logger.info(f"Evaluating {len(request.assessments)} skill assessments")
+
+        # Convert to dict format
+        assessments_data = [
+            {
+                "skill_id": a.skill_id,
+                "skill_name": a.skill_name,
+                "responses": [r.dict() for r in a.responses]
+            }
+            for a in request.assessments
+        ]
+
+        result = evaluate_multiple_skills(assessments_data)
+
+        logger.info(f"Multiple evaluations complete: {len(result['results'])} skills, avg level = {result['summary']['average_level']}")
+        return EvaluateMultipleSkillsResponse(**result)
+
+    except Exception as e:
+        logger.error(f"Multiple assessment evaluation failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Evaluation failed: {str(e)}"
         )

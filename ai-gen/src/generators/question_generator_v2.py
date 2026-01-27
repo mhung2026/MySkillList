@@ -45,6 +45,15 @@ def build_prompt_v2(
     num_questions = normalized_request["number_of_questions"]
     difficulty = normalized_request.get("difficulty", "medium")
     context = normalized_request.get("additional_context", "")
+    target_proficiency_level_raw = normalized_request.get("target_proficiency_level", None)
+
+    # Normalize target_proficiency_level: schema defines as List[int] but generator needs single int (max)
+    if isinstance(target_proficiency_level_raw, list) and len(target_proficiency_level_raw) > 0:
+        target_proficiency_levels = max(target_proficiency_level_raw)
+    elif isinstance(target_proficiency_level_raw, int):
+        target_proficiency_levels = target_proficiency_level_raw
+    else:
+        target_proficiency_levels = None
 
     # Language mapping
     lang_name = "English" if language == "en" else "Vietnamese"
@@ -171,6 +180,49 @@ TYPE DISTRIBUTION RULE:
 - Vary the distribution naturally (e.g., for 5 questions with 3 types: 2-2-1 or 2-1-2)
 """
 
+    # Build level targeting instructions based on target_proficiency_level
+    if target_proficiency_levels is not None and target_proficiency_levels > 0:
+        max_level = min(target_proficiency_levels, 7)  # Cap at 7
+        levels_list = list(range(1, max_level + 1))
+        levels_str = ", ".join(str(l) for l in levels_list)
+
+        # Calculate minimum questions per level for coverage
+        min_per_level = max(1, num_questions // max_level)
+
+        level_targeting_instructions = f"""LEVEL TARGETING (MANDATORY):
+⚠️ TARGET PROFICIENCY LEVEL: {max_level}
+⚠️ ALLOWED LEVELS: Only generate questions with target_level in [{levels_str}]
+⚠️ DO NOT generate any question with target_level > {max_level}
+
+LEVEL COVERAGE REQUIREMENT:
+- You MUST cover ALL levels from 1 to {max_level}
+- Each level MUST have at least 1 question
+- Distribute {num_questions} questions across {max_level} levels
+- Suggested minimum per level: {min_per_level} question(s)
+
+LEVEL BEHAVIORAL SIGNATURES:
+- L1 (Follow): Waits for instruction, avoids decisions, requires close supervision
+- L2 (Assist): Follows guidance, seeks confirmation, works under routine direction
+- L3 (Apply): Acts independently within defined scope, uses discretion
+- L4 (Enable): Owns approach and quality, substantial responsibility
+- L5 (Ensure/Advise): Influences others, ensures consistency across organization
+- L6 (Initiate/Influence): Initiates change under uncertainty, significant responsibility
+- L7 (Set Strategy): Sets long-term direction and vision, organization-wide impact
+
+For this assessment targeting Level {max_level}:
+- Include foundational questions at L1-L2 (basic competency verification)
+- Include core questions at L3-L4 (independent work capability)
+{"- Include advanced questions at L5-" + str(max_level) + " (leadership/strategic capability)" if max_level >= 5 else ""}
+"""
+    else:
+        # Default behavior when no target level specified - allow all levels
+        level_targeting_instructions = """LEVEL TARGETING:
+- L1-2: Scenarios requiring guidance, following instructions, seeking confirmation
+- L3-4: Scenarios requiring independent judgment within defined scope
+- L5-7: Scenarios requiring strategic decisions, organizational impact, leading others
+
+You may generate questions at any level from 1-7 based on the skill context and difficulty."""
+
     prompt = f"""You are an expert assessment question generator specializing in SFIA (Skills Framework for the Information Age) competency assessments.
 
 {skill_context}
@@ -198,10 +250,7 @@ USE skill knowledge as follows:
 3. "Autonomy/Influence/Complexity" → calibrate decision scope per level
 4. "Knowledge Required" → inform scenario background, NOT test recall
 
-LEVEL TARGETING:
-- L1-2: Scenarios requiring guidance, following instructions, seeking confirmation
-- L3-4: Scenarios requiring independent judgment within defined scope
-- L5-7: Scenarios requiring strategic decisions, organizational impact, leading others
+{level_targeting_instructions}
 
 {type_instructions}
 
@@ -252,6 +301,7 @@ IMPORTANT RULES:
 10. Use clear, professional language
 11. Ensure questions are at appropriate difficulty level
 12. Return ONLY the JSON, no markdown blocks or explanations
+13. ⚠️ LEVEL COVERAGE: If target_proficiency_level is specified, ensure ALL levels from 1 to that level are covered with at least 1 question each
 
 Generate questions that are:
 - Behavior-revealing: expose what candidates actually DO, not what they know
@@ -261,7 +311,10 @@ Generate questions that are:
 - Level-differentiated: options map clearly to SFIA behavioral signatures
 - Unambiguous: clear context with defined constraints
 
-FINAL CHECK: Your response MUST contain exactly {num_questions} question objects in the "questions" array.
+FINAL CHECK:
+1. Your response MUST contain exactly {num_questions} question objects in the "questions" array
+2. Verify level coverage: all required levels are represented
+3. Verify type coverage: all requested question types are used
 """
 
     return prompt
@@ -382,6 +435,32 @@ async def generate_questions_v2(
             if invalid_count > 0:
                 logger.info(f"Filtered {invalid_count} questions with wrong types, kept {len(valid_questions)}")
 
+            # Filter out questions with target_level exceeding target_proficiency_level
+            target_proficiency_raw = adjusted_request.get("target_proficiency_level")
+            # Normalize: could be List[int] or int
+            if isinstance(target_proficiency_raw, list) and len(target_proficiency_raw) > 0:
+                target_proficiency = max(target_proficiency_raw)
+            elif isinstance(target_proficiency_raw, int):
+                target_proficiency = target_proficiency_raw
+            else:
+                target_proficiency = None
+
+            if target_proficiency is not None and target_proficiency > 0:
+                max_allowed_level = min(target_proficiency, 7)
+                level_filtered = []
+                level_invalid_count = 0
+                for q in valid_questions:
+                    q_level = q.get("target_level", 1)
+                    if isinstance(q_level, int) and 1 <= q_level <= max_allowed_level:
+                        level_filtered.append(q)
+                    else:
+                        level_invalid_count += 1
+                        logger.warning(f"Filtered out question with target_level={q_level} (max allowed: {max_allowed_level})")
+
+                if level_invalid_count > 0:
+                    logger.info(f"Filtered {level_invalid_count} questions exceeding target level, kept {len(level_filtered)}")
+                valid_questions = level_filtered
+
             # Add to collection
             all_questions.extend(valid_questions)
 
@@ -422,7 +501,8 @@ async def generate_questions_v2(
             "ai_model": LLM_MODEL,
             "skill_id": skill_data.get("skill_id") if skill_data else None,
             "skill_name": skill_data.get("skill_name") if skill_data else None,
-            "language": normalized_request["language"]
+            "language": normalized_request["language"],
+            "target_proficiency_level": normalized_request.get("target_proficiency_level")
         }
 
         # Return V2 format

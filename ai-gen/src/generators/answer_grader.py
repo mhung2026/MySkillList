@@ -1,6 +1,6 @@
 """
 Answer Grader
-Grades student answers using Azure OpenAI based on rubric and expected answer
+Grades submitted answers using Azure OpenAI based on rubric and expected answer
 """
 
 import json
@@ -28,7 +28,7 @@ def get_client():
 
 def build_grading_prompt(
     question_content: str,
-    student_answer: str,
+    submitted_answer: str,
     max_points: int,
     grading_rubric: Optional[str] = None,
     expected_answer: Optional[str] = None,
@@ -36,11 +36,11 @@ def build_grading_prompt(
     language: str = "en"
 ) -> str:
     """
-    Build prompt for grading student answer.
+    Build prompt for grading submitted answer.
 
     Args:
         question_content: The question text
-        student_answer: Student's submitted answer
+        submitted_answer: Candidate's submitted answer
         max_points: Maximum points for this question
         grading_rubric: JSON string with grading criteria (optional)
         expected_answer: Expected/model answer (optional)
@@ -81,13 +81,13 @@ EXPECTED/MODEL ANSWER:
 {expected_answer}
 """
 
-    prompt = f"""You are an expert assessment grader. Grade the student's answer objectively and fairly.
+    prompt = f"""You are an expert assessment grader. Grade the candidate's answer objectively and fairly.
 
 QUESTION:
 {question_content}
 
-STUDENT'S ANSWER:
-{student_answer}
+SUBMITTED ANSWER:
+{submitted_answer}
 
 {expected_text}
 
@@ -96,7 +96,7 @@ STUDENT'S ANSWER:
 MAXIMUM POINTS: {max_points}
 
 GRADING INSTRUCTIONS:
-1. Evaluate the student's answer against the criteria/expected answer
+1. Evaluate the candidate's answer against the criteria/expected answer
 2. Be fair but rigorous - partial credit is allowed
 3. Consider both correctness and completeness
 4. For coding questions, evaluate logic even if syntax has minor issues
@@ -110,7 +110,7 @@ Return ONLY valid JSON matching this exact schema (no markdown, no explanations)
   "max_points": {max_points},
   "percentage": <calculated percentage>,
   "feedback": "Brief overall feedback in {lang_name}",
-  "strength_points": ["What the student did well", "Another strength"],
+  "strength_points": ["What the candidate did well", "Another strength"],
   "improvement_areas": ["What could be improved", "Another area"],
   "detailed_analysis": "Detailed explanation of the grading decision in {lang_name}"
 }}
@@ -118,7 +118,7 @@ Return ONLY valid JSON matching this exact schema (no markdown, no explanations)
 IMPORTANT:
 - points_awarded must be between 0 and {max_points}
 - percentage = (points_awarded / max_points) * 100
-- Be specific in feedback - reference parts of the student's answer
+- Be specific in feedback - reference parts of the candidate's answer
 - strength_points and improvement_areas should have 1-3 items each
 - Return ONLY the JSON, no markdown blocks
 """
@@ -128,7 +128,7 @@ IMPORTANT:
 
 async def grade_answer(
     question_content: str,
-    student_answer: str,
+    submitted_answer: str,
     max_points: int,
     grading_rubric: Optional[str] = None,
     expected_answer: Optional[str] = None,
@@ -136,11 +136,11 @@ async def grade_answer(
     language: str = "en"
 ) -> Dict[str, Any]:
     """
-    Grade a student's answer using Azure OpenAI.
+    Grade a submitted answer using Azure OpenAI.
 
     Args:
         question_content: The question text
-        student_answer: Student's submitted answer
+        submitted_answer: Candidate's submitted answer
         max_points: Maximum points for this question
         grading_rubric: JSON string with grading criteria
         expected_answer: Expected/model answer
@@ -151,11 +151,11 @@ async def grade_answer(
         Dict with grading result
     """
     logger.info(f"Grading answer for question (max_points={max_points})")
-    logger.debug(f"Student answer length: {len(student_answer)} chars")
+    logger.debug(f"Submitted answer length: {len(submitted_answer)} chars")
 
     # Handle empty answers
-    if not student_answer or student_answer.strip() == "":
-        logger.warning("Empty student answer received")
+    if not submitted_answer or submitted_answer.strip() == "":
+        logger.warning("Empty submitted answer received")
         return {
             "success": True,
             "points_awarded": 0,
@@ -171,7 +171,7 @@ async def grade_answer(
         # Build prompt
         prompt = build_grading_prompt(
             question_content=question_content,
-            student_answer=student_answer,
+            submitted_answer=submitted_answer,
             max_points=max_points,
             grading_rubric=grading_rubric,
             expected_answer=expected_answer,
@@ -189,7 +189,7 @@ async def grade_answer(
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert assessment grader. You evaluate student answers objectively and provide constructive feedback. Always return valid JSON."
+                    "content": "You are an expert assessment grader. You evaluate submitted answers objectively and provide constructive feedback. Always return valid JSON."
                 },
                 {
                     "role": "user",
@@ -248,7 +248,7 @@ async def test_grader():
     """Test the grader with sample data."""
     result = await grade_answer(
         question_content="Explain the difference between a list and a tuple in Python.",
-        student_answer="A list is mutable, meaning you can change its contents after creation. A tuple is immutable - once created, you cannot modify it. Lists use square brackets [], tuples use parentheses (). Tuples are faster and use less memory.",
+        submitted_answer="A list is mutable, meaning you can change its contents after creation. A tuple is immutable - once created, you cannot modify it. Lists use square brackets [], tuples use parentheses (). Tuples are faster and use less memory.",
         max_points=10,
         grading_rubric='{"criteria": [{"description": "Explains mutability difference", "points": 4}, {"description": "Mentions syntax difference", "points": 3}, {"description": "Mentions performance/memory", "points": 3}]}',
         expected_answer="Lists are mutable (can be modified), tuples are immutable (cannot be modified). Lists use [], tuples use (). Tuples are generally faster and more memory efficient.",

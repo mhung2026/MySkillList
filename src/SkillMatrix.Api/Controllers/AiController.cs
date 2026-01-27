@@ -64,12 +64,12 @@ public class AiController : ControllerBase
     public async Task<ActionResult<AiGradeAnswerResponse>> GradeAnswer(
         [FromBody] AiGradeAnswerRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.StudentAnswer))
+        if (string.IsNullOrWhiteSpace(request.SubmittedAnswer))
         {
             return BadRequest(new AiGradeAnswerResponse
             {
                 Success = false,
-                Feedback = "Student answer is required"
+                Feedback = "Submitted answer is required"
             });
         }
 
