@@ -277,6 +277,42 @@ def getCourseraCoursesBySkillId(skill_id, limit=15):
     return results
 
 
+def getEmployeeById(employee_id):
+    """
+    Get employee basic info by ID.
+
+    Args:
+        employee_id (str): Employee UUID
+
+    Returns:
+        dict: Employee data (Id, FullName, Email, JobRole, Team) or None
+    """
+    with getConn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    e."Id",
+                    e."FullName",
+                    e."Email",
+                    jr."Name" as "JobRole",
+                    t."Name" as "Team"
+                FROM public."Employees" e
+                LEFT JOIN public."JobRoles" jr ON e."JobRoleId" = jr."Id"
+                LEFT JOIN public."Teams" t ON e."TeamId" = t."Id"
+                WHERE e."Id" = %s
+                    AND NOT e."IsDeleted"
+                """, (employee_id,))
+            row = cur.fetchone()
+            if row:
+                columns = [desc[0] for desc in cur.description]
+                result = dict(zip(columns, row))
+                LOGGER.debug(f"Found employee: {result['FullName']}")
+                return result
+            LOGGER.warning(f"No employee found with ID: {employee_id}")
+    return None
+
+
 # Example usage and testing
 if __name__ == "__main__":
     import sys

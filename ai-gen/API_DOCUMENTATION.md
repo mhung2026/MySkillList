@@ -221,7 +221,7 @@ Analyze a single skill gap using AI.
 **Request:**
 ```json
 {
-  "employee_name": "Nguyen Van A",
+  "employee_id": "f3b4f0fb-710f-4674-adaf-93b756b8faaf",
   "job_role": "Senior Backend Developer",
   "skill_id": "30000000-0000-0000-0000-000000000001",
   "skill_name": "System Design",
@@ -238,8 +238,8 @@ Analyze a single skill gap using AI.
 **Request Fields:**
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| employee_name | string | Yes | Employee name |
-| job_role | string | Yes | Job role name |
+| employee_id | string | Yes | Employee UUID (looked up from DB to resolve name and job role) |
+| job_role | string | No | Job role name (auto-resolved from employee's DB record if omitted) |
 | skill_id | string | No | Skill UUID |
 | skill_name | string | Yes | Skill name |
 | skill_code | string | Yes | Skill code |
@@ -249,6 +249,8 @@ Analyze a single skill gap using AI.
 | current_level_description | string | No | Description of current level |
 | required_level_description | string | No | Description of required level |
 | language | string | No | "en" or "vi" (default: "en") |
+
+**Error:** Returns 404 if `employee_id` not found in DB.
 
 **Response:**
 ```json
@@ -278,7 +280,7 @@ Analyze multiple skill gaps at once.
 **Request:**
 ```json
 {
-  "employee_name": "Nguyen Van A",
+  "employee_id": "f3b4f0fb-710f-4674-adaf-93b756b8faaf",
   "job_role": "Senior Backend Developer",
   "gaps": [
     {
@@ -299,6 +301,8 @@ Analyze multiple skill gaps at once.
   ],
   "language": "en"
 }
+
+**Note:** `employee_id` replaces `employee_name`. Name and job role are resolved from DB. Returns 404 if employee not found.
 ```
 
 **Response:**
@@ -344,12 +348,21 @@ Analyze multiple skill gaps at once.
 ### POST /generate-learning-path
 Generate an AI-powered learning path.
 
-**Coursera integration:** When `skill_code` is provided, the endpoint auto-fetches Coursera courses from the database via `SFIASkillCoursera` junction table (up to 15 courses, sorted by rating). These are merged with any caller-provided `available_resources` and fed to the AI, which prioritizes real courses over generic suggestions.
+**Coursera integration:** When `skill_id` is provided, the endpoint fetches real Coursera courses directly from the `CourseraCourse` table (matched by `SkillId`, up to 15 courses, sorted by rating). Courses are **filtered by difficulty level** based on the learning range:
+
+| Course `Level` column | Included when |
+|---|---|
+| `Beginner level` | `current_level <= 2` |
+| `Intermediate level` | `current_level <= 4 AND target_level >= 3` |
+| Other (not N/A) | `target_level > 4` |
+| `N/A` or empty | Always included |
+
+The `learning_items` array contains **only** real Coursera courses from DB. AI generates path metadata (title, description, milestones, rationale) but does not generate learning items.
 
 **Request:**
 ```json
 {
-  "employee_name": "Nguyen Van A",
+  "employee_id": "f3b4f0fb-710f-4674-adaf-93b756b8faaf",
   "skill_id": "30000000-0000-0000-0000-000000000078",
   "skill_name": "Accessibility and inclusion",
   "skill_code": "ACIN",
@@ -365,123 +378,107 @@ Generate an AI-powered learning path.
 **Request Fields:**
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| employee_name | string | Yes | Employee name |
-| skill_id | string | No | Skill UUID |
+| employee_id | string | Yes | Employee UUID (looked up from DB to resolve name). Returns 404 if not found. |
+| skill_id | string | No | Skill UUID (used to fetch Coursera courses from DB) |
 | skill_name | string | Yes | Skill name |
-| skill_code | string | Yes | SFIA skill code (used to auto-fetch Coursera courses) |
+| skill_code | string | Yes | SFIA skill code |
 | current_level | int | Yes | 0-7 |
 | target_level | int | Yes | 1-7 |
 | skill_description | string | No | Description of skill |
-| available_resources | LearningResourceInfo[] | No | Additional resources (merged with auto-fetched Coursera courses) |
+| available_resources | LearningResourceInfo[] | No | Additional resources |
 | time_constraint_months | int | No | 1-24 months |
 | language | string | No | "en" or "vi" |
-
-**LearningResourceInfo:**
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | string | Yes | Resource identifier |
-| title | string | Yes | Resource title |
-| type | string | Yes | Course, Book, Video, Project, etc. |
-| description | string | No | Resource description |
-| estimated_hours | int | No | Estimated hours to complete |
-| difficulty | string | No | Easy, Medium, Hard |
-| from_level | int | No | Appropriate starting level |
-| to_level | int | No | Expected level after completion |
 
 **Response:**
 ```json
 {
   "success": true,
   "path_title": "Accessibility and Inclusion Skill Development Path",
-  "path_description": "This learning path is designed to advance from foundational understanding to independently applying accessibility and inclusion principles.",
-  "estimated_total_hours": 40,
-  "estimated_duration_weeks": 6,
+  "path_description": "A structured learning journey to advance accessibility and inclusion skills.",
+  "estimated_total_hours": 70,
+  "estimated_duration_weeks": 24,
   "learning_items": [
     {
       "order": 1,
       "title": "An Introduction to Accessibility and Inclusive Design",
-      "description": "Learn the fundamental principles of accessibility and inclusive design.",
+      "description": "This course introduces fundamental principles of accessibility...",
       "item_type": "Course",
+      "source": "Coursera",
       "estimated_hours": 10,
-      "target_level_after": 2,
-      "success_criteria": "Complete the course and pass all assessments.",
-      "resource_id": "coursera-1",
-      "url": "https://www.coursera.org/learn/accessibility"
+      "target_level_after": 0,
+      "success_criteria": "",
+      "resource_id": "1",
+      "url": "https://www.coursera.org/learn/accessibility",
+      "organization": "N/A",
+      "difficulty": "Beginner level",
+      "rating": null,
+      "reviews_count": null,
+      "certificate_available": null
     },
     {
       "order": 2,
-      "title": "Making Accessible Designs",
-      "description": "Create user-friendly designs that meet accessibility standards.",
+      "title": "Defining Diversity, Equity and Inclusion in Organizations",
+      "description": "Introduces core definitions of diversity, equity, and inclusion...",
       "item_type": "Course",
-      "estimated_hours": 2,
-      "target_level_after": 2,
-      "success_criteria": "Complete the course and apply basic accessibility principles in a design exercise.",
-      "resource_id": "coursera-3",
-      "url": "https://www.coursera.org/learn/making-accessible-designs"
+      "source": "Coursera",
+      "estimated_hours": 6,
+      "target_level_after": 0,
+      "success_criteria": "",
+      "resource_id": "2",
+      "url": "https://www.coursera.org/learn/defining-diversity-equity-and-inclusion-in-organizations",
+      "organization": "N/A",
+      "difficulty": "Intermediate level",
+      "rating": null,
+      "reviews_count": null,
+      "certificate_available": null
     },
     {
       "order": 3,
-      "title": "Accessibility Audit Project",
-      "description": "Conduct an accessibility audit of a selected digital product to identify barriers and propose solutions.",
-      "item_type": "Project",
-      "estimated_hours": 10,
-      "target_level_after": 3,
-      "success_criteria": "Deliver a comprehensive audit report with actionable recommendations.",
-      "resource_id": null,
-      "url": null
-    },
-    {
-      "order": 4,
-      "title": "Defining Diversity, Equity and Inclusion in Organizations",
-      "description": "Understand the core definitions and importance of DEI in organizational contexts.",
+      "title": "Making Accessible Designs",
+      "description": "Learn how to create inclusive, user-friendly designs...",
       "item_type": "Course",
-      "estimated_hours": 6,
-      "target_level_after": 3,
-      "success_criteria": "Complete the course and reflect on how DEI principles align with accessibility.",
-      "resource_id": "coursera-2",
-      "url": "https://www.coursera.org/learn/defining-diversity-equity-and-inclusion-in-organizations"
-    },
-    {
-      "order": 5,
-      "title": "Accessibility Mentorship Session",
-      "description": "Participate in a 1:1 mentorship session with an experienced accessibility practitioner.",
-      "item_type": "Mentorship",
+      "source": "Coursera",
       "estimated_hours": 2,
-      "target_level_after": 3,
-      "success_criteria": "Engage in a productive discussion and document actionable insights.",
-      "resource_id": null,
-      "url": null
+      "target_level_after": 0,
+      "success_criteria": "",
+      "resource_id": "3",
+      "url": "https://www.coursera.org/learn/making-accessible-designs",
+      "organization": "N/A",
+      "difficulty": "Beginner level",
+      "rating": null,
+      "reviews_count": null,
+      "certificate_available": null
     }
   ],
   "milestones": [
     {
       "after_item": 1,
-      "description": "Complete foundational learning in accessibility principles.",
+      "description": "Foundational understanding of accessibility principles.",
       "expected_level": 2
     },
     {
       "after_item": 3,
-      "description": "Apply accessibility principles to a real-world scenario through an audit project.",
+      "description": "Able to apply accessibility principles independently.",
       "expected_level": 3
     }
   ],
-  "ai_rationale": "This path progressively builds on foundational knowledge, moving from theoretical understanding to practical application. Real Coursera courses are prioritized, with projects and mentorship filling gaps.",
+  "ai_rationale": "This path builds from foundational to applied accessibility skills.",
   "key_success_factors": [
-    "Structured progression from theory to application",
-    "Hands-on project for real-world practice",
-    "Mentorship for personalized insights"
+    "Complete all courses in order",
+    "Apply concepts in real projects"
   ],
   "potential_challenges": [
-    "Balancing time commitment with work responsibilities",
-    "Adapting theoretical knowledge to practical scenarios"
+    "Limited hands-on practice opportunities",
+    "Balancing learning with work responsibilities"
   ]
 }
 ```
 
 **Notes:**
-- `resource_id` with prefix `coursera-` indicates auto-fetched Coursera course (e.g., `coursera-1`)
-- `url` contains the actual Coursera course link when the item comes from a real course
-- Items with `resource_id: null` and `url: null` are AI-generated suggestions (projects, mentorship, etc.)
+- `learning_items` contains **only** real Coursera courses fetched from DB by `skill_id`
+- `resource_id` is the DB primary key of the `CourseraCourse` record
+- AI generates `path_title`, `path_description`, `milestones`, `ai_rationale`, `key_success_factors`, `potential_challenges`
+- If no Coursera courses match the skill/level filter, `learning_items` will be empty
 
 ### POST /rank-resources
 Rank learning resources by relevance for a skill gap.

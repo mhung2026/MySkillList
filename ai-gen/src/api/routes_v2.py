@@ -14,7 +14,8 @@ from db_skill_reader import (
     getDistinctSkillsWithLevels,
     getSkillLevelsBySkillId,
     getSkillLevelCount,
-    getCourseraCoursesBySkillId
+    getCourseraCoursesBySkillId,
+    getEmployeeById
 )
 from ..generators.question_generator_v2 import generate_questions_v2 as ai_generate_questions
 from ..generators.answer_grader import grade_answer as ai_grade_answer
@@ -341,8 +342,8 @@ async def grade_answer_endpoint(request: GradeAnswerRequest):
 
 class SkillGapRequest(BaseModel):
     """Request to analyze a single skill gap."""
-    employee_name: str = Field(..., description="Employee name")
-    job_role: str = Field(..., description="Job role name")
+    employee_id: str = Field(..., description="Employee ID (UUID)")
+    job_role: Optional[str] = Field(None, description="Job role name (auto-resolved from employee if omitted)")
     skill_id: Optional[str] = Field(None, description="Skill ID")
     skill_name: str = Field(..., description="Skill name")
     skill_code: str = Field(..., description="Skill code")
@@ -367,8 +368,8 @@ class SkillGapResponse(BaseModel):
 
 class MultipleGapsRequest(BaseModel):
     """Request to analyze multiple skill gaps."""
-    employee_name: str = Field(..., description="Employee name")
-    job_role: str = Field(..., description="Job role name")
+    employee_id: str = Field(..., description="Employee ID (UUID)")
+    job_role: Optional[str] = Field(None, description="Job role name (auto-resolved from employee if omitted)")
     gaps: List[Dict[str, Any]] = Field(..., description="List of gaps to analyze")
     language: Optional[str] = Field("en", description="Response language (en/vi)")
 
@@ -393,11 +394,21 @@ async def analyze_gap_endpoint(request: SkillGapRequest):
     3. Returns AI-generated analysis, recommendations, and action items
     """
     try:
-        logger.info(f"Analyzing gap for {request.skill_name}: {request.current_level} -> {request.required_level}")
+        # Look up employee from DB
+        employee = getEmployeeById(request.employee_id)
+        if not employee:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Employee not found: {request.employee_id}"
+            )
+        employee_name = employee["FullName"]
+        job_role = request.job_role or employee.get("JobRole") or "Unknown"
+
+        logger.info(f"Analyzing gap for {request.skill_name}: {request.current_level} -> {request.required_level} (employee: {employee_name})")
 
         result = await analyze_skill_gap(
-            employee_name=request.employee_name,
-            job_role=request.job_role,
+            employee_name=employee_name,
+            job_role=job_role,
             skill_name=request.skill_name,
             skill_code=request.skill_code,
             current_level=request.current_level,
@@ -411,6 +422,8 @@ async def analyze_gap_endpoint(request: SkillGapRequest):
         logger.info(f"Gap analysis complete for {request.skill_name}")
         return SkillGapResponse(**result)
 
+    except HTTPException:
+        raise
     except ValueError as e:
         logger.error(f"Gap analysis failed: {e}")
         raise HTTPException(
@@ -436,11 +449,21 @@ async def analyze_multiple_gaps_endpoint(request: MultipleGapsRequest):
     3. Returns individual analyses plus overall summary and prioritization
     """
     try:
-        logger.info(f"Analyzing {len(request.gaps)} gaps for {request.employee_name}")
+        # Look up employee from DB
+        employee = getEmployeeById(request.employee_id)
+        if not employee:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Employee not found: {request.employee_id}"
+            )
+        employee_name = employee["FullName"]
+        job_role = request.job_role or employee.get("JobRole") or "Unknown"
+
+        logger.info(f"Analyzing {len(request.gaps)} gaps for {employee_name}")
 
         result = await analyze_multiple_gaps(
-            employee_name=request.employee_name,
-            job_role=request.job_role,
+            employee_name=employee_name,
+            job_role=job_role,
             gaps=request.gaps,
             language=request.language or "en"
         )
@@ -448,6 +471,8 @@ async def analyze_multiple_gaps_endpoint(request: MultipleGapsRequest):
         logger.info(f"Multiple gaps analysis complete: {len(result['gap_analyses'])} analyzed")
         return MultipleGapsResponse(**result)
 
+    except HTTPException:
+        raise
     except ValueError as e:
         logger.error(f"Multiple gaps analysis failed: {e}")
         raise HTTPException(
@@ -480,7 +505,7 @@ class LearningResourceInfo(BaseModel):
 
 class GenerateLearningPathRequest(BaseModel):
     """Request to generate a learning path."""
-    employee_name: str = Field(..., description="Employee name")
+    employee_id: str = Field(..., description="Employee ID (UUID)")
     skill_id: Optional[str] = Field(None, description="Skill ID")
     skill_name: str = Field(..., description="Skill name")
     skill_code: str = Field(..., description="Skill code")
@@ -599,7 +624,16 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
     4. Returns structured learning items, milestones, and rationale
     """
     try:
-        logger.info(f"Generating learning path for {request.skill_name}: {request.current_level} -> {request.target_level}")
+        # Look up employee from DB
+        employee = getEmployeeById(request.employee_id)
+        if not employee:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Employee not found: {request.employee_id}"
+            )
+        employee_name = employee["FullName"]
+
+        logger.info(f"Generating learning path for {employee_name} - {request.skill_name}: {request.current_level} -> {request.target_level}")
 
         # Convert caller-provided resources to dict format
         resources_dict = []
@@ -656,7 +690,7 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
 
         # Generate AI learning path metadata (title, description, milestones, rationale)
         result = await generate_learning_path(
-            employee_name=request.employee_name,
+            employee_name=employee_name,
             skill_name=request.skill_name,
             skill_code=request.skill_code,
             current_level=request.current_level,
@@ -673,6 +707,8 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
         logger.info(f"Learning path generated with {len(coursera_items)} Coursera courses from DB")
         return GenerateLearningPathResponse(**result)
 
+    except HTTPException:
+        raise
     except ValueError as e:
         logger.error(f"Learning path generation failed: {e}")
         raise HTTPException(
