@@ -20,7 +20,7 @@ from db_skill_reader import (
 from ..generators.question_generator_v2 import generate_questions_v2 as ai_generate_questions
 from ..generators.answer_grader import grade_answer as ai_grade_answer
 from ..generators.skill_gap_analyzer import analyze_skill_gap, analyze_multiple_gaps
-from ..generators.learning_path_recommender import generate_learning_path, rank_learning_resources
+from ..generators.learning_path_recommender import generate_learning_path, generate_multiple_learning_paths, rank_learning_resources
 from ..generators.assessment_evaluator import evaluate_assessment, evaluate_multiple_skills
 
 logger = logging.getLogger(__name__)
@@ -550,6 +550,32 @@ class GenerateLearningPathResponse(BaseModel):
     potential_challenges: List[str]
 
 
+class LearningPathSkillInfo(BaseModel):
+    """Skill info for multi-skill learning path generation."""
+    skill_id: Optional[str] = Field(None, description="Skill UUID (used to fetch Coursera courses)")
+    skill_name: str = Field(..., description="Skill name")
+    skill_code: str = Field(..., description="SFIA skill code")
+    current_level: int = Field(..., ge=0, le=7, description="Current proficiency level (0-7)")
+    target_level: int = Field(..., ge=1, le=7, description="Target proficiency level (1-7)")
+    skill_description: Optional[str] = Field(None, description="Skill description")
+
+
+class GenerateMultipleLearningPathsRequest(BaseModel):
+    """Request to generate learning paths for multiple skills."""
+    employee_id: str = Field(..., description="Employee ID (UUID)")
+    skills: List[LearningPathSkillInfo] = Field(..., min_items=1, description="Skills to generate paths for")
+    time_constraint_months: Optional[int] = Field(None, ge=1, le=24, description="Time constraint in months")
+    language: Optional[str] = Field("en", description="Response language (en/vi)")
+
+
+class GenerateMultipleLearningPathsResponse(BaseModel):
+    """Response from multi-skill learning path generation."""
+    success: bool
+    learning_paths: List[Dict[str, Any]]
+    overall_summary: str
+    recommended_learning_order: List[str]
+
+
 class RankResourcesRequest(BaseModel):
     """Request to rank learning resources."""
     skill_name: str = Field(..., description="Skill name")
@@ -717,6 +743,129 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
         )
     except Exception as e:
         logger.error(f"Unexpected error during learning path generation: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {str(e)}"
+        )
+
+
+@router.post("/generate-learning-paths", response_model=GenerateMultipleLearningPathsResponse)
+async def generate_multiple_learning_paths_endpoint(request: GenerateMultipleLearningPathsRequest):
+    """
+    Generate AI-powered learning paths for multiple skills in a single AI call.
+
+    This endpoint:
+    1. Resolves employee from DB
+    2. Fetches Coursera courses per skill from DB
+    3. Calls AI once for all skills (not N loops)
+    4. Returns learning paths with Coursera courses merged, plus cross-skill analysis
+    """
+    try:
+        # Look up employee from DB
+        employee = getEmployeeById(request.employee_id)
+        if not employee:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Employee not found: {request.employee_id}"
+            )
+        employee_name = employee["FullName"]
+
+        logger.info(f"Generating learning paths for {len(request.skills)} skills for {employee_name}")
+
+        # Fetch Coursera courses per skill (DB queries, fast)
+        coursera_by_skill = {}  # skill_code -> coursera_items[]
+        for skill in request.skills:
+            if skill.skill_id:
+                try:
+                    raw_courses = getCourseraCoursesBySkillId(skill.skill_id)
+                    cur = skill.current_level
+                    tgt = skill.target_level
+                    filtered = []
+                    for c in raw_courses:
+                        course_level = (c.get("Level") or "").strip().lower()
+                        if course_level in ("", "n/a"):
+                            filtered.append(c)
+                        elif course_level == "beginner level":
+                            if cur <= 2:
+                                filtered.append(c)
+                        elif course_level == "intermediate level":
+                            if cur <= 4 and tgt >= 3:
+                                filtered.append(c)
+                        else:
+                            if tgt > 4:
+                                filtered.append(c)
+
+                    items = []
+                    for i, c in enumerate(filtered, 1):
+                        items.append({
+                            "order": i,
+                            "title": c.get("Title") or "Untitled Course",
+                            "description": c.get("Description") or "",
+                            "item_type": "Course",
+                            "source": "Coursera",
+                            "estimated_hours": _parse_duration_to_hours(c.get("Duration")) or 0,
+                            "target_level_after": 0,
+                            "success_criteria": "",
+                            "resource_id": str(c["Id"]),
+                            "url": c.get("Url"),
+                            "organization": c.get("Organization"),
+                            "difficulty": c.get("Level"),
+                            "rating": float(c["Rating"]) if c.get("Rating") else None,
+                            "reviews_count": c.get("ReviewsCount"),
+                            "certificate_available": c.get("CertificateAvailable"),
+                        })
+                    coursera_by_skill[skill.skill_code] = items
+                    logger.info(f"Fetched {len(raw_courses)} courses for {skill.skill_code}, filtered to {len(items)}")
+                except Exception as e:
+                    logger.warning(f"Failed to fetch Coursera courses for {skill.skill_code}: {e}")
+                    coursera_by_skill[skill.skill_code] = []
+            else:
+                coursera_by_skill[skill.skill_code] = []
+
+        # Single AI call for all skills
+        skills_for_ai = [
+            {
+                "skill_name": s.skill_name,
+                "skill_code": s.skill_code,
+                "current_level": s.current_level,
+                "target_level": s.target_level,
+                "skill_description": s.skill_description,
+            }
+            for s in request.skills
+        ]
+
+        result = await generate_multiple_learning_paths(
+            employee_name=employee_name,
+            skills=skills_for_ai,
+            time_constraint_months=request.time_constraint_months,
+            language=request.language or "en"
+        )
+
+        # Merge Coursera courses into each path
+        for path in result.get("learning_paths", []):
+            skill_code = path.get("skill_code", "")
+            coursera_items = coursera_by_skill.get(skill_code, [])
+            path["learning_items"] = coursera_items
+            # Add skill_id and skill_name from request
+            for s in request.skills:
+                if s.skill_code == skill_code:
+                    path["skill_id"] = s.skill_id
+                    path["skill_name"] = s.skill_name
+                    break
+
+        logger.info(f"Multi-skill learning paths generated: {len(result.get('learning_paths', []))} paths")
+        return GenerateMultipleLearningPathsResponse(**result)
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.error(f"Multi-learning-path generation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Generation failed: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during multi-learning-path generation: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error: {str(e)}"

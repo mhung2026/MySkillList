@@ -254,6 +254,209 @@ async def generate_learning_path(
         raise ValueError(f"Failed to generate learning path: {str(e)}")
 
 
+def build_multiple_learning_paths_prompt(
+    employee_name: str,
+    skills: List[Dict[str, Any]],
+    time_constraint_months: Optional[int] = None,
+    language: str = "en"
+) -> str:
+    """
+    Build prompt for generating learning paths for multiple skills in a single AI call.
+    """
+    lang_name = "English" if language == "en" else "Vietnamese"
+
+    level_names = {
+        0: "None", 1: "Follow", 2: "Assist", 3: "Apply",
+        4: "Enable", 5: "Ensure/Advise", 6: "Initiate", 7: "Set Strategy"
+    }
+
+    # Build skills context
+    skills_text = ""
+    for i, s in enumerate(skills, 1):
+        cur = s.get("current_level", 0)
+        tgt = s.get("target_level", 1)
+        cur_name = level_names.get(cur, f"Level {cur}")
+        tgt_name = level_names.get(tgt, f"Level {tgt}")
+        desc = f'\n   Description: {s["skill_description"]}' if s.get("skill_description") else ""
+        skills_text += f"""
+{i}. {s['skill_name']} ({s['skill_code']})
+   Current Level: {cur} ({cur_name}) → Target Level: {tgt} ({tgt_name})
+   Gap: {tgt - cur} level(s){desc}
+"""
+
+    time_text = ""
+    if time_constraint_months:
+        time_text = f"\nTIME CONSTRAINT: Complete all paths within {time_constraint_months} months"
+
+    prompt = f"""You are an expert learning and development consultant specializing in IT/Tech skill development.
+
+CONTEXT:
+- Employee: {employee_name}
+- Number of skills to develop: {len(skills)}
+{time_text}
+
+SKILLS TO DEVELOP:
+{skills_text}
+
+TASK:
+Create a comprehensive learning path for EACH skill listed above. Also provide an overall summary analyzing cross-skill priorities and a recommended learning order.
+
+For EACH skill, consider:
+1. Progressive skill building (don't skip levels)
+2. Mix of learning methods (projects, mentoring, workshops, etc.)
+3. Practical application opportunities
+4. Milestones to measure progress
+
+OUTPUT REQUIREMENTS:
+Return ONLY valid JSON matching this exact schema (no markdown):
+
+{{
+  "learning_paths": [
+    {{
+      "skill_code": "<skill code>",
+      "path_title": "Title for this learning path in {lang_name}",
+      "path_description": "Brief description in {lang_name}",
+      "estimated_total_hours": <number>,
+      "estimated_duration_weeks": <number>,
+      "learning_items": [
+        {{
+          "order": 1,
+          "title": "Learning item title in {lang_name}",
+          "description": "What will be learned in {lang_name}",
+          "item_type": "Project|Mentorship|Workshop|Certification|Book|Article",
+          "estimated_hours": <number>,
+          "target_level_after": <number 1-7>,
+          "success_criteria": "How to know this is complete in {lang_name}"
+        }}
+      ],
+      "milestones": [
+        {{
+          "after_item": <order number>,
+          "description": "Milestone description in {lang_name}",
+          "expected_level": <number>
+        }}
+      ],
+      "ai_rationale": "Explanation of why this path was designed this way in {lang_name}",
+      "key_success_factors": ["Factor 1", "Factor 2"],
+      "potential_challenges": ["Challenge 1", "Challenge 2"]
+    }}
+  ],
+  "overall_summary": "Cross-skill analysis: priorities, synergies between skills, overall development strategy in {lang_name}",
+  "recommended_learning_order": ["SKILL_CODE_1", "SKILL_CODE_2"]
+}}
+
+IMPORTANT:
+- Generate ONE learning_paths entry per skill, matched by skill_code
+- Create 3-6 learning items per skill depending on gap size
+- Each level advancement typically needs 20-40 hours of learning
+- Include at least one hands-on project per skill
+- ONLY generate non-course items: Project, Mentorship, Workshop, Certification, Book, Article
+- Do NOT generate any Course items. Real courses will be added separately.
+- item_type must be one of: Project, Mentorship, Workshop, Certification, Book, Article
+- recommended_learning_order: sort skill_codes by priority (learn first → learn last)
+- overall_summary: analyze synergies, dependencies, and prioritization across all skills
+- All text in {lang_name}
+- Return ONLY valid JSON
+"""
+    return prompt
+
+
+async def generate_multiple_learning_paths(
+    employee_name: str,
+    skills: List[Dict[str, Any]],
+    time_constraint_months: Optional[int] = None,
+    language: str = "en"
+) -> Dict[str, Any]:
+    """
+    Generate learning paths for multiple skills in a single AI call.
+
+    Args:
+        employee_name: Employee name
+        skills: List of dicts with skill_name, skill_code, current_level, target_level, skill_description
+        time_constraint_months: Optional time constraint
+        language: Response language (en/vi)
+
+    Returns:
+        Dict with learning_paths[], overall_summary, recommended_learning_order
+    """
+    logger.info(f"Generating learning paths for {len(skills)} skills for {employee_name}")
+
+    if not skills:
+        return {
+            "success": True,
+            "learning_paths": [],
+            "overall_summary": "No skills provided." if language == "en" else "Không có kỹ năng nào được cung cấp.",
+            "recommended_learning_order": []
+        }
+
+    try:
+        prompt = build_multiple_learning_paths_prompt(
+            employee_name=employee_name,
+            skills=skills,
+            time_constraint_months=time_constraint_months,
+            language=language
+        )
+
+        logger.debug(f"Multi-learning-path prompt built: {len(prompt)} characters")
+
+        client = get_client()
+        response = await client.chat.completions.create(
+            model=LLM_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert learning and development consultant. Design effective, practical learning paths for multiple skills. Always return valid JSON."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.5,
+            max_tokens=4096,
+            response_format={"type": "json_object"}
+        )
+
+        logger.info("Received multi-learning-path response from Azure OpenAI")
+
+        response_text = response.choices[0].message.content.strip()
+
+        if response_text.startswith("```"):
+            response_text = response_text.split("```")[1]
+            if response_text.startswith("json"):
+                response_text = response_text[4:]
+            response_text = response_text.strip()
+
+        result = json.loads(response_text)
+
+        # Normalize each path to match single endpoint field structure
+        learning_paths = []
+        for path in result.get("learning_paths", []):
+            learning_paths.append({
+                "skill_code": path.get("skill_code", ""),
+                "path_title": path.get("path_title", ""),
+                "path_description": path.get("path_description", ""),
+                "estimated_total_hours": path.get("estimated_total_hours", 0),
+                "estimated_duration_weeks": path.get("estimated_duration_weeks", 0),
+                "learning_items": path.get("learning_items", []),
+                "milestones": path.get("milestones", []),
+                "ai_rationale": path.get("ai_rationale", ""),
+                "key_success_factors": path.get("key_success_factors", []),
+                "potential_challenges": path.get("potential_challenges", [])
+            })
+
+        return {
+            "success": True,
+            "learning_paths": learning_paths,
+            "overall_summary": result.get("overall_summary", ""),
+            "recommended_learning_order": result.get("recommended_learning_order", [])
+        }
+
+    except Exception as e:
+        logger.error(f"Error generating multiple learning paths: {e}", exc_info=True)
+        raise ValueError(f"Failed to generate multiple learning paths: {str(e)}")
+
+
 async def rank_learning_resources(
     skill_name: str,
     skill_code: str,

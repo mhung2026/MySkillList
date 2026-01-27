@@ -57,7 +57,7 @@ Get all available skills.
 ```
 
 ### GET /skills/{skill_id}/levels
-Get proficiency levels for a specific skill.
+Get proficiency levels for a specific skill. Returns **only** levels listed in the skill's `ApplicableLevels` column (e.g., ITSP returns L4-L7 only, not L1-L7).
 
 **Response:**
 ```json
@@ -115,45 +115,57 @@ Generate assessment questions using AI.
 | difficulty | string | No | Easy, Medium, Hard |
 | additional_context | string | No | Max 2000 chars |
 
+**Level targeting behavior:**
+
+Levels are filtered by the skill's `ApplicableLevels` column in DB (e.g., ITSP only has L4-L7). Questions are generated only within the skill's applicable range.
+
+| Scenario | Behavior |
+|----------|----------|
+| `target_proficiency_level` provided, enough questions | Gen from skill's min level up to target. E.g., ITSP target=6 → L4,L5,L6 |
+| `target_proficiency_level` provided, fewer questions than levels | Trim to N levels closest to target. E.g., ITSP target=6, 2 questions → L5,L6 |
+| No `target_proficiency_level`, enough questions | Gen across all available levels. E.g., ITSP → L4,L5,L6,L7 |
+| No `target_proficiency_level`, fewer questions than levels | Trim to N highest levels. E.g., ITSP, 2 questions → L6,L7 |
+
 **Response:**
 ```json
 {
-  "success": true,
   "questions": [
     {
-      "question_id": "q_001",
+      "skill_id": "30000000-0000-0000-0000-000000000001",
       "type": "MultipleChoice",
-      "content": "Trong quy trình lập kế hoạch chiến lược CNTT, bước nào sau đây nên được thực hiện đầu tiên?",
+      "content": "You are responsible for...",
       "code_snippet": null,
+      "target_level": 4,
+      "difficulty": "Medium",
+      "points": 15,
+      "time_limit_seconds": 600,
+      "tags": ["strategic_planning", "level_4"],
       "options": [
         {
-          "option_id": "a",
-          "content": "Phân tích hiện trạng hệ thống",
+          "content": "Draft an agenda and share it with the team",
           "is_correct": true,
-          "explanation": "Phân tích hiện trạng giúp xác định điểm xuất phát..."
-        },
-        {
-          "option_id": "b",
-          "content": "Xác định ngân sách",
-          "is_correct": false,
-          "explanation": null
+          "display_order": 1,
+          "explanation": "Level 4 involves working independently...",
+          "effectiveness_level": null
         }
       ],
-      "correct_answer": "a",
-      "explanation": "Phân tích hiện trạng là bước đầu tiên...",
-      "difficulty": "Medium",
-      "proficiency_level": 3,
-      "skill_id": "30000000-0000-0000-0000-000000000001",
-      "skill_name": "Strategic planning",
-      "points": 10,
-      "grading_rubric": null
+      "grading_rubric": null,
+      "explanation": "The correct option reflects Level 4...",
+      "hints": ["Consider the level of autonomy expected."]
     }
   ],
   "metadata": {
-    "total_questions": 5,
-    "generation_time": "2024-01-15T10:30:00Z",
-    "model_used": "gpt-4o",
-    "language": "Vietnamese"
+    "total_questions": 6,
+    "requested_questions": 6,
+    "generation_attempts": 1,
+    "generation_timestamp": "2026-01-27T21:30:00.000000",
+    "ai_model": "gpt-4o",
+    "skill_id": "30000000-0000-0000-0000-000000000001",
+    "skill_name": "Strategic planning",
+    "language": "en",
+    "target_proficiency_level": [6],
+    "available_levels": [4, 5, 6, 7],
+    "min_defined_level": 4
   }
 }
 ```
@@ -479,6 +491,104 @@ The `learning_items` array contains **only** real Coursera courses from DB. AI g
 - `resource_id` is the DB primary key of the `CourseraCourse` record
 - AI generates `path_title`, `path_description`, `milestones`, `ai_rationale`, `key_success_factors`, `potential_challenges`
 - If no Coursera courses match the skill/level filter, `learning_items` will be empty
+
+### POST /generate-learning-paths
+Generate AI-powered learning paths for **multiple skills** in a **single AI call**.
+
+Same field structure as single endpoint, but wraps results in `learning_paths[]` array with cross-skill analysis.
+
+**Request:**
+```json
+{
+  "employee_id": "f3b4f0fb-710f-4674-adaf-93b756b8faaf",
+  "skills": [
+    {
+      "skill_id": "30000000-0000-0000-0000-000000000078",
+      "skill_name": "Accessibility and inclusion",
+      "skill_code": "ACIN",
+      "current_level": 1,
+      "target_level": 3,
+      "skill_description": "Designing accessible and inclusive digital products"
+    },
+    {
+      "skill_id": "30000000-0000-0000-0000-000000000001",
+      "skill_name": "Strategic planning",
+      "skill_code": "ITSP",
+      "current_level": 4,
+      "target_level": 6
+    }
+  ],
+  "time_constraint_months": 6,
+  "language": "en"
+}
+```
+
+**Request Fields:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| employee_id | string | Yes | Employee UUID (resolved from DB). Returns 404 if not found. |
+| skills | LearningPathSkillInfo[] | Yes | Skills to generate paths for (min 1) |
+| skills[].skill_id | string | No | Skill UUID (used to fetch Coursera courses) |
+| skills[].skill_name | string | Yes | Skill name |
+| skills[].skill_code | string | Yes | SFIA skill code |
+| skills[].current_level | int | Yes | 0-7 |
+| skills[].target_level | int | Yes | 1-7 |
+| skills[].skill_description | string | No | Description of skill |
+| time_constraint_months | int | No | 1-24 months |
+| language | string | No | "en" or "vi" |
+
+**Response:**
+```json
+{
+  "success": true,
+  "learning_paths": [
+    {
+      "skill_id": "30000000-0000-0000-0000-000000000078",
+      "skill_name": "Accessibility and inclusion",
+      "skill_code": "ACIN",
+      "path_title": "Accessibility and Inclusion Development Path",
+      "path_description": "A structured journey to advance accessibility skills.",
+      "estimated_total_hours": 70,
+      "estimated_duration_weeks": 24,
+      "learning_items": [
+        {
+          "order": 1,
+          "title": "An Introduction to Accessibility",
+          "item_type": "Course",
+          "source": "Coursera",
+          "url": "https://www.coursera.org/learn/accessibility",
+          "..."
+        }
+      ],
+      "milestones": [
+        { "after_item": 1, "description": "Foundational understanding", "expected_level": 2 }
+      ],
+      "ai_rationale": "This path builds from foundational to applied skills.",
+      "key_success_factors": ["Complete courses in order", "Apply in real projects"],
+      "potential_challenges": ["Limited practice opportunities"]
+    },
+    {
+      "skill_id": "30000000-0000-0000-0000-000000000001",
+      "skill_name": "Strategic planning",
+      "skill_code": "ITSP",
+      "path_title": "Strategic Planning Advanced Path",
+      "path_description": "...",
+      "..."
+    }
+  ],
+  "overall_summary": "Focus on Accessibility first as it has a larger gap. Strategic planning can be developed in parallel through leadership activities.",
+  "recommended_learning_order": ["ACIN", "ITSP"]
+}
+```
+
+**Notes:**
+- **1 AI call** for all skills (not N separate calls)
+- Each entry in `learning_paths[]` has **identical fields** to the single `generate-learning-path` response
+- `learning_items` contains **only** real Coursera courses from DB per skill
+- `overall_summary`: cross-skill analysis of priorities and synergies
+- `recommended_learning_order`: skill codes sorted by learning priority
+
+---
 
 ### POST /rank-resources
 Rank learning resources by relevance for a skill gap.
