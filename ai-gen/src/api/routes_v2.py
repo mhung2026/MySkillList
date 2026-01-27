@@ -606,12 +606,33 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
         if request.available_resources:
             resources_dict = [r.dict() for r in request.available_resources]
 
-        # Fetch real Coursera courses from DB by skill_id
+        # Fetch real Coursera courses from DB by skill_id, filtered by level
         coursera_items = []
         if request.skill_id:
             try:
                 raw_courses = getCourseraCoursesBySkillId(request.skill_id)
-                for i, c in enumerate(raw_courses, 1):
+                cur = request.current_level
+                tgt = request.target_level
+                filtered = []
+                for c in raw_courses:
+                    course_level = (c.get("Level") or "").strip().lower()
+                    if course_level in ("", "n/a"):
+                        # No level info → always include
+                        filtered.append(c)
+                    elif course_level == "beginner level":
+                        # Beginner → include if learning range covers 1-2
+                        if cur <= 2:
+                            filtered.append(c)
+                    elif course_level == "intermediate level":
+                        # Intermediate → include if learning range covers 3-4
+                        if cur <= 4 and tgt >= 3:
+                            filtered.append(c)
+                    else:
+                        # Advanced / Mixed / other → include if target > 4
+                        if tgt > 4:
+                            filtered.append(c)
+
+                for i, c in enumerate(filtered, 1):
                     coursera_items.append({
                         "order": i,
                         "title": c.get("Title") or "Untitled Course",
@@ -629,7 +650,7 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
                         "reviews_count": c.get("ReviewsCount"),
                         "certificate_available": c.get("CertificateAvailable"),
                     })
-                logger.info(f"Fetched {len(coursera_items)} Coursera courses for skill ID {request.skill_id}")
+                logger.info(f"Fetched {len(raw_courses)} courses, filtered to {len(coursera_items)} for levels {cur}->{tgt}")
             except Exception as e:
                 logger.warning(f"Failed to fetch Coursera courses: {e}")
 
