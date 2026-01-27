@@ -606,35 +606,34 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
         if request.available_resources:
             resources_dict = [r.dict() for r in request.available_resources]
 
-        # Auto-fetch Coursera courses from DB if skill_id is provided
-        coursera_courses = []
+        # Auto-fetch real Coursera courses from DB
+        coursera_items = []
         if request.skill_id:
             try:
                 raw_courses = getCourseraCoursesBySkillId(request.skill_id)
                 for c in raw_courses:
-                    coursera_courses.append({
-                        "id": f"coursera-{c['Id']}",
+                    coursera_items.append({
+                        "order": 0,  # will be re-ordered below
                         "title": c.get("Title") or "Untitled Course",
-                        "type": "Course",
+                        "description": c.get("Description") or "",
+                        "item_type": "Course",
                         "source": "Coursera",
+                        "estimated_hours": _parse_duration_to_hours(c.get("Duration")) or 0,
+                        "target_level_after": 0,
+                        "success_criteria": "",
+                        "resource_id": str(c["Id"]),
                         "url": c.get("Url"),
                         "organization": c.get("Organization"),
-                        "description": c.get("Description"),
-                        "estimated_hours": _parse_duration_to_hours(c.get("Duration")),
                         "difficulty": c.get("Level"),
                         "rating": float(c["Rating"]) if c.get("Rating") else None,
                         "reviews_count": c.get("ReviewsCount"),
                         "certificate_available": c.get("CertificateAvailable"),
-                        "syllabus": c.get("Syllabus"),
-                        "prerequisites": c.get("Prerequisites"),
                     })
-                logger.info(f"Fetched {len(coursera_courses)} Coursera courses for skill ID {request.skill_id}")
+                logger.info(f"Fetched {len(coursera_items)} Coursera courses for skill ID {request.skill_id}")
             except Exception as e:
                 logger.warning(f"Failed to fetch Coursera courses: {e}")
 
-        # Merge: caller resources + Coursera courses
-        all_resources = resources_dict + coursera_courses if (resources_dict or coursera_courses) else None
-
+        # Generate AI learning path (non-course activities only)
         result = await generate_learning_path(
             employee_name=request.employee_name,
             skill_name=request.skill_name,
@@ -642,12 +641,20 @@ async def generate_learning_path_endpoint(request: GenerateLearningPathRequest):
             current_level=request.current_level,
             target_level=request.target_level,
             skill_description=request.skill_description,
-            available_resources=all_resources,
+            available_resources=resources_dict if resources_dict else None,
             time_constraint_months=request.time_constraint_months,
             language=request.language or "en"
         )
 
-        logger.info(f"Learning path generated: {len(result['learning_items'])} items")
+        # Append real Coursera courses to learning_items
+        ai_items = result.get("learning_items", [])
+        all_items = ai_items + coursera_items
+        # Re-order sequentially
+        for i, item in enumerate(all_items, 1):
+            item["order"] = i
+        result["learning_items"] = all_items
+
+        logger.info(f"Learning path generated: {len(ai_items)} AI items + {len(coursera_items)} Coursera courses")
         return GenerateLearningPathResponse(**result)
 
     except ValueError as e:

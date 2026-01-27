@@ -121,7 +121,7 @@ Return ONLY valid JSON matching this exact schema (no markdown):
       "order": 1,
       "title": "Learning item title in {lang_name}",
       "description": "What will be learned in {lang_name}",
-      "item_type": "Course|Book|Video|Project|Mentorship|Workshop|Certification|Article",
+      "item_type": "Project|Mentorship|Workshop|Certification|Book|Article",
       "estimated_hours": <number>,
       "target_level_after": <number 1-7>,
       "success_criteria": "How to know this is complete in {lang_name}",
@@ -142,13 +142,12 @@ Return ONLY valid JSON matching this exact schema (no markdown):
 }}
 
 IMPORTANT:
-- Create 3-8 learning items depending on gap size
+- Create 3-6 learning items depending on gap size
 - Each level advancement typically needs 20-40 hours of learning
 - Include at least one hands-on project
-- Mix theoretical and practical learning
-- PRIORITIZE real available resources listed above over generic suggestions
-- When using a real resource, include its resource_id and url exactly as provided
-- You may add additional generic items to fill gaps not covered by available resources
+- ONLY generate non-course items: Project, Mentorship, Workshop, Certification, Book, Article
+- Do NOT generate any Course items. Real courses will be added separately.
+- item_type must be one of: Project, Mentorship, Workshop, Certification, Book, Article
 - All text in {lang_name}
 - Return ONLY valid JSON
 """
