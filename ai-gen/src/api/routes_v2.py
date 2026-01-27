@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+import json
 import logging
 
 from ..validators.request_validator import validate_and_normalize, RequestValidator
@@ -46,11 +47,11 @@ class GradeAnswerRequest(BaseModel):
     """Request to grade a submitted answer."""
     question_id: Optional[str] = Field(None, description="Question ID (optional)")
     question_content: str = Field(..., description="The question text")
-    submitted_answer: str = Field(..., description="Candidate's submitted answer")
-    max_points: int = Field(..., ge=1, le=100, description="Maximum points for this question")
-    grading_rubric: Optional[str] = Field(None, description="JSON string with grading criteria")
+    submitted_answer: Optional[str] = Field("", description="Candidate's submitted answer (null/empty treated as no answer)")
+    max_points: int = Field(..., ge=1, description="Maximum points for this question")
+    grading_rubric: Optional[Any] = Field(None, description="Grading criteria (JSON string or dict)")
     expected_answer: Optional[str] = Field(None, description="Expected/model answer")
-    question_type: Optional[str] = Field(None, description="Question type (ShortAnswer, LongAnswer, etc.)")
+    question_type: Optional[str] = Field(None, description="Question type (ShortAnswer, LongAnswer, Scenario, etc.)")
     language: Optional[str] = Field("en", description="Response language (en/vi)")
 
 class GradeAnswerResponse(BaseModel):
@@ -304,16 +305,28 @@ async def grade_answer_endpoint(request: GradeAnswerRequest):
     3. Returns points, feedback, strengths, and improvement areas
     """
     try:
-        logger.info(f"Grading answer for question (max_points={request.max_points})")
+        # Normalize submitted_answer: null/None → empty string
+        submitted_answer = request.submitted_answer or ""
+        if isinstance(submitted_answer, (int, float)):
+            submitted_answer = str(submitted_answer)
+
+        # Normalize grading_rubric: dict → JSON string
+        grading_rubric = request.grading_rubric
+        if isinstance(grading_rubric, dict):
+            grading_rubric = json.dumps(grading_rubric)
+        elif grading_rubric is not None and not isinstance(grading_rubric, str):
+            grading_rubric = str(grading_rubric)
+
+        logger.info(f"Grading answer for question (max_points={request.max_points}, "
+                     f"answer_len={len(submitted_answer)}, type={request.question_type})")
         logger.debug(f"Question: {request.question_content[:100]}...")
-        logger.debug(f"Submitted answer length: {len(request.submitted_answer)} chars")
 
         # Call AI grader
         result = await ai_grade_answer(
             question_content=request.question_content,
-            submitted_answer=request.submitted_answer,
+            submitted_answer=submitted_answer,
             max_points=request.max_points,
-            grading_rubric=request.grading_rubric,
+            grading_rubric=grading_rubric,
             expected_answer=request.expected_answer,
             question_type=request.question_type,
             language=request.language or "en"
@@ -955,6 +968,7 @@ class EvaluationDetails(BaseModel):
     method: str
     threshold: float
     start_level: Optional[int] = None
+    end_level: Optional[int] = None
     breakdown: List[EvaluationBreakdownItem]
     message: Optional[str] = None
 
@@ -965,6 +979,7 @@ class EvaluateAssessmentResponse(BaseModel):
     skill_name: Optional[str] = None
     current_level: int = Field(..., ge=0, le=7, description="Determined SFIA level (0 if first level not passed)")
     min_defined_level: int = Field(..., ge=1, le=7, description="Skill's lowest defined SFIA level (consecutive check starts here)")
+    max_defined_level: int = Field(..., ge=1, le=7, description="Skill's highest defined SFIA level (consecutive check ends here)")
     level_results: Dict[str, LevelResultItem]
     consecutive_levels_passed: int
     highest_level_with_responses: int

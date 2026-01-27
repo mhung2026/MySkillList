@@ -3,6 +3,7 @@ Answer Grader
 Grades submitted answers using Azure OpenAI based on rubric and expected answer
 """
 
+import asyncio
 import json
 import logging
 from typing import Dict, Any, Optional
@@ -180,46 +181,66 @@ async def grade_answer(
         )
         logger.debug(f"Grading prompt built: {len(prompt)} characters")
 
-        # Call Azure OpenAI
-        logger.info(f"Calling Azure OpenAI for grading with model: {LLM_MODEL}")
+        # Call Azure OpenAI with retry logic
+        max_retries = 2
+        last_error = None
         client = get_client()
 
-        response = await client.chat.completions.create(
-            model=LLM_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert assessment grader. You evaluate submitted answers objectively and provide constructive feedback. Always return valid JSON."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.3,  # Lower temperature for more consistent grading
-            max_tokens=2048,
-            response_format={"type": "json_object"}
-        )
+        for attempt in range(max_retries + 1):
+            try:
+                logger.info(f"Calling Azure OpenAI for grading (attempt {attempt + 1}/{max_retries + 1}, model={LLM_MODEL})")
 
-        logger.info("Received grading response from Azure OpenAI")
+                response = await client.chat.completions.create(
+                    model=LLM_MODEL,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are an expert assessment grader. You evaluate submitted answers objectively and provide constructive feedback. Always return valid JSON."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    temperature=0.3,
+                    max_tokens=2048,
+                    response_format={"type": "json_object"}
+                )
 
-        # Parse response
-        response_text = response.choices[0].message.content.strip()
-        logger.debug(f"Response: {response_text[:500]}...")
+                logger.info("Received grading response from Azure OpenAI")
 
-        # Remove markdown if present
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
+                # Parse response
+                response_text = response.choices[0].message.content
+                if not response_text:
+                    raise ValueError("AI returned empty response content")
+                response_text = response_text.strip()
+                logger.debug(f"Response: {response_text[:500]}...")
 
-        # Parse JSON
-        try:
-            result = json.loads(response_text)
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON parse error: {e}")
-            raise ValueError(f"Failed to parse grading response: {str(e)}")
+                # Remove markdown if present
+                if response_text.startswith("```"):
+                    response_text = response_text.split("```")[1]
+                    if response_text.startswith("json"):
+                        response_text = response_text[4:]
+                    response_text = response_text.strip()
+
+                # Parse JSON
+                result = json.loads(response_text)
+                break  # Success — exit retry loop
+
+            except json.JSONDecodeError as e:
+                last_error = e
+                logger.warning(f"JSON parse error on attempt {attempt + 1}: {e}")
+                if attempt < max_retries:
+                    await asyncio.sleep(1)
+                    continue
+                raise ValueError(f"Failed to parse grading response after {max_retries + 1} attempts: {str(e)}")
+            except Exception as e:
+                last_error = e
+                logger.warning(f"AI call failed on attempt {attempt + 1}: {e}")
+                if attempt < max_retries:
+                    await asyncio.sleep(1 * (attempt + 1))  # backoff: 1s, 2s
+                    continue
+                raise
 
         # Validate and normalize result
         points_awarded = min(max(int(result.get("points_awarded", 0)), 0), max_points)

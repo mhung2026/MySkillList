@@ -67,12 +67,14 @@ def evaluate_assessment(
 
     if not responses:
         start_level = min(available_levels) if available_levels and len(available_levels) > 0 else 1
+        end_level_val = max(available_levels) if available_levels and len(available_levels) > 0 else 7
         logger.warning("No responses provided for evaluation")
         return {
             "skill_id": skill_id,
             "skill_name": skill_name,
             "current_level": 0,
             "min_defined_level": start_level,
+            "max_defined_level": end_level_val,
             "level_results": {},
             "consecutive_levels_passed": 0,
             "highest_level_with_responses": 0,
@@ -82,6 +84,7 @@ def evaluate_assessment(
                 "method": "bottom_up_consecutive",
                 "threshold": LEVEL_PASS_THRESHOLD * 100,
                 "start_level": start_level,
+                "end_level": end_level_val,
                 "breakdown": [],
                 "message": "No responses to evaluate"
             }
@@ -139,25 +142,28 @@ def evaluate_assessment(
             "passed": passed
         }
 
-    # Determine start level for consecutive check
-    # Priority: available_levels from DB > levels found in responses > default 1
+    # Determine start/end level for consecutive check
+    # Priority: available_levels from DB > levels found in responses > default 1-7
     if available_levels and len(available_levels) > 0:
         start_level = min(available_levels)
+        end_level = max(available_levels)
     elif level_responses:
         start_level = min(level_responses.keys())
+        end_level = max(level_responses.keys())
     else:
         start_level = 1
+        end_level = 7
 
-    logger.info(f"Consecutive check starting from Level {start_level} "
+    logger.info(f"Consecutive check from Level {start_level} to {end_level} "
                 f"(available_levels={available_levels}, response_levels={sorted(level_responses.keys()) if level_responses else []})")
 
     # Determine CurrentLevel using bottom-up consecutive logic
-    # Starting from the skill's minimum defined level, not always L1
+    # Only checks within the skill's defined level range [start_level, end_level]
     current_level = 0
     consecutive_passed = 0
     breakdown = []
 
-    for level in range(start_level, 8):
+    for level in range(start_level, end_level + 1):
         level_key = str(level)
         if level_key not in level_results:
             # No questions at this level - stop consecutive check
@@ -199,6 +205,7 @@ def evaluate_assessment(
         "skill_name": skill_name,
         "current_level": current_level,
         "min_defined_level": start_level,
+        "max_defined_level": end_level,
         "level_results": level_results,
         "consecutive_levels_passed": consecutive_passed,
         "highest_level_with_responses": highest_level_with_responses,
@@ -208,6 +215,7 @@ def evaluate_assessment(
             "method": "bottom_up_consecutive",
             "threshold": LEVEL_PASS_THRESHOLD * 100,
             "start_level": start_level,
+            "end_level": end_level,
             "breakdown": breakdown
         }
     }

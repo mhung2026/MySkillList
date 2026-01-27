@@ -543,41 +543,160 @@ Same field structure as single endpoint, but wraps results in `learning_paths[]`
   "success": true,
   "learning_paths": [
     {
-      "skill_id": "30000000-0000-0000-0000-000000000078",
-      "skill_name": "Accessibility and inclusion",
       "skill_code": "ACIN",
       "path_title": "Accessibility and Inclusion Development Path",
-      "path_description": "A structured journey to advance accessibility skills.",
-      "estimated_total_hours": 70,
+      "path_description": "Learn to design accessible and inclusive digital products, progressing from basic understanding to practical application.",
+      "estimated_total_hours": 80,
       "estimated_duration_weeks": 24,
       "learning_items": [
         {
           "order": 1,
-          "title": "An Introduction to Accessibility",
+          "title": "An Introduction to Accessibility and Inclusive Design",
+          "description": "This course introduces some of the fundamental principles of accessibility and prepares learners for further study in accessibility and inclusive design. Learners will have an opportunity to explore the major types of disabilities and related assistive technology and adaptive strategies, the most salient contours of the legal landscape, and the major principles that guide universal design and accessible content creation. Spotlight guest videos will highlight firsthand perspectives on disability, as well as topics like disability etiquette, universal design and universal design for learning, accommodation in higher education, campus accessibility policy, and accessibility in a corporate setting.",
           "item_type": "Course",
           "source": "Coursera",
+          "estimated_hours": 10,
+          "target_level_after": 0,
+          "success_criteria": "",
+          "resource_id": "1",
           "url": "https://www.coursera.org/learn/accessibility",
-          "..."
+          "organization": "N/A",
+          "difficulty": "Beginner level",
+          "rating": null,
+          "reviews_count": null,
+          "certificate_available": null
+        },
+        {
+          "order": 2,
+          "title": "Defining Diversity, Equity and Inclusion in Organizations",
+          "description": "Defining Diversity, Equity, and Inclusion in Organizations is the first course of a four-course series. This course introduces the core definitions of diversity, equity, and inclusion and reasons why these efforts can often fail. We will also explore the elements for making the case for diversity and the concept of DE&I maturation where learners can assess their organization’s activities to determine where it may place on the DE&I continuum.By the end of this course, you will be able to: \n1. Provide a common understanding of the terms diversity, equity and inclusion and how can it be effectively implemented into an organization.\n2. Understand how our changing demography will impact your organization, discover various arguments used to make the case for diversity and connect them to your organization's success.\n3. Recognize the various levels of diversity in the DE&I continuum and where your organization may be.\n4. Identify the common struggles with implementing DE&I initiatives and how to avoid the many ways diversity efforts fail.",
+          "item_type": "Course",
+          "source": "Coursera",
+          "estimated_hours": 6,
+          "target_level_after": 0,
+          "success_criteria": "",
+          "resource_id": "2",
+          "url": "https://www.coursera.org/learn/defining-diversity-equity-and-inclusion-in-organizations",
+          "organization": "N/A",
+          "difficulty": "Intermediate level",
+          "rating": null,
+          "reviews_count": null,
+          "certificate_available": null
+        },
+        {
+          "order": 3,
+          "title": "Making Accessible Designs",
+          "description": "Learn how to create inclusive, user-friendly designs that meet accessibility standards and reach every audience. In this course, you’ll discover how to integrate accessibility principles throughout your design process using Adobe Express. From understanding contrast, captions, and alt text to applying clear communication and respectful language, you’ll gain hands-on experience designing content that’s both true to your brand and accessible. By the end, you’ll know how to craft digital materials that are welcoming, compliant, and truly inclusive for all users.",
+          "item_type": "Course",
+          "source": "Coursera",
+          "estimated_hours": 2,
+          "target_level_after": 0,
+          "success_criteria": "",
+          "resource_id": "3",
+          "url": "https://www.coursera.org/learn/making-accessible-designs",
+          "organization": "N/A",
+          "difficulty": "Beginner level",
+          "rating": null,
+          "reviews_count": null,
+          "certificate_available": null
         }
       ],
       "milestones": [
-        { "after_item": 1, "description": "Foundational understanding", "expected_level": 2 }
+        {
+          "after_item": 2,
+          "description": "Achieved foundational knowledge of accessibility standards and inclusive design principles.",
+          "expected_level": 2
+        },
+        {
+          "after_item": 4,
+          "description": "Able to apply accessibility and inclusion principles in practical scenarios.",
+          "expected_level": 3
+        }
       ],
-      "ai_rationale": "This path builds from foundational to applied skills.",
-      "key_success_factors": ["Complete courses in order", "Apply in real projects"],
-      "potential_challenges": ["Limited practice opportunities"]
+      "ai_rationale": "This path emphasizes foundational knowledge first, followed by hands-on experience and mentorship to ensure practical application of accessibility principles.",
+      "key_success_factors": [
+        "Access to experienced mentors",
+        "Opportunities for hands-on practice"
+      ],
+      "potential_challenges": [
+        "Limited availability of mentors",
+        "Difficulty in accessing diverse real-world projects"
+      ],
+      "skill_id": "30000000-0000-0000-0000-000000000078",
+      "skill_name": "Accessibility and inclusion"
     },
     {
-      "skill_id": "30000000-0000-0000-0000-000000000001",
-      "skill_name": "Strategic planning",
       "skill_code": "ITSP",
-      "path_title": "Strategic Planning Advanced Path",
-      "path_description": "...",
-      "..."
+      "path_title": "Strategic Planning Mastery Path",
+      "path_description": "Advance strategic planning skills from enabling strategies to initiating and driving large-scale initiatives.",
+      "estimated_total_hours": 90,
+      "estimated_duration_weeks": 24,
+      "learning_items": [
+        {
+          "order": 1,
+          "title": "Strategic Planning and Execution",
+          "description": "Avoid the pitfalls of strategy planning and execution with the tools and skills from this course. In this course, developed at the Darden School of Business at the University of Virginia and taught by top-ranked faculty, you'll learn the pillars of strategy execution--analysis, formulation, and implementation--and how to use the 4A model to effectively approach strategy execution. Finally, a panel of leaders from entrepreneurs, nonprofits, and industry, share their expertise gleaned from years of successful strategy planning and execution.",
+          "item_type": "Course",
+          "source": "Coursera",
+          "estimated_hours": 5,
+          "target_level_after": 0,
+          "success_criteria": "",
+          "resource_id": "347",
+          "url": "https://www.coursera.org/learn/uva-darden-strategic-planning-execution",
+          "organization": "N/A",
+          "difficulty": "Advanced Business Strategy",
+          "rating": null,
+          "reviews_count": null,
+          "certificate_available": null
+        },
+        {
+          "order": 2,
+          "title": "Optimize Projects and Processes",
+          "description": "Effective project management and strategic process improvement are two powerful ways you can help your team perform well In this course, you'll learn how to manage projects effectively, enabling you to achieve strategic goals, minimize company costs, and ensure the timely completion of tasks. You’ll also find out how to boost productivity by analyzing and improving your team’s processes.",
+          "item_type": "Course",
+          "source": "Coursera",
+          "estimated_hours": 10,
+          "target_level_after": 0,
+          "success_criteria": "",
+          "resource_id": "349",
+          "url": "https://www.coursera.org/learn/optimize-projects-and-processes",
+          "organization": "N/A",
+          "difficulty": "Intermediate level",
+          "rating": null,
+          "reviews_count": null,
+          "certificate_available": null
+        }
+      ],
+      "milestones": [
+        {
+          "after_item": 2,
+          "description": "Developed advanced understanding of strategic planning frameworks.",
+          "expected_level": 5
+        },
+        {
+          "after_item": 4,
+          "description": "Can independently initiate and lead strategic initiatives.",
+          "expected_level": 6
+        }
+      ],
+      "ai_rationale": "This path focuses on theoretical understanding followed by practical leadership experience to ensure readiness for initiating strategic initiatives.",
+      "key_success_factors": [
+        "Support from senior leaders",
+        "Access to organizational resources for projects"
+      ],
+      "potential_challenges": [
+        "Complexity of real-world initiatives",
+        "Time constraints in executing projects"
+      ],
+      "skill_id": "30000000-0000-0000-0000-000000000001",
+      "skill_name": "Strategic planning"
     }
   ],
-  "overall_summary": "Focus on Accessibility first as it has a larger gap. Strategic planning can be developed in parallel through leadership activities.",
-  "recommended_learning_order": ["ACIN", "ITSP"]
+  "overall_summary": "Both skills complement each other, as accessibility and inclusion principles can be integrated into strategic planning initiatives. Strategic planning has a higher priority due to its broader organizational impact, but accessibility is critical for ensuring inclusivity in initiatives. Starting with accessibility will build a foundation for applying inclusive principles to strategic planning projects.",
+  "recommended_learning_order": [
+    "ACIN",
+    "ITSP"
+  ]
 }
 ```
 
