@@ -1,7 +1,8 @@
 """
 Assessment Evaluator
 Evaluates assessment responses and determines CurrentLevel using SFIA framework
-Bottom-up consecutive logic: CurrentLevel = highest level L where ALL levels min→L have ≥70% correct
+Bottom-up consecutive logic: CurrentLevel = highest level L where ALL levels with questions
+from min→L have ≥70% correct (levels without questions are skipped)
 (min = skill's lowest defined SFIA level, NOT always 1)
 """
 
@@ -159,23 +160,28 @@ def evaluate_assessment(
 
     # Determine CurrentLevel using bottom-up consecutive logic
     # Only checks within the skill's defined level range [start_level, end_level]
+    # NEW: Skip levels without questions instead of breaking
     current_level = 0
     consecutive_passed = 0
     breakdown = []
+    chain_broken = False  # Track if chain was broken by a failed level
 
     for level in range(start_level, end_level + 1):
         level_key = str(level)
         if level_key not in level_results:
-            # No questions at this level - stop consecutive check
+            # No questions at this level - skip but note it
             breakdown.append({
                 "level": level,
-                "status": "no_data",
-                "message": f"No questions at Level {level}"
+                "status": "skipped",
+                "percentage": None,
+                "message": f"No questions at Level {level} (skipped)"
             })
-            break
+            # Don't break - continue checking higher levels
+            # But if chain was already broken, don't resume
+            continue
 
         result = level_results[level_key]
-        if result["passed"]:
+        if result["passed"] and not chain_broken:
             current_level = level
             consecutive_passed += 1
             breakdown.append({
@@ -191,8 +197,8 @@ def evaluate_assessment(
                 "percentage": result["percentage"],
                 "message": f"Level {level} failed ({result['percentage']}% < {LEVEL_PASS_THRESHOLD * 100}%)"
             })
-            # Stop consecutive check - cannot pass higher levels
-            break
+            # Chain is broken - cannot pass higher levels
+            chain_broken = True
 
     # Calculate overall score
     overall_percentage = (total_correct / total_questions * 100) if total_questions > 0 else 0.0
