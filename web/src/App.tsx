@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ConfigProvider, Layout, Menu, theme, Dropdown, Avatar, Space, Typography, Spin } from 'antd';
+import { ConfigProvider, Layout, Menu, theme, Dropdown, Avatar, Space, Typography, Spin, Drawer, Button } from 'antd';
 import {
   AppstoreOutlined,
   TagsOutlined,
@@ -15,6 +15,8 @@ import {
   DashboardOutlined,
   OrderedListOutlined,
   TrophyOutlined,
+  RiseOutlined,
+  MenuOutlined,
 } from '@ant-design/icons';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import SkillDomainList from './pages/taxonomy/SkillDomainList';
@@ -34,6 +36,7 @@ import Dashboard from './pages/dashboard/Dashboard';
 import SystemEnumManagement from './pages/admin/SystemEnumManagement';
 import PublicTest from './pages/public/PublicTest';
 import Profile from './pages/profile/Profile';
+import SkillGapAnalysis from './pages/profile/SkillGapAnalysis';
 import { UserRole } from './types';
 
 const { Header, Sider, Content } = Layout;
@@ -69,12 +72,28 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileDrawerVisible, setMobileDrawerVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setMobileDrawerVisible(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -173,13 +192,38 @@ function AppLayout() {
     ],
   });
 
+  // Profile & Learning
+  menuItems.push({
+    key: 'profile',
+    icon: <UserOutlined />,
+    label: 'My Profile',
+    children: [
+      {
+        key: '/profile',
+        icon: <UserOutlined />,
+        label: <Link to="/profile">Profile</Link>,
+      },
+      {
+        key: '/profile/skill-gaps',
+        icon: <RiseOutlined />,
+        label: <Link to="/profile/skill-gaps">Skill Gaps & Learning</Link>,
+      },
+    ],
+  });
+
   const userMenu = {
     items: [
       {
         key: 'profile',
         icon: <UserOutlined />,
-        label: 'Profile',
+        label: 'My Profile',
         onClick: () => navigate('/profile'),
+      },
+      {
+        key: 'skill-gaps',
+        icon: <RiseOutlined />,
+        label: 'Skill Gaps & Learning',
+        onClick: () => navigate('/profile/skill-gaps'),
       },
       {
         type: 'divider' as const,
@@ -195,7 +239,8 @@ function AppLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed}>
+      {!isMobile && (
+        <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed}>
         <div
           style={{
             height: 32,
@@ -214,12 +259,13 @@ function AppLayout() {
         <Menu
           theme="dark"
           defaultSelectedKeys={[location.pathname]}
-          defaultOpenKeys={['taxonomy', 'tests', 'assessments', 'admin']}
+          defaultOpenKeys={['taxonomy', 'tests', 'assessments', 'profile', 'admin']}
           mode="inline"
           items={menuItems}
           selectedKeys={[location.pathname]}
         />
       </Sider>
+      )}
       <Layout>
         <Header
           style={{
@@ -230,7 +276,19 @@ function AppLayout() {
             alignItems: 'center',
           }}
         >
-          <h2 style={{ margin: 0 }}>Skill Matrix Management</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {isMobile && (
+              <Button
+                type="text"
+                icon={<MenuOutlined />}
+                onClick={() => setMobileDrawerVisible(true)}
+                style={{ fontSize: 20 }}
+              />
+            )}
+            <h2 style={{ margin: 0, fontSize: isMobile ? 16 : 20 }}>
+              {isMobile ? 'Skill Matrix' : 'Skill Matrix Management'}
+            </h2>
+          </div>
           <Dropdown menu={userMenu} placement="bottomRight">
             <Space style={{ cursor: 'pointer' }}>
               <Avatar icon={<UserOutlined />} src={user?.avatarUrl} />
@@ -244,10 +302,10 @@ function AppLayout() {
             </Space>
           </Dropdown>
         </Header>
-        <Content style={{ margin: '16px' }}>
+        <Content style={{ margin: isMobile ? '8px' : '16px' }}>
           <div
             style={{
-              padding: 24,
+              padding: isMobile ? 16 : 24,
               minHeight: 360,
               background: colorBgContainer,
               borderRadius: borderRadiusLG,
@@ -268,11 +326,36 @@ function AppLayout() {
               <Route path="/assessments/take/:assessmentId" element={<TakeTest />} />
               <Route path="/assessments/result/:assessmentId" element={<TestResult />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/profile/skill-gaps" element={<SkillGapAnalysis />} />
               <Route path="/admin/enums" element={<SystemEnumManagement />} />
             </Routes>
           </div>
         </Content>
       </Layout>
+
+      {/* Mobile Drawer Menu */}
+      <Drawer
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AppstoreOutlined />
+            <span>Skill Matrix</span>
+          </div>
+        }
+        placement="left"
+        onClose={() => setMobileDrawerVisible(false)}
+        open={mobileDrawerVisible}
+        width={280}
+        styles={{ body: { padding: 0 } }}
+      >
+        <Menu
+          theme="light"
+          mode="inline"
+          items={menuItems}
+          selectedKeys={[location.pathname]}
+          defaultOpenKeys={['taxonomy', 'tests', 'assessments', 'profile', 'admin']}
+          onClick={() => setMobileDrawerVisible(false)}
+        />
+      </Drawer>
     </Layout>
   );
 }

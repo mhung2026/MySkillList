@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   Typography,
@@ -11,6 +11,7 @@ import {
   Row,
   Col,
   Collapse,
+  message,
 } from 'antd';
 import {
   TrophyOutlined,
@@ -20,8 +21,19 @@ import {
   WarningOutlined,
   RiseOutlined,
   BarChartOutlined,
+  BookOutlined,
+  LinkOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  getLearningRecommendations,
+  recalculateGaps,
+  getGapAnalysis,
+  type LearningRecommendation
+} from '../../api/employees';
+import { getEmployeeAssessments, getAssessmentResult } from '../../api/assessments';
+import { AssessmentStatus } from '../../types';
 import './SelfAssessment.css';
 
 const { Title, Text, Paragraph } = Typography;
@@ -57,69 +69,42 @@ export default function SelfAssessment() {
   const [loading, setLoading] = useState(false);
   const [assessmentData, setAssessmentData] = useState<SFIAAssessmentData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<LearningRecommendation[]>([]);
+  const [recalculating, setRecalculating] = useState(false);
 
-  // Mock data for demonstration
-  const mockData: SFIAAssessmentData = {
-    candidateName: user?.fullName || 'User',
-    assessmentDate: new Date().toISOString(),
-    totalQuestions: 24,
-    skillsAssessed: ['Programming', 'System Design', 'Problem Solving'],
-    overallCapability: 'SFIA Level 3',
-    operationalReadiness: 'Can operate independently within clear scope',
-    autonomyLevel: 'Autonomous within defined boundaries',
-    assessments: [
-      {
-        skillName: 'Programming',
-        inferredLevel: 'Level 3',
-        confidence: 'High',
-        behavioralEvidence: [
-          'Consistently makes independent decisions within clear scope',
-          'Minimal dependency on confirmation when documentation is adequate',
-          'Prioritizes impact assessment before taking action',
-        ],
-        observedLimitations: [
-          'Avoids decisions when scope is unclear',
-          'Tends to wait for confirmation in high-risk situations',
-          'Has not demonstrated ownership of overall quality',
-        ],
-        developmentRecommendations: [
-          'Assigned tasks with broader scope',
-          'Participation in design/priority decisions',
-          'Practice reporting risks and proposing solutions',
-        ],
-        levelAnalysis: [
-          { level: 'L1', evidence: 'Behavior requires supervision', result: 'not_achieved' },
-          { level: 'L2', evidence: 'Follows instructions', result: 'achieved' },
-          { level: 'L3', evidence: 'Autonomous within scope', result: 'achieved' },
-          { level: 'L4', evidence: 'Responsible for approach', result: 'not_achieved' },
-        ],
-      },
-      {
-        skillName: 'System Design',
-        inferredLevel: 'Level 2',
-        confidence: 'Medium',
-        behavioralEvidence: [
-          'Follows established patterns and guidelines',
-          'Seeks guidance when facing uncertainty',
-          'Implements solutions based on clear requirements',
-        ],
-        observedLimitations: [
-          'Limited experience with architectural decisions',
-          'Requires guidance for complex system trade-offs',
-          'Hesitant to propose alternative approaches',
-        ],
-        developmentRecommendations: [
-          'Study system architecture patterns',
-          'Participate in design reviews',
-          'Practice evaluating design trade-offs',
-        ],
-        levelAnalysis: [
-          { level: 'L1', evidence: 'Behavior requires supervision', result: 'not_achieved' },
-          { level: 'L2', evidence: 'Follows instructions', result: 'achieved' },
-          { level: 'L3', evidence: 'Autonomous within scope', result: 'not_achieved' },
-        ],
-      },
-    ],
+  // Fetch AI recommendations on mount
+  useEffect(() => {
+    if (user?.id) {
+      fetchRecommendations();
+    }
+  }, [user?.id]);
+
+  const fetchRecommendations = async () => {
+    if (!user?.id) return;
+    try {
+      const data = await getLearningRecommendations(user.id);
+      setRecommendations(data);
+    } catch (err) {
+      console.error('Failed to fetch recommendations:', err);
+    }
+  };
+
+  const handleRecalculate = async () => {
+    if (!user?.id) return;
+    setRecalculating(true);
+    try {
+      await recalculateGaps(user.id);
+      message.success('AI đang phân tích skill gaps và tạo recommendations...');
+      // Wait a bit for AI processing, then refresh
+      setTimeout(async () => {
+        await fetchRecommendations();
+        message.success('Đã cập nhật recommendations từ AI!');
+        setRecalculating(false);
+      }, 2000);
+    } catch (err) {
+      message.error('Không thể recalculate gaps');
+      setRecalculating(false);
+    }
   };
 
   const handleGenerateReport = async () => {
@@ -127,10 +112,97 @@ export default function SelfAssessment() {
     setError(null);
 
     try {
-      // TODO: Call actual API to fetch test history and generate report
-      // For now, using mock data
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-      setAssessmentData(mockData);
+      // Fetch fresh gap analysis data
+      if (!user?.id) {
+        setError('User not found');
+        return;
+      }
+
+      const freshGapData = await getGapAnalysis(user.id);
+      await fetchRecommendations();
+
+      // Fetch latest completed assessment to get real totalQuestions
+      let totalQuestions = freshGapData?.gaps.length ? freshGapData.gaps.length * 3 : 0; // Default estimate
+      try {
+        const assessmentHistory = await getEmployeeAssessments(user.id, 1, 1);
+        if (assessmentHistory.items.length > 0) {
+          const latestAssessment = assessmentHistory.items[0];
+          if (latestAssessment.status === AssessmentStatus.Completed && latestAssessment.id) {
+            const assessmentResult = await getAssessmentResult(latestAssessment.id);
+            totalQuestions = assessmentResult.totalQuestions;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch assessment history, using estimate:', err);
+      }
+
+      // Convert gap analysis to SFIA assessment format
+      if (freshGapData && freshGapData.gaps.length > 0) {
+        const assessmentReport: SFIAAssessmentData = {
+          candidateName: freshGapData.employee.fullName,
+          assessmentDate: new Date().toISOString(),
+          totalQuestions: totalQuestions,
+          skillsAssessed: freshGapData.gaps.map(g => g.skillName),
+          overallCapability: `SFIA Level ${freshGapData.currentRole?.levelInHierarchy || 3}`,
+          operationalReadiness: freshGapData.summary.overallReadiness >= 80
+            ? 'Can operate independently within clear scope'
+            : 'Requires guidance in some areas',
+          autonomyLevel: freshGapData.summary.overallReadiness >= 80
+            ? 'Autonomous within defined boundaries'
+            : 'Growing autonomy with supervision',
+          assessments: freshGapData.gaps.map(gap => ({
+            skillName: gap.skillName,
+            inferredLevel: `Level ${gap.currentLevel}`,
+            confidence: gap.gapSize <= 1 ? 'High' : gap.gapSize <= 2 ? 'Medium' : 'Low',
+            behavioralEvidence: gap.aiAnalysis ? [gap.aiAnalysis] : [
+              `Currently operating at ${gap.currentLevelName}`,
+              `Demonstrates competency at Level ${gap.currentLevel}`
+            ],
+            observedLimitations: gap.gapSize > 0 ? [
+              `Gap of ${gap.gapSize} level${gap.gapSize > 1 ? 's' : ''} to reach ${gap.requiredLevelName}`,
+              gap.isMandatory ? 'This is a mandatory skill for current role' : 'Optional skill for role advancement'
+            ] : [],
+            developmentRecommendations: gap.aiRecommendation ? [gap.aiRecommendation] : [
+              `Target: ${gap.requiredLevelName}`,
+              `Priority: ${gap.priority}`
+            ],
+            levelAnalysis: Array.from({ length: gap.requiredLevel }, (_, i) => {
+              const targetLevel = i + 1;
+              const isAchieved = targetLevel <= gap.currentLevel;
+              const gapFromCurrent = targetLevel - gap.currentLevel;
+
+              // Keep evidence simple and factual (AI analysis is shown separately in other sections)
+              let evidence = '';
+              if (isAchieved) {
+                evidence = `Demonstrated competency at Level ${targetLevel}`;
+              } else if (targetLevel === gap.requiredLevel) {
+                // This is the required/target level
+                if (gapFromCurrent === 1) {
+                  evidence = `Target level - requires 1 level advancement`;
+                } else {
+                  evidence = `Target level - requires ${gapFromCurrent} levels advancement`;
+                }
+              } else if (gapFromCurrent === 1) {
+                // Intermediate milestone - 1 level away
+                evidence = `Intermediate milestone - 1 level from current`;
+              } else {
+                // Intermediate milestone - multiple levels away
+                evidence = `Intermediate milestone - ${gapFromCurrent} levels from current`;
+              }
+
+              return {
+                level: `L${targetLevel}`,
+                evidence,
+                result: (isAchieved ? 'achieved' : 'not_achieved') as 'achieved' | 'not_achieved'
+              };
+            })
+          }))
+        };
+        setAssessmentData(assessmentReport);
+      } else {
+        // No gap analysis data available
+        setError('No skill gap data found. Please ensure you have a job role assigned and skill gaps calculated.');
+      }
     } catch (err) {
       setError('Failed to generate assessment report. Please try again.');
     } finally {
@@ -252,14 +324,25 @@ export default function SelfAssessment() {
                 />
               </Col>
               <Col xs={24} sm={12} md={6}>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={handleGenerateReport}
-                  loading={loading}
-                  block
-                >
-                  Làm Mới Báo Cáo
-                </Button>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Button
+                    icon={<ReloadOutlined />}
+                    onClick={handleGenerateReport}
+                    loading={loading}
+                    block
+                  >
+                    Làm Mới Báo Cáo
+                  </Button>
+                  <Button
+                    icon={<SyncOutlined spin={recalculating} />}
+                    onClick={handleRecalculate}
+                    loading={recalculating}
+                    type="primary"
+                    block
+                  >
+                    Recalculate AI Gaps
+                  </Button>
+                </Space>
               </Col>
             </Row>
           </Card>
@@ -349,18 +432,22 @@ export default function SelfAssessment() {
                       <div className="level-analysis">
                         {assessment.levelAnalysis.map((level, idx) => (
                           <div key={idx} className="level-item">
-                            <Space>
-                              {level.result === 'achieved' ? (
-                                <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                              ) : (
-                                <CloseCircleOutlined style={{ color: '#d9d9d9' }} />
-                              )}
-                              <Text strong>{level.level}</Text>
-                              <Text type="secondary">{level.evidence}</Text>
-                              <Tag color={level.result === 'achieved' ? 'success' : 'default'}>
-                                {level.result === 'achieved' ? 'Đạt' : 'Chưa đạt'}
-                              </Tag>
-                            </Space>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                {level.result === 'achieved' ? (
+                                  <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                                ) : (
+                                  <CloseCircleOutlined style={{ color: '#d9d9d9' }} />
+                                )}
+                                <Text strong>{level.level}</Text>
+                                <Tag color={level.result === 'achieved' ? 'success' : 'default'}>
+                                  {level.result === 'achieved' ? 'Đạt' : 'Chưa đạt'}
+                                </Tag>
+                              </div>
+                              <Text type="secondary" style={{ paddingLeft: '24px' }}>
+                                {level.evidence}
+                              </Text>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -428,11 +515,226 @@ export default function SelfAssessment() {
                         ))}
                       </ul>
                     </div>
+
+                    <Divider />
+
+                    {/* AI-Generated Coursera Learning Resources */}
+                    <div>
+                      <Title level={5}>
+                        <BookOutlined style={{ color: '#52c41a' }} /> Khóa học đề xuất từ AI
+                      </Title>
+                      <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                        Các khóa học được AI phân tích và gợi ý dựa trên skill gap của bạn:
+                      </Text>
+                      <Space direction="vertical" style={{ width: '100%' }} size="small">
+                        {/* Real AI recommendations from backend */}
+                        {recommendations.length > 0 ? (
+                          recommendations
+                            .filter(rec => rec.skillName.toLowerCase().includes(assessment.skillName.toLowerCase()))
+                            .slice(0, 3)
+                            .map((rec) => (
+                              <Card key={rec.id} size="small" style={{ backgroundColor: '#f0f5ff' }}>
+                                <Space direction="vertical" style={{ width: '100%' }} size="small">
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', alignItems: 'flex-start' }}>
+                                    <Text strong style={{ flex: 1, minWidth: '200px', wordBreak: 'break-word' }}>{rec.title}</Text>
+                                    <Tag color={rec.recommendationType === 'Course' ? 'blue' : 'green'}>
+                                      {rec.recommendationType}
+                                    </Tag>
+                                  </div>
+                                  {rec.description && (
+                                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                                      {rec.description}
+                                    </Text>
+                                  )}
+                                  {rec.rationale && (
+                                    <Text italic style={{ fontSize: '11px', color: '#8c8c8c' }}>
+                                      💡 {rec.rationale}
+                                    </Text>
+                                  )}
+                                  <Space wrap>
+                                    {rec.estimatedHours && <Tag>~{rec.estimatedHours} hours</Tag>}
+                                    <Tag color="purple">AI-Generated</Tag>
+                                  </Space>
+                                  {rec.url && (
+                                    <Button
+                                      type="link"
+                                      icon={<LinkOutlined />}
+                                      size="small"
+                                      style={{ padding: 0 }}
+                                      href={rec.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      Xem khóa học trên Coursera →
+                                    </Button>
+                                  )}
+                                </Space>
+                              </Card>
+                            ))
+                        ) : (
+                          <Card size="small" style={{ backgroundColor: '#f6f6f6' }}>
+                            <Space direction="vertical" style={{ width: '100%', textAlign: 'center' }}>
+                              <Text type="secondary">
+                                Chưa có recommendations từ AI. Click "Recalculate AI Gaps" để tạo gợi ý học tập.
+                              </Text>
+                              <Button
+                                type="primary"
+                                icon={<SyncOutlined />}
+                                onClick={handleRecalculate}
+                                loading={recalculating}
+                                size="small"
+                              >
+                                Tạo AI Recommendations
+                              </Button>
+                            </Space>
+                          </Card>
+                        )}
+
+                        <Alert
+                          message="Đề xuất từ AI"
+                          description={
+                            recommendations.length > 0
+                              ? `Hệ thống AI đã phân tích ${recommendations.length} recommendations dựa trên skill gaps của bạn.`
+                              : 'Hệ thống AI sẽ phân tích skill gap và gợi ý lộ trình học tập chi tiết với các khóa học Coursera phù hợp nhất.'
+                          }
+                          type="info"
+                          showIcon
+                          action={
+                            <Button size="small" type="primary" href="/profile/skill-gaps">
+                              Xem lộ trình đầy đủ
+                            </Button>
+                          }
+                        />
+                      </Space>
+                    </div>
                   </Space>
                 </Panel>
               ))}
             </Collapse>
           </Card>
+
+          {/* All AI Learning Recommendations */}
+          {recommendations.length > 0 && (
+            <Card
+              title={
+                <Space>
+                  <BookOutlined style={{ color: '#52c41a' }} />
+                  <span>Tất Cả Khóa Học Đề Xuất Từ AI</span>
+                  <Tag color="purple">{recommendations.length} courses</Tag>
+                </Space>
+              }
+              style={{ marginTop: 16 }}
+              extra={
+                <Button
+                  icon={<SyncOutlined spin={recalculating} />}
+                  onClick={handleRecalculate}
+                  loading={recalculating}
+                  size="small"
+                >
+                  Refresh Recommendations
+                </Button>
+              }
+            >
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Alert
+                  message="AI Coursera Recommendations"
+                  description={`Hệ thống AI đã phân tích ${recommendations.length} khóa học Coursera phù hợp với skill gaps của bạn.`}
+                  type="info"
+                  showIcon
+                  icon={<RiseOutlined />}
+                />
+
+                {/* Group recommendations by skill */}
+                {Object.entries(
+                  recommendations.reduce((acc, rec) => {
+                    if (!acc[rec.skillId]) {
+                      acc[rec.skillId] = {
+                        skillName: rec.skillName,
+                        recommendations: [],
+                      };
+                    }
+                    acc[rec.skillId].recommendations.push(rec);
+                    return acc;
+                  }, {} as Record<string, { skillName: string; recommendations: LearningRecommendation[] }>)
+                ).map(([skillId, { skillName, recommendations: skillRecs }]) => (
+                  <Collapse key={skillId} defaultActiveKey={[skillId]}>
+                    <Panel
+                      header={
+                        <Space>
+                          <TrophyOutlined style={{ color: '#1890ff' }} />
+                          <Text strong>{skillName}</Text>
+                          <Tag color="blue">
+                            {skillRecs.length} {skillRecs.length === 1 ? 'course' : 'courses'}
+                          </Tag>
+                        </Space>
+                      }
+                      key={skillId}
+                    >
+                      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                        {skillRecs
+                          .sort((a, b) => a.displayOrder - b.displayOrder)
+                          .map((rec) => (
+                            <Card key={rec.id} size="small" style={{ backgroundColor: '#f0f5ff' }}>
+                              <Space direction="vertical" style={{ width: '100%' }} size="small">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', alignItems: 'flex-start' }}>
+                                  <Text strong style={{ flex: 1, minWidth: '200px', wordBreak: 'break-word' }}>{rec.title}</Text>
+                                  <Space wrap size="small">
+                                    <Tag color={rec.recommendationType === 'Course' ? 'blue' : 'green'}>
+                                      {rec.recommendationType}
+                                    </Tag>
+                                    {rec.estimatedHours && (
+                                      <Tag icon={<BookOutlined />} color="green">
+                                        {rec.estimatedHours}h
+                                      </Tag>
+                                    )}
+                                  </Space>
+                                </div>
+
+                                {rec.description && (
+                                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    {rec.description.length > 200
+                                      ? `${rec.description.substring(0, 200)}...`
+                                      : rec.description}
+                                  </Text>
+                                )}
+
+                                {rec.rationale && (
+                                  <Alert
+                                    message="AI Rationale"
+                                    description={rec.rationale}
+                                    type="info"
+                                    showIcon
+                                    icon={<RiseOutlined />}
+                                    style={{ marginTop: 8 }}
+                                  />
+                                )}
+
+                                {rec.url && (
+                                  <Button
+                                    type="primary"
+                                    icon={<LinkOutlined />}
+                                    href={rec.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    size="small"
+                                  >
+                                    Xem khóa học trên Coursera →
+                                  </Button>
+                                )}
+                              </Space>
+                            </Card>
+                          ))}
+                      </Space>
+                    </Panel>
+                  </Collapse>
+                ))}
+
+                <Button type="link" href="/profile/skill-gaps" block>
+                  Xem lộ trình học tập đầy đủ →
+                </Button>
+              </Space>
+            </Card>
+          )}
 
           {/* Important Notes */}
           <Card style={{ marginTop: 16 }} className="notes-card">

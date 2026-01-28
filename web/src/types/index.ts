@@ -88,6 +88,8 @@ export interface UpdateProfileRequest {
   avatarUrl?: string;
   joinDate?: string;
   yearsOfExperience: number;
+  jobRoleId?: string;
+  teamId?: string;
 }
 
 export interface ChangePasswordRequest {

@@ -47,7 +47,7 @@ export const skillDomainApi = {
   },
 
   update: async (id: string, data: UpdateSkillDomainDto) => {
-    const response = await apiClient.put<ApiResponse<SkillDomainDto>>(`/skilldomains/${id}`, data);
+    const response = await apiClient.post<ApiResponse<SkillDomainDto>>(`/skilldomains/${id}/update`, data);
     return response.data;
   },
 
@@ -57,7 +57,7 @@ export const skillDomainApi = {
   },
 
   toggleActive: async (id: string) => {
-    const response = await apiClient.patch<ApiResponse<boolean>>(`/skilldomains/${id}/toggle-active`);
+    const response = await apiClient.post<ApiResponse<boolean>>(`/skilldomains/${id}/toggle-active`);
     return response.data;
   },
 
@@ -95,7 +95,7 @@ export const skillSubcategoryApi = {
   },
 
   update: async (id: string, data: UpdateSkillSubcategoryDto) => {
-    const response = await apiClient.put<ApiResponse<SkillSubcategoryDto>>(`/skillsubcategories/${id}`, data);
+    const response = await apiClient.post<ApiResponse<SkillSubcategoryDto>>(`/skillsubcategories/${id}/update`, data);
     return response.data;
   },
 
@@ -105,7 +105,7 @@ export const skillSubcategoryApi = {
   },
 
   toggleActive: async (id: string) => {
-    const response = await apiClient.patch<ApiResponse<boolean>>(`/skillsubcategories/${id}/toggle-active`);
+    const response = await apiClient.post<ApiResponse<boolean>>(`/skillsubcategories/${id}/toggle-active`);
     return response.data;
   },
 
@@ -136,7 +136,7 @@ export const skillApi = {
   },
 
   update: async (id: string, data: UpdateSkillDto) => {
-    const response = await apiClient.put<ApiResponse<SkillDto>>(`/skills/${id}`, data);
+    const response = await apiClient.post<ApiResponse<SkillDto>>(`/skills/${id}/update`, data);
     return response.data;
   },
 
@@ -146,7 +146,7 @@ export const skillApi = {
   },
 
   toggleActive: async (id: string) => {
-    const response = await apiClient.patch<ApiResponse<boolean>>(`/skills/${id}/toggle-active`);
+    const response = await apiClient.post<ApiResponse<boolean>>(`/skills/${id}/toggle-active`);
     return response.data;
   },
 
@@ -193,8 +193,8 @@ export const skillLevelApi = {
   },
 
   update: async (id: string, data: CreateSkillLevelDefinitionDto) => {
-    const response = await apiClient.put<ApiResponse<SkillLevelDefinitionDto>>(
-      `/skills/level-definitions/${id}`,
+    const response = await apiClient.post<ApiResponse<SkillLevelDefinitionDto>>(
+      `/skills/level-definitions/${id}/update`,
       data
     );
     return response.data;
@@ -229,7 +229,7 @@ export const levelDefinitionApi = {
   },
 
   update: async (id: string, data: UpdateLevelDefinitionDto) => {
-    const response = await apiClient.put<LevelDefinitionDto>(`/leveldefinitions/${id}`, data);
+    const response = await apiClient.post<LevelDefinitionDto>(`/leveldefinitions/${id}/update`, data);
     return response.data;
   },
 

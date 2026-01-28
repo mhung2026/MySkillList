@@ -1,6 +1,27 @@
 .self-assessment-container {
   max-width: 1200px;
   margin: 0 auto;
+  padding: 0 16px;
+  overflow-x: hidden;
+}
+
+/* Prevent horizontal overflow */
+.self-assessment-container * {
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 768px) {
+  .self-assessment-container {
+    padding: 0 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .self-assessment-container {
+    padding: 0 8px;
+  }
 }
 
 .self-assessment-header {
@@ -95,6 +116,31 @@
   margin-bottom: 0;
 }
 
+.level-item .ant-space {
+  width: 100%;
+}
+
+.level-item .ant-space-item:nth-child(3) {
+  flex: 1;
+  word-break: break-word;
+}
+
+@media (max-width: 768px) {
+  .level-item .ant-space {
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+
+  .level-item .ant-space-item {
+    margin-right: 0 !important;
+  }
+
+  .level-item .ant-space-item:nth-child(3) {
+    width: 100%;
+    flex: none;
+  }
+}
+
 .evidence-list,
 .limitation-list,
 .recommendation-list {
@@ -177,9 +223,23 @@
     font-size: 20px;
   }
 
+  .self-assessment-header .ant-space {
+    flex-direction: column;
+  }
+
   .panel-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 6px;
+  }
+
+  .panel-header .ant-typography {
+    font-size: 15px !important;
+    word-break: break-word;
+  }
+
+  .panel-header .ant-tag {
+    font-size: 12px !important;
   }
 
   .overview-card .ant-col {
@@ -195,7 +255,7 @@
   }
 
   .level-item {
-    padding: 8px;
+    padding: 10px;
   }
 
   .evidence-list li,
@@ -204,6 +264,15 @@
     padding: 10px 12px;
     padding-left: 32px;
     font-size: 14px;
+  }
+
+  /* Coursera cards responsive */
+  .ant-card-small {
+    font-size: 13px;
+  }
+
+  .ant-card-small .ant-card-body {
+    padding: 12px;
   }
 }
 

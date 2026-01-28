@@ -54,7 +54,7 @@ public class LevelDefinitionsController : ControllerBase
         }
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPost("{id:guid}/update")]
     public async Task<ActionResult<ProficiencyLevelDefinitionDto>> Update(Guid id, UpdateProficiencyLevelDefinitionDto dto)
     {
         try

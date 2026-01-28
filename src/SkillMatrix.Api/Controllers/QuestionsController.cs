@@ -57,7 +57,7 @@ public class QuestionsController : ControllerBase
     /// <summary>
     /// Update question
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPost("{id}/update")]
     public async Task<ActionResult<QuestionDto>> Update(Guid id, [FromBody] UpdateQuestionDto dto)
     {
         var result = await _service.UpdateAsync(id, dto);

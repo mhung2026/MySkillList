@@ -29,6 +29,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import type { SkillResultDto } from '../../types';
 import { getAssessmentResult } from '../../api/assessments';
+import './TestResult.css';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -59,10 +60,10 @@ export default function TestResult() {
       dataIndex: 'skillName',
       key: 'skillName',
       render: (text, record) => (
-        <Space>
+        <div className="skill-name-cell">
           <Text strong>{text}</Text>
           <Tag>{record.skillCode}</Tag>
-        </Space>
+        </div>
       ),
     },
     {
@@ -125,7 +126,7 @@ export default function TestResult() {
   }
 
   return (
-    <div>
+    <div className="test-result-container">
       {/* Back button */}
       <Button
         icon={<ArrowLeftOutlined />}
@@ -136,22 +137,22 @@ export default function TestResult() {
       </Button>
 
       {/* Result Header */}
-      <Card style={{ marginBottom: 16 }}>
+      <Card className="result-header-card">
         <Result
           status={result.passed ? 'success' : 'warning'}
           icon={result.passed ? <TrophyOutlined /> : <FileTextOutlined />}
           title={
             <Space direction="vertical" size={0}>
-              <Title level={2} style={{ margin: 0 }}>
+              <Title level={2} className="result-title">
                 {result.title}
               </Title>
-              <Tag color={result.passed ? 'success' : 'error'} style={{ fontSize: 16, padding: '4px 12px' }}>
+              <Tag color={result.passed ? 'success' : 'error'} className="result-tag">
                 {result.passed ? 'PASSED' : 'FAILED'}
               </Tag>
             </Space>
           }
           subTitle={
-            <Space direction="vertical" size={8}>
+            <Space direction="vertical" size={8} className="result-subtitle">
               <Text type="secondary">
                 Completed at: {new Date(result.completedAt).toLocaleString('en-US')}
               </Text>
@@ -163,34 +164,32 @@ export default function TestResult() {
         />
 
         {/* Score Display */}
-        <Row gutter={[24, 24]} justify="center" style={{ marginTop: 24 }}>
+        <Row gutter={[24, 24]} justify="center" className="score-cards">
           <Col xs={24} sm={8}>
-            <Card>
+            <Card className="score-card">
               <Statistic
                 title="Score"
                 value={result.totalScore}
                 suffix={`/ ${result.maxScore}`}
-                valueStyle={{ color: getScoreColor(result.percentage), fontSize: 32 }}
+                valueStyle={{ color: getScoreColor(result.percentage) }}
               />
             </Card>
           </Col>
           <Col xs={24} sm={8}>
-            <Card>
-              <div style={{ textAlign: 'center' }}>
-                <Progress
-                  type="circle"
-                  percent={Math.round(result.percentage)}
-                  strokeColor={getScoreColor(result.percentage)}
-                  size={100}
-                />
-                <div style={{ marginTop: 8 }}>
-                  <Text strong>Correct Rate</Text>
-                </div>
+            <Card className="score-card progress-card">
+              <Progress
+                type="circle"
+                percent={Math.round(result.percentage)}
+                strokeColor={getScoreColor(result.percentage)}
+                size={100}
+              />
+              <div className="progress-label">
+                <Text strong>Correct Rate</Text>
               </div>
             </Card>
           </Col>
           <Col xs={24} sm={8}>
-            <Card>
+            <Card className="score-card">
               <Statistic
                 title="Time Spent"
                 value={result.totalTimeMinutes}
@@ -203,10 +202,10 @@ export default function TestResult() {
       </Card>
 
       {/* Statistics */}
-      <Card title={<Space><BarChartOutlined /> Detailed Statistics</Space>} style={{ marginBottom: 16 }}>
+      <Card title={<Space><BarChartOutlined /> Detailed Statistics</Space>} className="stats-grid">
         <Row gutter={[16, 16]}>
           <Col xs={12} sm={6}>
-            <Card size="small" style={{ background: '#f6ffed' }}>
+            <Card size="small" className="stat-card correct-bg">
               <Statistic
                 title="Correct"
                 value={result.correctAnswers}
@@ -216,7 +215,7 @@ export default function TestResult() {
             </Card>
           </Col>
           <Col xs={12} sm={6}>
-            <Card size="small" style={{ background: '#fff2f0' }}>
+            <Card size="small" className="stat-card wrong-bg">
               <Statistic
                 title="Wrong"
                 value={result.wrongAnswers}
@@ -226,7 +225,7 @@ export default function TestResult() {
             </Card>
           </Col>
           <Col xs={12} sm={6}>
-            <Card size="small" style={{ background: '#fffbe6' }}>
+            <Card size="small" className="stat-card skipped-bg">
               <Statistic
                 title="Skipped"
                 value={result.unansweredQuestions}
@@ -235,7 +234,7 @@ export default function TestResult() {
             </Card>
           </Col>
           <Col xs={12} sm={6}>
-            <Card size="small" style={{ background: '#e6f7ff' }}>
+            <Card size="small" className="stat-card review-bg">
               <Statistic
                 title="Pending Review"
                 value={result.pendingReviewQuestions}
@@ -250,7 +249,7 @@ export default function TestResult() {
       {result.skillResults && result.skillResults.length > 0 && (
         <Card
           title={<Space><BarChartOutlined /> Results by Skill</Space>}
-          style={{ marginBottom: 16 }}
+          className="skill-breakdown-card"
         >
           <Table
             columns={skillColumns}
@@ -264,13 +263,13 @@ export default function TestResult() {
 
       {/* Question Details */}
       {result.questionResults && result.questionResults.length > 0 && (
-        <Card title={<Space><FileTextOutlined /> Question Details</Space>}>
+        <Card title={<Space><FileTextOutlined /> Question Details</Space>} className="question-details-card">
           <Collapse
             accordion
             items={result.questionResults.map((q) => ({
               key: q.questionId,
               label: (
-                <Space>
+                <div className="question-label">
                   <Tag color={q.isCorrect ? 'success' : q.isCorrect === false ? 'error' : 'processing'}>
                     {q.isCorrect ? <CheckCircleOutlined /> : q.isCorrect === false ? <CloseCircleOutlined /> : <ClockCircleOutlined />}
                   </Tag>
@@ -280,25 +279,18 @@ export default function TestResult() {
                   <Tag color={q.isCorrect ? 'success' : 'default'}>
                     {q.pointsAwarded ?? 0}/{q.points} points
                   </Tag>
-                </Space>
+                </div>
               ),
               children: (
                 <div>
                   {/* Question content */}
-                  <Paragraph>
+                  <Paragraph className="question-content-text">
                     <div dangerouslySetInnerHTML={{ __html: q.content }} />
                   </Paragraph>
 
                   {/* Code snippet */}
                   {q.codeSnippet && (
-                    <pre
-                      style={{
-                        background: '#f5f5f5',
-                        padding: 12,
-                        borderRadius: 6,
-                        overflow: 'auto',
-                      }}
-                    >
+                    <pre className="question-code-block">
                       <code>{q.codeSnippet}</code>
                     </pre>
                   )}
@@ -311,30 +303,24 @@ export default function TestResult() {
                       <Text strong>Options:</Text>
                       <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
                         {q.options.map((opt, idx) => {
-                          let bgColor = '#fafafa';
-                          let textColor = undefined;
+                          let optionClass = 'question-option default';
 
                           if (opt.isCorrect && opt.wasSelected) {
-                            bgColor = '#f6ffed';
+                            optionClass = 'question-option correct-selected';
                           } else if (opt.isCorrect && !opt.wasSelected) {
-                            bgColor = '#e6f7ff';
+                            optionClass = 'question-option correct-not-selected';
                           } else if (!opt.isCorrect && opt.wasSelected) {
-                            bgColor = '#fff2f0';
+                            optionClass = 'question-option wrong-selected';
                           }
 
                           return (
                             <div
                               key={opt.id}
-                              style={{
-                                padding: '8px 12px',
-                                background: bgColor,
-                                borderRadius: 6,
-                                border: '1px solid #d9d9d9',
-                              }}
+                              className={optionClass}
                             >
                               <Space>
                                 <Text strong>{String.fromCharCode(65 + idx)}.</Text>
-                                <Text style={{ color: textColor }}>{opt.content}</Text>
+                                <Text>{opt.content}</Text>
                                 {opt.isCorrect && (
                                   <Tag color="success" icon={<CheckCircleOutlined />}>
                                     Correct answer
@@ -369,14 +355,7 @@ export default function TestResult() {
                   {q.userAnswer && (
                     <div style={{ marginBottom: 16 }}>
                       <Text strong>Your answer:</Text>
-                      <div
-                        style={{
-                          marginTop: 8,
-                          padding: 12,
-                          background: '#fafafa',
-                          borderRadius: 6,
-                        }}
-                      >
+                      <div className="answer-block user-answer-block">
                         <Text>{q.userAnswer}</Text>
                       </div>
                     </div>
@@ -387,14 +366,7 @@ export default function TestResult() {
                       <Text strong style={{ color: '#52c41a' }}>
                         Correct answer:
                       </Text>
-                      <div
-                        style={{
-                          marginTop: 8,
-                          padding: 12,
-                          background: '#f6ffed',
-                          borderRadius: 6,
-                        }}
-                      >
+                      <div className="answer-block correct-answer-block">
                         <Text>{q.correctAnswer}</Text>
                       </div>
                     </div>

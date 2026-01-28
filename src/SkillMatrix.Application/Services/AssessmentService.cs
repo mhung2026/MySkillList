@@ -1,8 +1,10 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SkillMatrix.Application.DTOs.Assessment;
 using SkillMatrix.Application.DTOs.Common;
 using SkillMatrix.Application.Interfaces;
+using SkillMatrix.Application.Services.AI;
 using SkillMatrix.Domain.Entities.Assessment;
 using SkillMatrix.Domain.Entities.Learning;
 using SkillMatrix.Domain.Enums;
@@ -14,11 +16,25 @@ public class AssessmentService : IAssessmentService
 {
     private readonly SkillMatrixDbContext _context;
     private readonly IAiQuestionGeneratorService _aiService;
+    private readonly IAiAssessmentEvaluatorService _aiEvaluator;
+    private readonly IAiSkillAnalyzerService _aiSkillAnalyzer;
+    private readonly IAiLearningPathService _aiLearningPath;
+    private readonly ILogger<AssessmentService> _logger;
 
-    public AssessmentService(SkillMatrixDbContext context, IAiQuestionGeneratorService aiService)
+    public AssessmentService(
+        SkillMatrixDbContext context,
+        IAiQuestionGeneratorService aiService,
+        IAiAssessmentEvaluatorService aiEvaluator,
+        IAiSkillAnalyzerService aiSkillAnalyzer,
+        IAiLearningPathService aiLearningPath,
+        ILogger<AssessmentService> logger)
     {
         _context = context;
         _aiService = aiService;
+        _aiEvaluator = aiEvaluator;
+        _aiSkillAnalyzer = aiSkillAnalyzer;
+        _aiLearningPath = aiLearningPath;
+        _logger = logger;
     }
 
     public async Task<PagedResult<AssessmentListDto>> GetByEmployeeAsync(Guid employeeId, int pageNumber, int pageSize)
@@ -706,9 +722,63 @@ public class AssessmentService : IAssessmentService
 
         await _context.SaveChangesAsync();
 
+        // === AI EVALUATION ===
+        // Call AI to evaluate assessment and determine skill levels
+        Dictionary<Guid, int>? aiEvaluatedLevels = null;
+        try
+        {
+            var aiRequest = BuildAiEvaluationRequest(assessment.EmployeeId, allQuestions, responses, skillScores);
+            if (aiRequest.Assessments.Any())
+            {
+                _logger.LogInformation("Calling AI to evaluate assessment for employee {EmployeeId}", assessment.EmployeeId);
+                var aiResult = await _aiEvaluator.EvaluateAssessmentAsync(aiRequest);
+
+                if (aiResult.Success && aiResult.Results.Any())
+                {
+                    aiEvaluatedLevels = aiResult.Results
+                        .Where(r => r.SkillId.HasValue)
+                        .ToDictionary(r => r.SkillId!.Value, r => r.CurrentLevel);
+
+                    _logger.LogInformation("AI evaluated {Count} skills for employee {EmployeeId}",
+                        aiEvaluatedLevels.Count, assessment.EmployeeId);
+                }
+                else
+                {
+                    _logger.LogWarning("AI evaluation returned no results for employee {EmployeeId}", assessment.EmployeeId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to call AI evaluation for employee {EmployeeId}", assessment.EmployeeId);
+            // Continue without AI evaluation
+        }
+
         // === AUTO GAP ANALYSIS ===
         // After assessment completes, update EmployeeSkill and recalculate gaps
-        await UpdateEmployeeSkillsAndGapsAsync(assessment.EmployeeId, skillScores);
+        await UpdateEmployeeSkillsAndGapsAsync(assessment.EmployeeId, skillScores, aiEvaluatedLevels);
+
+        // === AUTO GENERATE LEARNING RECOMMENDATIONS ===
+        // Generate AI learning recommendations in background (fire-and-forget)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var employee = await _context.Employees
+                    .Include(e => e.JobRole)
+                    .FirstOrDefaultAsync(e => e.Id == assessment.EmployeeId && !e.IsDeleted);
+
+                if (employee?.JobRoleId != null)
+                {
+                    await GenerateLearningRecommendationsAsync(assessment.EmployeeId, employee.JobRoleId.Value);
+                    _logger.LogInformation("Auto-generated learning recommendations for employee {EmployeeId}", assessment.EmployeeId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to auto-generate learning recommendations for employee {EmployeeId}", assessment.EmployeeId);
+            }
+        });
 
         var passingScore = assessment.TestTemplate?.PassingScore ?? 70;
 
@@ -991,11 +1061,73 @@ public class AssessmentService : IAssessmentService
     #region Auto Gap Trigger
 
     /// <summary>
+    /// Build AI evaluation request from assessment data
+    /// </summary>
+    private AiEvaluateAssessmentRequest BuildAiEvaluationRequest(
+        Guid employeeId,
+        List<Question> allQuestions,
+        Dictionary<Guid, AssessmentResponse> responses,
+        Dictionary<Guid, (string Name, string Code, int Correct, int Total, int Score, int MaxScore)> skillScores)
+    {
+        var skillAssessments = new Dictionary<Guid, AiSkillAssessment>();
+
+        // Group questions by skill
+        foreach (var question in allQuestions.Where(q => q.SkillId.HasValue))
+        {
+            var skillId = question.SkillId!.Value;
+
+            if (!skillAssessments.ContainsKey(skillId))
+            {
+                var skillScore = skillScores.TryGetValue(skillId, out var score) ? score : (Name: "", Code: "", Correct: 0, Total: 0, Score: 0, MaxScore: 0);
+                skillAssessments[skillId] = new AiSkillAssessment
+                {
+                    SkillId = skillId,
+                    SkillName = skillScore.Name,
+                    Responses = new List<AiQuestionResponse>()
+                };
+            }
+
+            // Get response for this question
+            responses.TryGetValue(question.Id, out var response);
+
+            // Map question type to string
+            var questionType = question.Type switch
+            {
+                QuestionType.MultipleChoice => "MultipleChoice",
+                QuestionType.MultipleAnswer => "MultipleAnswer",
+                QuestionType.TrueFalse => "TrueFalse",
+                QuestionType.ShortAnswer => "ShortAnswer",
+                QuestionType.LongAnswer => "LongAnswer",
+                QuestionType.CodingChallenge => "CodingChallenge",
+                _ => "Unknown"
+            };
+
+            // Add response to skill assessment
+            skillAssessments[skillId].Responses.Add(new AiQuestionResponse
+            {
+                QuestionId = question.Id,
+                QuestionType = questionType,
+                TargetLevel = (int)question.TargetLevel,
+                IsCorrect = response?.IsCorrect,
+                Score = response?.PointsAwarded,
+                MaxScore = question.Points
+            });
+        }
+
+        return new AiEvaluateAssessmentRequest
+        {
+            EmployeeId = employeeId,
+            Assessments = skillAssessments.Values.ToList()
+        };
+    }
+
+    /// <summary>
     /// Update EmployeeSkill levels and create/update/resolve SkillGaps after assessment completion
     /// </summary>
     private async Task UpdateEmployeeSkillsAndGapsAsync(
         Guid employeeId,
-        Dictionary<Guid, (string Name, string Code, int Correct, int Total, int Score, int MaxScore)> skillScores)
+        Dictionary<Guid, (string Name, string Code, int Correct, int Total, int Score, int MaxScore)> skillScores,
+        Dictionary<Guid, int>? aiEvaluatedLevels = null)
     {
         if (!skillScores.Any())
             return;
@@ -1014,8 +1146,20 @@ public class AssessmentService : IAssessmentService
 
         foreach (var (skillId, scores) in skillScores)
         {
-            var percentage = scores.MaxScore > 0 ? (double)scores.Score / scores.MaxScore * 100 : 0;
-            var assessedLevel = MapPercentageToLevel(percentage);
+            // Use AI-evaluated level if available, otherwise fall back to percentage mapping
+            ProficiencyLevel assessedLevel;
+            if (aiEvaluatedLevels != null && aiEvaluatedLevels.TryGetValue(skillId, out var aiLevel))
+            {
+                assessedLevel = (ProficiencyLevel)aiLevel;
+                _logger.LogInformation("Using AI-evaluated level {Level} for skill {SkillId}", aiLevel, skillId);
+            }
+            else
+            {
+                var percentage = scores.MaxScore > 0 ? (double)scores.Score / scores.MaxScore * 100 : 0;
+                assessedLevel = MapPercentageToLevel(percentage);
+                _logger.LogInformation("Using percentage-based level {Level} ({Percentage}%) for skill {SkillId}",
+                    (int)assessedLevel, percentage, skillId);
+            }
 
             // Update EmployeeSkill.TestValidatedLevel
             var employeeSkill = await _context.EmployeeSkills
@@ -1103,6 +1247,134 @@ public class AssessmentService : IAssessmentService
         ( >= 2, false) => GapPriority.Medium,
         _ => GapPriority.Low
     };
+
+    /// <summary>
+    /// Generate AI learning recommendations for employee's skill gaps
+    /// </summary>
+    private async Task GenerateLearningRecommendationsAsync(Guid employeeId, Guid roleId)
+    {
+        // Get employee info
+        var employee = await _context.Employees
+            .Include(e => e.JobRole)
+            .FirstOrDefaultAsync(e => e.Id == employeeId && !e.IsDeleted);
+
+        if (employee == null)
+            return;
+
+        // Get employee's current skills with gaps
+        var gaps = await _context.SkillGaps
+            .Include(g => g.Skill)
+            .Where(g => g.EmployeeId == employeeId && g.JobRoleId == roleId && !g.IsDeleted && g.ResolvedAt == null)
+            .ToListAsync();
+
+        if (!gaps.Any())
+            return; // No gaps to analyze
+
+        // Prepare AI request for gap analysis
+        var gapAnalysisRequest = new AiAnalyzeSkillGapRequest
+        {
+            EmployeeId = employeeId,
+            EmployeeName = employee.FullName,
+            JobRoleId = roleId,
+            JobRoleName = employee.JobRole?.Name ?? "Unknown Role",
+            CurrentSkills = gaps.Select(g => new EmployeeSkillSnapshot
+            {
+                SkillId = g.SkillId,
+                SkillName = g.Skill.Name,
+                SkillCode = g.Skill.Code,
+                CurrentLevel = g.CurrentLevel,
+                RequiredLevel = g.RequiredLevel
+            }).ToList()
+        };
+
+        // Call AI analyzer to get analysis and recommendations
+        var aiResult = await _aiSkillAnalyzer.AnalyzeSkillGapsAsync(gapAnalysisRequest);
+
+        if (aiResult.Success && aiResult.Gaps.Any())
+        {
+            // Update skill gaps with AI analysis
+            foreach (var aiGap in aiResult.Gaps)
+            {
+                var gap = gaps.FirstOrDefault(g => g.SkillId == aiGap.SkillId);
+                if (gap != null)
+                {
+                    gap.AiAnalysis = aiGap.Analysis;
+                    gap.AiRecommendation = aiGap.Recommendation;
+                    gap.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+        }
+
+        // Delete old recommendations for these gaps
+        var existingRecommendations = await _context.LearningRecommendations
+            .Where(lr => gaps.Select(g => g.Id).Contains(lr.SkillGapId) && !lr.IsDeleted)
+            .ToListAsync();
+
+        foreach (var old in existingRecommendations)
+        {
+            old.IsDeleted = true;
+            old.DeletedAt = DateTime.UtcNow;
+        }
+
+        // Generate Coursera learning recommendations for each gap
+        foreach (var gap in gaps)
+        {
+            try
+            {
+                _logger.LogInformation("Generating Coursera recommendations for skill {SkillName}", gap.Skill.Name);
+
+                var learningPathRequest = new AiLearningPathRequest
+                {
+                    EmployeeId = employeeId,
+                    EmployeeName = employee.FullName,
+                    SkillId = gap.SkillId,
+                    SkillName = gap.Skill.Name,
+                    SkillCode = gap.Skill.Code,
+                    CurrentLevel = (int)gap.CurrentLevel,
+                    TargetLevel = (int)gap.RequiredLevel,
+                    TimeConstraintMonths = null
+                };
+
+                var learningPathResult = await _aiLearningPath.GenerateLearningPathAsync(learningPathRequest);
+
+                if (learningPathResult.Success && learningPathResult.LearningItems.Any())
+                {
+                    // Save Coursera course recommendations
+                    int displayOrder = 1;
+                    foreach (var item in learningPathResult.LearningItems.Where(i => !string.IsNullOrEmpty(i.CourseUrl)).Take(5)) // Top 5 courses
+                    {
+                        var recommendation = new LearningRecommendation
+                        {
+                            SkillGapId = gap.Id,
+                            SkillId = gap.SkillId,
+                            SkillName = gap.Skill.Name,
+                            RecommendationType = "Course",
+                            Title = item.Title,
+                            Description = item.Description,
+                            Url = item.CourseUrl,
+                            EstimatedHours = item.EstimatedHours,
+                            Rationale = learningPathResult.AiRationale,
+                            DisplayOrder = displayOrder++,
+                            GeneratedAt = DateTime.UtcNow
+                        };
+
+                        _context.LearningRecommendations.Add(recommendation);
+                    }
+
+                    _logger.LogInformation("Generated {Count} Coursera recommendations for skill {SkillName}",
+                        learningPathResult.LearningItems.Count, gap.Skill.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to generate Coursera recommendations for skill {SkillId}", gap.SkillId);
+                // Continue with next gap
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Successfully generated learning recommendations for {Count} skill gaps", gaps.Count);
+    }
 
     #endregion
 }

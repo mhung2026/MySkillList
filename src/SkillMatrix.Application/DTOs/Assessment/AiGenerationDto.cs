@@ -256,7 +256,9 @@ public class AiGenerationMetadata
 public class AiAnalyzeSkillGapRequest
 {
     public Guid EmployeeId { get; set; }
+    public string? EmployeeName { get; set; }
     public Guid? JobRoleId { get; set; }
+    public string? JobRoleName { get; set; }
     public List<EmployeeSkillSnapshot> CurrentSkills { get; set; } = new();
 }
 
@@ -264,6 +266,7 @@ public class EmployeeSkillSnapshot
 {
     public Guid SkillId { get; set; }
     public string SkillName { get; set; } = string.Empty;
+    public string SkillCode { get; set; } = string.Empty;
     public ProficiencyLevel CurrentLevel { get; set; }
     public ProficiencyLevel? RequiredLevel { get; set; }
 }

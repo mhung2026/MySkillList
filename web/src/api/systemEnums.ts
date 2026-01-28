@@ -47,13 +47,13 @@ export const systemEnumApi = {
 
   // Update an enum value
   update: async (id: string, data: UpdateSystemEnumValueDto): Promise<SystemEnumValueDto> => {
-    const response = await apiClient.put<SystemEnumValueDto>(`${BASE_URL}/${id}`, data);
+    const response = await apiClient.post<SystemEnumValueDto>(`${BASE_URL}/${id}/update`, data);
     return response.data;
   },
 
   // Toggle active status
   toggleActive: async (id: string): Promise<void> => {
-    await apiClient.patch(`${BASE_URL}/${id}/toggle-active`);
+    await apiClient.post(`${BASE_URL}/${id}/toggle-active`);
   },
 
   // Delete an enum value

@@ -59,7 +59,7 @@ public class SkillDomainsController : ControllerBase
     /// <summary>
     /// Update skill domain
     /// </summary>
-    [HttpPut("{id:guid}")]
+    [HttpPost("{id:guid}/update")]
     public async Task<ActionResult<ApiResponse<SkillDomainDto>>> Update(
         Guid id, [FromBody] UpdateSkillDomainDto dto)
     {
@@ -94,7 +94,7 @@ public class SkillDomainsController : ControllerBase
     /// <summary>
     /// Toggle active status (activate/deactivate)
     /// </summary>
-    [HttpPatch("{id:guid}/toggle-active")]
+    [HttpPost("{id:guid}/toggle-active")]
     public async Task<ActionResult<ApiResponse<bool>>> ToggleActive(Guid id)
     {
         var result = await _service.ToggleActiveAsync(id);

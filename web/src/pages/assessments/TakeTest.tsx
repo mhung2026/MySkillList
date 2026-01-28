@@ -38,6 +38,7 @@ import type {
 } from '../../types';
 import { QuestionType } from '../../types';
 import { continueAssessment, submitAnswer, submitAssessment } from '../../api/assessments';
+import './TakeTest.css';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -380,13 +381,7 @@ export default function TakeTest() {
                 <Radio
                   key={opt.id}
                   value={opt.id}
-                  style={{
-                    padding: '12px 16px',
-                    background: '#fafafa',
-                    borderRadius: 8,
-                    width: '100%',
-                    marginRight: 0,
-                  }}
+                  className="question-option"
                 >
                   <Text>
                     <Text strong style={{ marginRight: 8 }}>
@@ -414,13 +409,7 @@ export default function TakeTest() {
                 <Checkbox
                   key={opt.id}
                   value={opt.id}
-                  style={{
-                    padding: '12px 16px',
-                    background: '#fafafa',
-                    borderRadius: 8,
-                    width: '100%',
-                    marginLeft: 0,
-                  }}
+                  className="question-option"
                 >
                   <Text>
                     <Text strong style={{ marginRight: 8 }}>
@@ -486,13 +475,7 @@ export default function TakeTest() {
                   <Radio
                     key={opt.id}
                     value={opt.id}
-                    style={{
-                      padding: '12px 16px',
-                      background: '#fafafa',
-                      borderRadius: 8,
-                      width: '100%',
-                      marginRight: 0,
-                    }}
+                    className="question-option"
                   >
                     <Text>
                       <Text strong style={{ marginRight: 8 }}>
@@ -552,8 +535,8 @@ export default function TakeTest() {
     return (
       <div>
         {assessmentData.sections.map((section, sIdx) => (
-          <div key={section.id} style={{ marginBottom: 16 }}>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+          <div key={section.id} className="question-nav-section">
+            <Text strong className="question-nav-section-title">
               {section.title}
             </Text>
             <Space wrap size={[8, 8]}>
@@ -567,9 +550,8 @@ export default function TakeTest() {
                     key={q.id}
                     size="small"
                     type={isActive ? 'primary' : 'default'}
+                    className="question-nav-button"
                     style={{
-                      width: 36,
-                      height: 36,
                       background: isActive
                         ? undefined
                         : isAnswered
@@ -632,23 +614,23 @@ export default function TakeTest() {
   }
 
   return (
-    <div>
+    <div className="take-test-container">
       {/* Header with timer */}
       <Affix offsetTop={0}>
-        <Card size="small" style={{ marginBottom: 16 }}>
-          <Row justify="space-between" align="middle">
-            <Col>
-              <Space>
-                <Title level={4} style={{ margin: 0 }}>
+        <Card size="small" className="test-header-card">
+          <Row gutter={[16, 16]} justify="space-between" align="middle">
+            <Col xs={24} sm={12} md={12}>
+              <Space wrap>
+                <Title level={4} className="test-title">
                   {assessmentData.title}
                 </Title>
                 <Tag color="blue">
-                  Question {globalIndex + 1}/{allQuestions.length}
+                  Q {globalIndex + 1}/{allQuestions.length}
                 </Tag>
               </Space>
             </Col>
-            <Col>
-              <Space size="large">
+            <Col xs={24} sm={12} md={12}>
+              <Space size="middle" wrap className="test-header-progress">
                 <Progress
                   type="circle"
                   percent={Math.round((answeredCount / allQuestions.length) * 100)}
@@ -656,16 +638,9 @@ export default function TakeTest() {
                   format={() => `${answeredCount}/${allQuestions.length}`}
                 />
                 {timeRemaining !== null && (
-                  <div
-                    style={{
-                      background: timeRemaining < 300 ? '#ff4d4f' : '#1890ff',
-                      color: '#fff',
-                      padding: '8px 16px',
-                      borderRadius: 8,
-                    }}
-                  >
+                  <div className={`test-timer ${timeRemaining < 300 ? 'warning' : 'normal'}`}>
                     <ClockCircleOutlined style={{ marginRight: 8 }} />
-                    <Text strong style={{ color: '#fff', fontSize: 18 }}>
+                    <Text strong className="test-timer-text">
                       {formatTime(timeRemaining)}
                     </Text>
                   </div>
@@ -675,8 +650,10 @@ export default function TakeTest() {
                   danger
                   icon={<SendOutlined />}
                   onClick={() => setSubmitModalVisible(true)}
+                  size="large"
                 >
-                  Submit
+                  <span className="hide-on-mobile">Submit Test</span>
+                  <span className="show-on-mobile">Submit</span>
                 </Button>
               </Space>
             </Col>
@@ -691,7 +668,7 @@ export default function TakeTest() {
             {currentQuestion && (
               <div>
                 {/* Question header */}
-                <Space style={{ marginBottom: 16 }}>
+                <Space className="question-header-tags">
                   <Tag color="purple">Question {currentQuestion.questionNumber}</Tag>
                   <Tag>{currentQuestion.typeName}</Tag>
                   <Tag color="gold">{currentQuestion.points} points</Tag>
@@ -704,21 +681,13 @@ export default function TakeTest() {
                 </Space>
 
                 {/* Question content */}
-                <Paragraph style={{ fontSize: 16 }}>
+                <Paragraph className="question-content">
                   <div dangerouslySetInnerHTML={{ __html: currentQuestion.content }} />
                 </Paragraph>
 
                 {/* Code snippet */}
                 {currentQuestion.codeSnippet && (
-                  <pre
-                    style={{
-                      background: '#f5f5f5',
-                      padding: 16,
-                      borderRadius: 8,
-                      overflow: 'auto',
-                      marginBottom: 16,
-                    }}
-                  >
+                  <pre className="question-code-snippet">
                     <code>{currentQuestion.codeSnippet}</code>
                   </pre>
                 )}
@@ -767,44 +736,31 @@ export default function TakeTest() {
 
         {/* Question navigator */}
         <Col xs={24} lg={6}>
-          <Card title="Question List" size="small">
+          <Card title="Question List" size="small" className="question-nav-card">
             {renderQuestionNavigator()}
             <Divider />
-            <Space direction="vertical" size={4}>
-              <Space>
+            <Space direction="vertical" size={4} className="question-nav-legend">
+              <div className="question-nav-legend-item">
                 <div
-                  style={{
-                    width: 16,
-                    height: 16,
-                    background: '#52c41a',
-                    borderRadius: 4,
-                  }}
+                  className="question-nav-legend-box"
+                  style={{ background: '#52c41a' }}
                 />
                 <Text type="secondary">Answered & Saved</Text>
-              </Space>
-              <Space>
+              </div>
+              <div className="question-nav-legend-item">
                 <div
-                  style={{
-                    width: 16,
-                    height: 16,
-                    background: '#faad14',
-                    borderRadius: 4,
-                  }}
+                  className="question-nav-legend-box"
+                  style={{ background: '#faad14' }}
                 />
                 <Text type="secondary">Answered (not saved)</Text>
-              </Space>
-              <Space>
+              </div>
+              <div className="question-nav-legend-item">
                 <div
-                  style={{
-                    width: 16,
-                    height: 16,
-                    background: '#fff',
-                    border: '1px solid #d9d9d9',
-                    borderRadius: 4,
-                  }}
+                  className="question-nav-legend-box"
+                  style={{ background: '#fff', border: '1px solid #d9d9d9' }}
                 />
                 <Text type="secondary">Not answered</Text>
-              </Space>
+              </div>
             </Space>
           </Card>
         </Col>
@@ -828,7 +784,7 @@ export default function TakeTest() {
       >
         <div style={{ padding: '16px 0' }}>
           <Row gutter={[16, 16]}>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Card size="small">
                 <Statistic
                   title="Answered"
@@ -839,7 +795,7 @@ export default function TakeTest() {
                 />
               </Card>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Card size="small">
                 <Statistic
                   title="Unanswered"

@@ -186,6 +186,19 @@ public class AuthService : IAuthService
         employee.AvatarUrl = request.AvatarUrl;
         employee.JoinDate = request.JoinDate;
         employee.YearsOfExperience = request.YearsOfExperience;
+
+        // Update JobRole if provided
+        if (request.JobRoleId.HasValue)
+        {
+            employee.JobRoleId = request.JobRoleId.Value;
+        }
+
+        // Update Team if provided
+        if (request.TeamId.HasValue)
+        {
+            employee.TeamId = request.TeamId.Value;
+        }
+
         employee.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

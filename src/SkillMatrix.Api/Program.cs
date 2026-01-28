@@ -50,8 +50,27 @@ else
     });
 }
 
-// AI Skill Analyzer (still mock)
-builder.Services.AddScoped<IAiSkillAnalyzerService, MockAiSkillAnalyzerService>();
+// AI Skill Analyzer Service - Conditional based on UseMock
+if (aiServiceOptions.UseMock)
+{
+    builder.Services.AddScoped<IAiSkillAnalyzerService, MockAiSkillAnalyzerService>();
+}
+else
+{
+    // Register HttpClient for Python AI skill analyzer
+    builder.Services.AddHttpClient<IAiSkillAnalyzerService, PythonAiSkillAnalyzerService>(client =>
+    {
+        client.BaseAddress = new Uri(aiServiceOptions.BaseUrl ?? "http://localhost:8002");
+        client.Timeout = TimeSpan.FromSeconds(aiServiceOptions.TimeoutSeconds);
+    });
+}
+
+// AI Assessment Evaluator Service
+builder.Services.AddHttpClient<IAiAssessmentEvaluatorService, PythonAiAssessmentEvaluatorService>(client =>
+{
+    client.BaseAddress = new Uri(aiServiceOptions.BaseUrl ?? "http://localhost:8002");
+    client.Timeout = TimeSpan.FromSeconds(120); // Longer timeout for assessment evaluation
+});
 
 // Test/Assessment Services
 builder.Services.AddScoped<ITestTemplateService, TestTemplateService>();
@@ -68,6 +87,13 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 // Employee Profile Services
+builder.Services.AddHttpClient<IAiLearningPathService, AiLearningPathService>(client =>
+{
+    client.BaseAddress = new Uri(aiServiceOptions.BaseUrl ?? "http://localhost:8002");
+    client.Timeout = TimeSpan.FromSeconds(aiServiceOptions.TimeoutSeconds);
+});
+builder.Services.AddScoped<SkillMatrix.Infrastructure.Repositories.ICourseraCourseRepository,
+    SkillMatrix.Infrastructure.Repositories.CourseraCourseRepository>();
 builder.Services.AddScoped<IEmployeeProfileService, EmployeeProfileService>();
 
 // Configuration Services
@@ -75,6 +101,7 @@ builder.Services.AddScoped<SystemEnumService>();
 
 // Database Seeder
 builder.Services.AddScoped<DatabaseSeeder>();
+builder.Services.AddScoped<IDatabaseSeederService, DatabaseSeederService>();
 
 // CORS
 builder.Services.AddCors(options =>
@@ -100,6 +127,41 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Run pending SQL migrations on startup
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<SkillMatrixDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        logger.LogInformation("Checking for pending SQL migrations...");
+
+        var migrationsPath = Path.Combine(builder.Environment.ContentRootPath, "..", "SkillMatrix.Infrastructure", "Persistence", "Migrations");
+        var sqlFiles = new[]
+        {
+            "20260127_AddAiLearningPathFields.sql",
+            "20260127_AddLearningRecommendations.sql"
+        };
+
+        foreach (var sqlFile in sqlFiles)
+        {
+            var filePath = Path.Combine(migrationsPath, sqlFile);
+            if (File.Exists(filePath))
+            {
+                logger.LogInformation("Applying migration: {SqlFile}", sqlFile);
+                var sql = await File.ReadAllTextAsync(filePath);
+                await context.Database.ExecuteSqlRawAsync(sql);
+                logger.LogInformation("Successfully applied: {SqlFile}", sqlFile);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Migration may have already been applied or encountered an error");
+    }
+}
 
 // Seed default data on startup
 using (var scope = app.Services.CreateScope())

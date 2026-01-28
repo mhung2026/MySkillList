@@ -1,0 +1,324 @@
+.test-result-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  overflow-x: hidden;
+}
+
+/* Prevent horizontal overflow */
+.test-result-container * {
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Result header */
+.result-header-card {
+  margin-bottom: 16px;
+}
+
+.result-title {
+  margin: 0;
+  font-size: 28px;
+}
+
+.result-subtitle {
+  margin-top: 8px;
+}
+
+.result-tag {
+  font-size: 16px;
+  padding: 4px 12px;
+}
+
+/* Score cards */
+.score-cards {
+  margin-top: 24px;
+}
+
+.score-card .ant-statistic-content {
+  font-size: 32px;
+}
+
+.progress-card {
+  text-align: center;
+}
+
+.progress-label {
+  margin-top: 8px;
+}
+
+/* Statistics cards */
+.stats-grid {
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  height: 100%;
+}
+
+.stat-card.correct-bg {
+  background: #f6ffed;
+}
+
+.stat-card.wrong-bg {
+  background: #fff2f0;
+}
+
+.stat-card.skipped-bg {
+  background: #fffbe6;
+}
+
+.stat-card.review-bg {
+  background: #e6f7ff;
+}
+
+/* Skill table */
+.skill-breakdown-card {
+  margin-bottom: 16px;
+}
+
+.skill-name-cell {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Question details */
+.question-details-card {
+  margin-bottom: 16px;
+}
+
+.question-label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.question-content-text {
+  margin-bottom: 16px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.question-code-block {
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  max-width: 100%;
+}
+
+.question-code-block code {
+  white-space: pre;
+  word-wrap: normal;
+}
+
+.question-option {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #d9d9d9;
+  margin-bottom: 8px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.question-option.correct-selected {
+  background: #f6ffed;
+}
+
+.question-option.correct-not-selected {
+  background: #e6f7ff;
+}
+
+.question-option.wrong-selected {
+  background: #fff2f0;
+}
+
+.question-option.default {
+  background: #fafafa;
+}
+
+.answer-block {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.user-answer-block {
+  background: #fafafa;
+}
+
+.correct-answer-block {
+  background: #f6ffed;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .test-result-container {
+    padding: 0 8px;
+  }
+
+  .result-title {
+    font-size: 20px;
+    word-break: break-word;
+  }
+
+  .result-tag {
+    font-size: 14px;
+    padding: 2px 8px;
+  }
+
+  .result-subtitle {
+    font-size: 13px;
+  }
+
+  .score-cards .ant-col {
+    margin-bottom: 12px;
+  }
+
+  .score-card .ant-statistic-title {
+    font-size: 13px;
+  }
+
+  .score-card .ant-statistic-content {
+    font-size: 24px !important;
+  }
+
+  .progress-card .ant-progress-circle {
+    width: 80px !important;
+    height: 80px !important;
+  }
+
+  .stats-grid .ant-col {
+    margin-bottom: 12px;
+  }
+
+  .stat-card .ant-card-body {
+    padding: 12px;
+  }
+
+  .stat-card .ant-statistic-title {
+    font-size: 12px;
+  }
+
+  .stat-card .ant-statistic-content {
+    font-size: 20px !important;
+  }
+
+  /* Make table scrollable on mobile */
+  .skill-breakdown-card .ant-table-wrapper {
+    overflow-x: auto;
+  }
+
+  .skill-breakdown-card .ant-table {
+    min-width: 500px;
+  }
+
+  .skill-name-cell {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  /* Question details responsive */
+  .question-label {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .question-label .ant-tag {
+    font-size: 11px;
+  }
+
+  .question-content-text {
+    font-size: 14px;
+  }
+
+  .question-code-block {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .question-option {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  .answer-block {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .ant-collapse-header {
+    padding: 12px 16px !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .test-result-container {
+    padding: 0 8px;
+  }
+
+  .result-title {
+    font-size: 18px;
+  }
+
+  .result-tag {
+    font-size: 12px;
+    padding: 1px 6px;
+  }
+
+  .result-subtitle {
+    font-size: 12px;
+  }
+
+  .score-card .ant-statistic-content {
+    font-size: 20px !important;
+  }
+
+  .progress-card .ant-progress-circle {
+    width: 60px !important;
+    height: 60px !important;
+  }
+
+  .stat-card .ant-statistic-content {
+    font-size: 18px !important;
+  }
+
+  .question-code-block {
+    padding: 6px;
+    font-size: 11px;
+  }
+
+  .answer-block {
+    padding: 8px;
+    font-size: 13px;
+  }
+
+  .ant-collapse-header {
+    padding: 10px 12px !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .test-result-container button {
+    display: none;
+  }
+
+  .ant-collapse-item {
+    page-break-inside: avoid;
+  }
+
+  .question-details-card .ant-collapse-content {
+    display: block !important;
+    height: auto !important;
+  }
+}
