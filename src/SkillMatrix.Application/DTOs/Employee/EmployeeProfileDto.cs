@@ -125,6 +125,7 @@ public class SkillGapDetailDto
     public int GapSize { get; set; }
     public string Priority { get; set; } = string.Empty;
     public bool IsMandatory { get; set; }
+    public bool IsMet { get; set; } // True if current level meets or exceeds required level
     public string? AiAnalysis { get; set; }
     public string? AiRecommendation { get; set; }
 }
@@ -163,6 +164,34 @@ public class RecalculateGapsResultDto
     public int GapsResolved { get; set; }
 }
 
+/// <summary>
+/// Result of bulk gap recalculation for all employees
+/// </summary>
+public class BulkRecalculateGapsResultDto
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public int EmployeesProcessed { get; set; }
+    public int EmployeesWithGaps { get; set; }
+    public int TotalGapsCreated { get; set; }
+    public int TotalGapsUpdated { get; set; }
+    public int TotalGapsResolved { get; set; }
+    public List<EmployeeBulkGapResult> EmployeeResults { get; set; } = new();
+}
+
+/// <summary>
+/// Individual employee result in bulk operation
+/// </summary>
+public class EmployeeBulkGapResult
+{
+    public Guid EmployeeId { get; set; }
+    public string EmployeeName { get; set; } = string.Empty;
+    public string? RoleName { get; set; }
+    public int GapsCreated { get; set; }
+    public int GapsUpdated { get; set; }
+    public int GapsResolved { get; set; }
+}
+
 #endregion
 
 #region Learning Path DTOs
@@ -176,6 +205,8 @@ public class CreateLearningPathRequest
     public Guid? TargetSkillId { get; set; }
     public int TargetLevel { get; set; }
     public DateTime? TargetCompletionDate { get; set; }
+    public int? TimeConstraintMonths { get; set; }
+    public bool? UseAiGeneration { get; set; } = true;
 }
 
 /// <summary>
@@ -186,14 +217,21 @@ public class LearningPathDto
     public Guid Id { get; set; }
     public string Status { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public SkillBasicDto? TargetSkill { get; set; }
     public int? CurrentLevel { get; set; }
     public string? CurrentLevelName { get; set; }
     public int TargetLevel { get; set; }
     public string TargetLevelName { get; set; } = string.Empty;
     public int? EstimatedTotalHours { get; set; }
+    public int? EstimatedDurationWeeks { get; set; }
     public DateTime? TargetCompletionDate { get; set; }
+    public bool IsAiGenerated { get; set; }
+    public string? AiRationale { get; set; }
+    public List<string>? KeySuccessFactors { get; set; }
+    public List<string>? PotentialChallenges { get; set; }
     public List<LearningPathItemDto> Items { get; set; } = new();
+    public List<LearningPathMilestoneDto>? Milestones { get; set; }
     public string? Message { get; set; }
 }
 
@@ -218,8 +256,40 @@ public class LearningPathItemDto
     public string? Description { get; set; }
     public string ItemType { get; set; } = string.Empty;
     public Guid? ResourceId { get; set; }
+    public string? ExternalUrl { get; set; }
     public int? EstimatedHours { get; set; }
+    public int? TargetLevelAfter { get; set; }
+    public string? SuccessCriteria { get; set; }
     public string Status { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Learning path milestone
+/// </summary>
+public class LearningPathMilestoneDto
+{
+    public int AfterItem { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public int ExpectedLevel { get; set; }
+}
+
+/// <summary>
+/// AI-generated learning recommendation
+/// </summary>
+public class LearningRecommendationDto
+{
+    public Guid Id { get; set; }
+    public Guid SkillGapId { get; set; }
+    public Guid SkillId { get; set; }
+    public string SkillName { get; set; } = string.Empty;
+    public string RecommendationType { get; set; } = string.Empty;  // Course, Project, Mentorship
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? Url { get; set; }  // Coursera course URL, etc.
+    public int? EstimatedHours { get; set; }
+    public string Rationale { get; set; } = string.Empty;
+    public int DisplayOrder { get; set; }
+    public DateTime GeneratedAt { get; set; }
 }
 
 #endregion

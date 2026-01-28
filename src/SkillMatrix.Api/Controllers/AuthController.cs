@@ -82,7 +82,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Update user profile
     /// </summary>
-    [HttpPut("profile/{userId}")]
+    [HttpPost("profile/{userId}/update")]
     public async Task<ActionResult<EmployeeProfileDto>> UpdateProfile(Guid userId, [FromBody] UpdateProfileRequest request)
     {
         var profile = await _authService.UpdateProfileAsync(userId, request);

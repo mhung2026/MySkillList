@@ -57,6 +57,7 @@ import type {
 } from '../../types';
 import { ProficiencyLevel } from '../../types';
 import QuestionFormModal from '../../components/QuestionFormModal';
+import './TestTemplates.css';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
@@ -314,7 +315,7 @@ export default function TestTemplateDetail() {
   }
 
   return (
-    <div>
+    <div className="test-template-detail-container">
       <Space style={{ marginBottom: 16 }}>
         <Button
           icon={<ArrowLeftOutlined />}
@@ -325,17 +326,11 @@ export default function TestTemplateDetail() {
       </Space>
 
       {/* Template Info */}
-      <Card style={{ marginBottom: 16 }}>
+      <Card className="template-info-card">
         <Space direction="vertical" style={{ width: '100%' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <Space>
-              <Title level={3} style={{ margin: 0 }}>
+          <div className="template-header">
+            <div className="template-tags">
+              <Title level={3} className="template-title">
                 {template.title}
               </Title>
               {template.isAiGenerated && (
@@ -346,7 +341,7 @@ export default function TestTemplateDetail() {
               <Tag color={template.isActive ? 'green' : 'red'}>
                 {template.isActive ? 'Active' : 'Inactive'}
               </Tag>
-            </Space>
+            </div>
           </div>
 
           {template.description && (
@@ -386,6 +381,7 @@ export default function TestTemplateDetail() {
 
       {/* Sections */}
       <Card
+        className="sections-card"
         title="Sections & Questions"
         extra={
           <Button

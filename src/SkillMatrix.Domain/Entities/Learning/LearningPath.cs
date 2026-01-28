@@ -108,6 +108,11 @@ public class LearningPathItem : BaseEntity
     public int DisplayOrder { get; set; }
     public int? EstimatedHours { get; set; }
 
+    // AI-generated fields
+    public ProficiencyLevel? TargetLevelAfter { get; set; }  // Expected level after completing this item
+    public string? SuccessCriteria { get; set; }  // How to measure success
+    public string? ExternalUrl { get; set; }  // Link to external resource (e.g., Coursera)
+
     // Progress
     public LearningItemStatus Status { get; set; } = LearningItemStatus.NotStarted;
     public DateTime? StartedAt { get; set; }

@@ -42,6 +42,7 @@ import type {
   SkillListDto,
 } from '../../types';
 import { AssessmentType } from '../../types';
+import './TestTemplates.css';
 
 const { Title } = Typography;
 const { Search } = Input;
@@ -245,17 +246,10 @@ export default function TestTemplateList() {
   ];
 
   return (
-    <div>
+    <div className="test-template-list-container">
       <Card>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 16,
-          }}
-        >
-          <Title level={4} style={{ margin: 0 }}>
+        <div className="template-list-header">
+          <Title level={4} className="template-list-title">
             Test Templates
           </Title>
           <Button
@@ -277,7 +271,7 @@ export default function TestTemplateList() {
           </Button>
         </div>
 
-        <Space style={{ marginBottom: 16 }}>
+        <div className="template-search-controls">
           <Search
             placeholder="Search templates..."
             allowClear
@@ -287,12 +281,14 @@ export default function TestTemplateList() {
             onChange={(e) => setSearchTerm(e.target.value)}
             onSearch={() => setPageNumber(1)}
           />
-          <span>Show inactive:</span>
-          <Switch
-            checked={includeInactive}
-            onChange={setIncludeInactive}
-          />
-        </Space>
+          <span>
+            <span>Show inactive:</span>
+            <Switch
+              checked={includeInactive}
+              onChange={setIncludeInactive}
+            />
+          </span>
+        </div>
 
         <Table
           columns={columns}

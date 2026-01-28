@@ -58,7 +58,7 @@ public class TestTemplatesController : ControllerBase
     /// <summary>
     /// Update test template
     /// </summary>
-    [HttpPut("{id}")]
+    [HttpPost("{id}/update")]
     public async Task<ActionResult<TestTemplateDto>> Update(Guid id, [FromBody] UpdateTestTemplateDto dto)
     {
         var result = await _service.UpdateAsync(id, dto);
@@ -112,7 +112,7 @@ public class TestTemplatesController : ControllerBase
     /// <summary>
     /// Update section
     /// </summary>
-    [HttpPut("sections/{id}")]
+    [HttpPost("sections/{id}/update")]
     public async Task<ActionResult<TestSectionDto>> UpdateSection(Guid id, [FromBody] UpdateTestSectionDto dto)
     {
         var result = await _service.UpdateSectionAsync(id, dto);

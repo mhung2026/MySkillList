@@ -85,7 +85,7 @@ public class SystemEnumsController : ControllerBase
     /// <summary>
     /// Update an enum value
     /// </summary>
-    [HttpPut("{id:guid}")]
+    [HttpPost("{id:guid}/update")]
     public async Task<ActionResult<SystemEnumValueDto>> Update(Guid id, [FromBody] UpdateSystemEnumValueDto dto)
     {
         var result = await _enumService.UpdateAsync(id, dto);
@@ -97,7 +97,7 @@ public class SystemEnumsController : ControllerBase
     /// <summary>
     /// Toggle active status of an enum value
     /// </summary>
-    [HttpPatch("{id:guid}/toggle-active")]
+    [HttpPost("{id:guid}/toggle-active")]
     public async Task<ActionResult> ToggleActive(Guid id)
     {
         try

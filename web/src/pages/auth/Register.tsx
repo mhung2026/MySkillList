@@ -56,7 +56,14 @@ export default function Register() {
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       }}
     >
-      <Card style={{ width: 450, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+      <Card
+        style={{
+          width: '100%',
+          maxWidth: 450,
+          margin: '0 16px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        }}
+      >
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
             Đăng ký tài khoản

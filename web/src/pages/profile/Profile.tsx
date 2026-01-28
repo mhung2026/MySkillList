@@ -19,6 +19,7 @@ import {
   Modal,
   Descriptions,
   Tag,
+  Select,
 } from 'antd';
 import {
   UserOutlined,
@@ -33,6 +34,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getProfile, updateProfile, changePassword } from '../../api/auth';
+import { getTeamsDropdown, getJobRolesDropdown } from '../../api/organization';
 import { useAuth } from '../../contexts/AuthContext';
 import type { UpdateProfileRequest, ChangePasswordRequest, EmploymentStatus } from '../../types';
 
@@ -57,6 +59,20 @@ export default function Profile() {
     queryKey: ['profile', userId],
     queryFn: () => getProfile(userId),
     enabled: !!userId,
+  });
+
+  // Fetch teams dropdown
+  const { data: teams = [] } = useQuery({
+    queryKey: ['teams-dropdown'],
+    queryFn: getTeamsDropdown,
+    enabled: isEditing,
+  });
+
+  // Fetch job roles dropdown
+  const { data: jobRoles = [] } = useQuery({
+    queryKey: ['jobroles-dropdown'],
+    queryFn: getJobRolesDropdown,
+    enabled: isEditing,
   });
 
   // Update profile mutation
@@ -93,6 +109,8 @@ export default function Profile() {
         avatarUrl: profile.avatarUrl,
         joinDate: profile.joinDate ? dayjs(profile.joinDate) : null,
         yearsOfExperience: profile.yearsOfExperience,
+        teamId: profile.teamId,
+        jobRoleId: profile.jobRoleId,
       });
       setIsEditing(true);
     }
@@ -106,6 +124,8 @@ export default function Profile() {
         avatarUrl: values.avatarUrl || undefined,
         joinDate: values.joinDate ? values.joinDate.toISOString() : undefined,
         yearsOfExperience: values.yearsOfExperience || 0,
+        teamId: values.teamId,
+        jobRoleId: values.jobRoleId,
       });
     } catch {
       // Form validation failed
@@ -223,8 +243,8 @@ export default function Profile() {
       </Card>
 
       {/* Statistics Cards */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={8}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
               title="Total Skills"
@@ -233,7 +253,7 @@ export default function Profile() {
             />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
               title="Completed Assessments"
@@ -242,7 +262,7 @@ export default function Profile() {
             />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
               title="Average Skill Level"
@@ -258,8 +278,8 @@ export default function Profile() {
       <Card title="Profile Information">
         {isEditing ? (
           <Form form={form} layout="vertical">
-            <Row gutter={16}>
-              <Col span={12}>
+            <Row gutter={[16, 0]}>
+              <Col xs={24} md={12}>
                 <Form.Item
                   name="fullName"
                   label="Full Name"
@@ -268,27 +288,58 @@ export default function Profile() {
                   <Input prefix={<UserOutlined />} placeholder="Enter your full name" />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col xs={24} md={12}>
                 <Form.Item name="avatarUrl" label="Avatar URL">
                   <Input placeholder="Enter avatar URL (optional)" />
                 </Form.Item>
               </Col>
             </Row>
-            <Row gutter={16}>
-              <Col span={12}>
+            <Row gutter={[16, 0]}>
+              <Col xs={24} md={12}>
                 <Form.Item name="joinDate" label="Join Date">
                   <DatePicker style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col xs={24} md={12}>
                 <Form.Item name="yearsOfExperience" label="Years of Experience">
                   <InputNumber min={0} max={50} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
             </Row>
+            <Row gutter={[16, 0]}>
+              <Col xs={24} md={12}>
+                <Form.Item name="teamId" label="Team">
+                  <Select
+                    placeholder="Select team"
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    options={teams.map((t) => ({ label: t.name, value: t.id }))}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="jobRoleId" label="Job Role">
+                  <Select
+                    placeholder="Select job role"
+                    allowClear
+                    showSearch
+                    filterOption={(input, option) =>
+                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                    }
+                    options={jobRoles.map((jr) => ({
+                      label: jr.code ? `${jr.code} - ${jr.name}` : jr.name,
+                      value: jr.id,
+                    }))}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
           </Form>
         ) : (
-          <Descriptions column={2} bordered>
+          <Descriptions column={{ xs: 1, sm: 2 }} bordered>
             <Descriptions.Item label="Full Name">
               <Text strong>{profile.fullName}</Text>
             </Descriptions.Item>

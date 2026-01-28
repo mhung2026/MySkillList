@@ -45,8 +45,8 @@ export const updateTestTemplate = async (
   id: string,
   data: UpdateTestTemplateDto
 ): Promise<TestTemplateDto> => {
-  const response = await apiClient.put<TestTemplateDto>(
-    `/testtemplates/${id}`,
+  const response = await apiClient.post<TestTemplateDto>(
+    `/testtemplates/${id}/update`,
     data
   );
   return response.data;
@@ -75,8 +75,8 @@ export const updateTestSection = async (
   id: string,
   data: UpdateTestSectionDto
 ): Promise<TestSectionDto> => {
-  const response = await apiClient.put<TestSectionDto>(
-    `/testtemplates/sections/${id}`,
+  const response = await apiClient.post<TestSectionDto>(
+    `/testtemplates/sections/${id}/update`,
     data
   );
   return response.data;
@@ -119,7 +119,7 @@ export const updateQuestion = async (
   id: string,
   data: UpdateQuestionDto
 ): Promise<QuestionDto> => {
-  const response = await apiClient.put<QuestionDto>(`/questions/${id}`, data);
+  const response = await apiClient.post<QuestionDto>(`/questions/${id}/update`, data);
   return response.data;
 };
 

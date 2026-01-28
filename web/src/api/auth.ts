@@ -42,7 +42,7 @@ export const updateProfile = async (
   userId: string,
   request: UpdateProfileRequest
 ): Promise<EmployeeProfileDto> => {
-  const response = await apiClient.put<EmployeeProfileDto>(`/auth/profile/${userId}`, request);
+  const response = await apiClient.post<EmployeeProfileDto>(`/auth/profile/${userId}/update`, request);
   return response.data;
 };
 

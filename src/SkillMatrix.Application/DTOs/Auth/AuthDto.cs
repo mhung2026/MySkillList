@@ -105,4 +105,6 @@ public class UpdateProfileRequest
     public string? AvatarUrl { get; set; }
     public DateTime? JoinDate { get; set; }
     public int YearsOfExperience { get; set; }
+    public Guid? JobRoleId { get; set; }
+    public Guid? TeamId { get; set; }
 }

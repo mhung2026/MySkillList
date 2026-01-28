@@ -128,7 +128,7 @@ public class PythonAiQuestionGeneratorService : IAiQuestionGeneratorService
             {
                 question_id = request.QuestionId.ToString(),
                 question_content = request.QuestionContent,
-                student_answer = request.StudentAnswer,
+                submitted_answer = request.StudentAnswer,
                 max_points = request.MaxPoints,
                 grading_rubric = request.GradingRubric,
                 expected_answer = request.ExpectedAnswer,

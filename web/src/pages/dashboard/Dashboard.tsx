@@ -296,6 +296,7 @@ export default function Dashboard() {
               rowKey="skillId"
               pagination={false}
               size="small"
+              scroll={{ x: 400 }}
               columns={[
                 {
                   title: '#',
@@ -367,6 +368,7 @@ export default function Dashboard() {
           rowKey="id"
           pagination={false}
           size="small"
+          scroll={{ x: 600 }}
           columns={[
             {
               title: 'Employee',
@@ -429,7 +431,7 @@ export default function Dashboard() {
           <Select
             placeholder="Filter by team"
             allowClear
-            style={{ width: 200 }}
+            style={{ minWidth: 150, maxWidth: 200, width: '100%' }}
             value={selectedTeamId}
             onChange={setSelectedTeamId}
             options={teamOptions}
@@ -442,6 +444,7 @@ export default function Dashboard() {
           rowKey="employeeId"
           loading={loadingEmployeeSkills}
           pagination={{ pageSize: 10 }}
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 

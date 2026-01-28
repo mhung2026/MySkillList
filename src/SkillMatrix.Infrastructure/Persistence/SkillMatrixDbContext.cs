@@ -52,6 +52,7 @@ public class SkillMatrixDbContext : DbContext
     public DbSet<LearningResourceSkill> LearningResourceSkills => Set<LearningResourceSkill>();
     public DbSet<EmployeeLearningPath> EmployeeLearningPaths => Set<EmployeeLearningPath>();
     public DbSet<LearningPathItem> LearningPathItems => Set<LearningPathItem>();
+    public DbSet<LearningRecommendation> LearningRecommendations => Set<LearningRecommendation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,6 +90,7 @@ public class SkillMatrixDbContext : DbContext
         modelBuilder.Entity<LearningResourceSkill>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<EmployeeLearningPath>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<LearningPathItem>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<LearningRecommendation>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<SystemEnumValue>().HasQueryFilter(e => !e.IsDeleted);
 
         // SystemEnumValue configuration

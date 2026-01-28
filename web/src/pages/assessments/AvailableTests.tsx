@@ -37,6 +37,7 @@ import {
   continueAssessment,
 } from '../../api/assessments';
 import { useAuth } from '../../contexts/AuthContext';
+import './AvailableTests.css';
 
 const { Title, Text } = Typography;
 
@@ -290,14 +291,141 @@ export default function AvailableTests() {
     },
   ];
 
+  // Render card view for mobile
+  const renderAvailableTestCard = (test: AvailableTestDto) => (
+    <Card key={test.testTemplateId} className="test-card">
+      <div className="test-card-header">
+        <div className="test-card-title">
+          <h3>{test.title}</h3>
+          <Tag color="blue">{test.typeName}</Tag>
+        </div>
+        <div className="test-card-actions">
+          <Button
+            type="primary"
+            icon={<PlayCircleOutlined />}
+            onClick={() => {
+              setSelectedTest(test);
+              setStartModalVisible(true);
+            }}
+          >
+            Start
+          </Button>
+        </div>
+      </div>
+      {test.description && (
+        <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 8 }}>
+          {test.description}
+        </Text>
+      )}
+      <div className="test-card-info">
+        <div className="test-info-item">
+          <span className="test-info-label">Questions</span>
+          <span className="test-info-value">
+            <FileTextOutlined style={{ marginRight: 4 }} />
+            {test.questionCount}
+          </span>
+        </div>
+        <div className="test-info-item">
+          <span className="test-info-label">Duration</span>
+          <span className="test-info-value">
+            {test.timeLimitMinutes ? (
+              <>
+                <ClockCircleOutlined style={{ marginRight: 4 }} />
+                {test.timeLimitMinutes} min
+              </>
+            ) : (
+              'No limit'
+            )}
+          </span>
+        </div>
+        <div className="test-info-item">
+          <span className="test-info-label">Passing Score</span>
+          <span className="test-info-value">
+            <TrophyOutlined style={{ marginRight: 4 }} />
+            {test.passingScore}%
+          </span>
+        </div>
+        <div className="test-info-item">
+          <span className="test-info-label">Attempts</span>
+          <span className="test-info-value">
+            {test.attemptCount} times
+            {test.bestScore !== undefined && (
+              <div style={{ fontSize: 12, color: 'rgba(0, 0, 0, 0.45)', fontWeight: 400 }}>
+                Best: {test.bestScore}%
+              </div>
+            )}
+          </span>
+        </div>
+      </div>
+    </Card>
+  );
+
+  // Render history card for mobile
+  const renderHistoryCard = (record: AssessmentListDto) => (
+    <Card key={record.id} className="test-card">
+      <div className="test-card-header">
+        <div className="test-card-title">
+          <h3>{record.testTemplateTitle || record.title}</h3>
+          {getStatusTag(record.status)}
+        </div>
+        <div className="test-card-actions">
+          {record.status === 3 && (
+            <Button
+              type="primary"
+              icon={<PlayCircleOutlined />}
+              onClick={() => handleContinueTest(record.id)}
+            >
+              Continue
+            </Button>
+          )}
+          {record.status >= 4 && (
+            <Button icon={<FileTextOutlined />} onClick={() => handleViewResult(record.id)}>
+              View
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="test-card-info">
+        <div className="test-info-item">
+          <span className="test-info-label">Started At</span>
+          <span className="test-info-value">
+            {record.startedAt && new Date(record.startedAt).toLocaleString('en-US')}
+          </span>
+        </div>
+        {record.completedAt && (
+          <div className="test-info-item">
+            <span className="test-info-label">Completed At</span>
+            <span className="test-info-value">
+              {new Date(record.completedAt).toLocaleString('en-US')}
+            </span>
+          </div>
+        )}
+        {(record.score !== null && record.score !== undefined) && (
+          <div className="test-info-item">
+            <span className="test-info-label">Score</span>
+            <span className="test-info-value">
+              {record.score}/{record.maxScore}
+              <div style={{ fontSize: 12, color: 'rgba(0, 0, 0, 0.45)', fontWeight: 400 }}>
+                ({record.percentage?.toFixed(1)}%)
+              </div>
+            </span>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+
   return (
-    <div>
-      <Title level={3}>
-        <FileTextOutlined /> Skill Assessment Tests
-      </Title>
+    <div className="available-tests-container">
+      <div className="page-header">
+        <Title level={3}>
+          <FileTextOutlined /> Skill Assessment Tests
+        </Title>
+      </div>
 
       <Tabs
         defaultActiveKey="available"
+        className="tests-tabs"
         items={[
           {
             key: 'available',
@@ -307,22 +435,33 @@ export default function AvailableTests() {
               </span>
             ),
             children: (
-              <Card>
+              <>
                 {loadingTests ? (
                   <div style={{ textAlign: 'center', padding: 50 }}>
                     <Spin size="large" />
                   </div>
                 ) : availableTests && availableTests.length > 0 ? (
-                  <Table
-                    columns={availableColumns}
-                    dataSource={availableTests}
-                    rowKey="testTemplateId"
-                    pagination={false}
-                  />
+                  <>
+                    {/* Desktop table view */}
+                    <Card className="tests-table-view">
+                      <Table
+                        columns={availableColumns}
+                        dataSource={availableTests}
+                        rowKey="testTemplateId"
+                        pagination={false}
+                      />
+                    </Card>
+                    {/* Mobile card view */}
+                    <div className="tests-card-view">
+                      {availableTests.map(renderAvailableTestCard)}
+                    </div>
+                  </>
                 ) : (
-                  <Empty description="No tests available" />
+                  <Card>
+                    <Empty description="No tests available" />
+                  </Card>
                 )}
-              </Card>
+              </>
             ),
           },
           {
@@ -333,27 +472,38 @@ export default function AvailableTests() {
               </span>
             ),
             children: (
-              <Card>
+              <>
                 {loadingHistory ? (
                   <div style={{ textAlign: 'center', padding: 50 }}>
                     <Spin size="large" />
                   </div>
                 ) : historyData?.items && historyData.items.length > 0 ? (
-                  <Table
-                    columns={historyColumns}
-                    dataSource={historyData.items}
-                    rowKey="id"
-                    pagination={{
-                      total: historyData.totalCount,
-                      pageSize: historyData.pageSize,
-                      current: historyData.pageNumber,
-                      showTotal: (total) => `Total ${total} tests`,
-                    }}
-                  />
+                  <>
+                    {/* Desktop table view */}
+                    <Card className="tests-table-view">
+                      <Table
+                        columns={historyColumns}
+                        dataSource={historyData.items}
+                        rowKey="id"
+                        pagination={{
+                          total: historyData.totalCount,
+                          pageSize: historyData.pageSize,
+                          current: historyData.pageNumber,
+                          showTotal: (total) => `Total ${total} tests`,
+                        }}
+                      />
+                    </Card>
+                    {/* Mobile card view */}
+                    <div className="tests-card-view">
+                      {historyData.items.map(renderHistoryCard)}
+                    </div>
+                  </>
                 ) : (
-                  <Empty description="No test history" />
+                  <Card>
+                    <Empty description="No test history" />
+                  </Card>
                 )}
-              </Card>
+              </>
             ),
           },
         ]}

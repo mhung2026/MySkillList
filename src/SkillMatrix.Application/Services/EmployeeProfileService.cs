@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SkillMatrix.Application.DTOs.Employee;
 using SkillMatrix.Application.Interfaces;
+using SkillMatrix.Application.Services.AI;
 using SkillMatrix.Domain.Entities.Learning;
 using SkillMatrix.Domain.Enums;
 using SkillMatrix.Infrastructure.Persistence;
@@ -10,10 +12,20 @@ namespace SkillMatrix.Application.Services;
 public class EmployeeProfileService : IEmployeeProfileService
 {
     private readonly SkillMatrixDbContext _context;
+    private readonly IAiLearningPathService _aiLearningPathService;
+    private readonly IAiSkillAnalyzerService _aiSkillAnalyzer;
+    private readonly ILogger<EmployeeProfileService> _logger;
 
-    public EmployeeProfileService(SkillMatrixDbContext context)
+    public EmployeeProfileService(
+        SkillMatrixDbContext context,
+        IAiLearningPathService aiLearningPathService,
+        IAiSkillAnalyzerService aiSkillAnalyzer,
+        ILogger<EmployeeProfileService> logger)
     {
         _context = context;
+        _aiLearningPathService = aiLearningPathService;
+        _aiSkillAnalyzer = aiSkillAnalyzer;
+        _logger = logger;
     }
 
     public async Task<SkillProfileDto?> GetSkillProfileAsync(Guid employeeId)
@@ -171,7 +183,7 @@ public class EmployeeProfileService : IEmployeeProfileService
             .Where(es => !es.IsDeleted)
             .ToDictionary(es => es.SkillId);
 
-        // Analyze gaps
+        // Analyze gaps - include both gaps and met requirements
         var gaps = new List<SkillGapDetailDto>();
         int metCount = 0;
 
@@ -184,16 +196,22 @@ public class EmployeeProfileService : IEmployeeProfileService
             }
 
             var gapSize = (int)req.MinimumLevel - (int)currentLevel;
+            var isMet = gapSize <= 0;
 
-            if (gapSize <= 0)
+            if (isMet)
             {
                 metCount++;
-                continue;
+                gapSize = 0; // Set to 0 for met requirements
             }
 
-            // Get existing gap data for AI analysis
-            existingGaps.TryGetValue(req.SkillId, out var existingGap);
+            // Get existing gap data for AI analysis (only for actual gaps)
+            SkillGap? existingGap = null;
+            if (!isMet)
+            {
+                existingGaps.TryGetValue(req.SkillId, out existingGap);
+            }
 
+            // Add all skills (both gaps and met requirements)
             gaps.Add(new SkillGapDetailDto
             {
                 SkillId = req.SkillId,
@@ -205,17 +223,20 @@ public class EmployeeProfileService : IEmployeeProfileService
                 RequiredLevelName = req.MinimumLevel.ToString(),
                 ExpectedLevel = req.ExpectedLevel.HasValue ? (int?)req.ExpectedLevel.Value : null,
                 GapSize = gapSize,
-                Priority = CalculateGapPriority(gapSize, req.IsMandatory).ToString(),
+                Priority = isMet ? "Met" : CalculateGapPriority(gapSize, req.IsMandatory).ToString(),
                 IsMandatory = req.IsMandatory,
+                IsMet = isMet,
                 AiAnalysis = existingGap?.AiAnalysis,
                 AiRecommendation = existingGap?.AiRecommendation
             });
         }
 
-        // Sort by priority and gap size
+        // Sort: Met requirements last, gaps first by priority
         gaps = gaps
-            .OrderByDescending(g => g.Priority == "Critical")
+            .OrderBy(g => g.IsMet) // False first (gaps), then True (met)
+            .ThenByDescending(g => g.Priority == "Critical")
             .ThenByDescending(g => g.Priority == "High")
+            .ThenByDescending(g => g.Priority == "Medium")
             .ThenByDescending(g => g.GapSize)
             .ToList();
 
@@ -363,6 +384,17 @@ public class EmployeeProfileService : IEmployeeProfileService
 
         await _context.SaveChangesAsync();
 
+        // Call AI to analyze gaps and generate recommendations
+        try
+        {
+            await CallAiAnalysisForGapsAsync(employeeId, roleId.Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate AI recommendations for employee {EmployeeId}", employeeId);
+            // Continue even if AI fails - gaps are still created
+        }
+
         return new RecalculateGapsResultDto
         {
             Success = true,
@@ -370,6 +402,88 @@ public class EmployeeProfileService : IEmployeeProfileService
             GapsCreated = created,
             GapsUpdated = updated,
             GapsResolved = resolved
+        };
+    }
+
+    public async Task<BulkRecalculateGapsResultDto> BulkRecalculateGapsForAllEmployeesAsync()
+    {
+        _logger.LogInformation("Starting bulk gap recalculation for all employees");
+
+        // Get all active employees with assigned roles
+        var employees = await _context.Employees
+            .Include(e => e.JobRole)
+            .Where(e => !e.IsDeleted && e.JobRoleId.HasValue)
+            .ToListAsync();
+
+        if (!employees.Any())
+        {
+            return new BulkRecalculateGapsResultDto
+            {
+                Success = false,
+                Message = "No employees with assigned roles found",
+                EmployeesProcessed = 0
+            };
+        }
+
+        var employeeResults = new List<EmployeeBulkGapResult>();
+        int totalCreated = 0, totalUpdated = 0, totalResolved = 0;
+        int employeesWithGaps = 0;
+
+        foreach (var employee in employees)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Processing employee {EmployeeId} - {EmployeeName} ({RoleName})",
+                    employee.Id, employee.FullName, employee.JobRole?.Name);
+
+                var result = await RecalculateGapsAsync(employee.Id, employee.JobRoleId);
+
+                if (result.Success)
+                {
+                    totalCreated += result.GapsCreated;
+                    totalUpdated += result.GapsUpdated;
+                    totalResolved += result.GapsResolved;
+
+                    if (result.GapsCreated > 0 || result.GapsUpdated > 0)
+                    {
+                        employeesWithGaps++;
+                    }
+
+                    employeeResults.Add(new EmployeeBulkGapResult
+                    {
+                        EmployeeId = employee.Id,
+                        EmployeeName = employee.FullName,
+                        RoleName = employee.JobRole?.Name,
+                        GapsCreated = result.GapsCreated,
+                        GapsUpdated = result.GapsUpdated,
+                        GapsResolved = result.GapsResolved
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to recalculate gaps for employee {EmployeeId} - {EmployeeName}",
+                    employee.Id, employee.FullName);
+                // Continue with next employee
+            }
+        }
+
+        _logger.LogInformation(
+            "Bulk gap recalculation completed. Processed: {EmployeeCount}, Total Gaps - Created: {Created}, Updated: {Updated}, Resolved: {Resolved}",
+            employees.Count, totalCreated, totalUpdated, totalResolved);
+
+        return new BulkRecalculateGapsResultDto
+        {
+            Success = true,
+            Message = $"Successfully recalculated gaps for {employees.Count} employees",
+            EmployeesProcessed = employees.Count,
+            EmployeesWithGaps = employeesWithGaps,
+            TotalGapsCreated = totalCreated,
+            TotalGapsUpdated = totalUpdated,
+            TotalGapsResolved = totalResolved,
+            EmployeeResults = employeeResults
         };
     }
 
@@ -420,31 +534,61 @@ public class EmployeeProfileService : IEmployeeProfileService
 
         var targetLevel = (ProficiencyLevel)request.TargetLevel;
 
-        // Try to find matching learning resources
-        var matchedResources = await _context.LearningResourceSkills
-            .Include(lrs => lrs.LearningResource)
-            .Where(lrs =>
-                lrs.SkillId == targetSkillId &&
-                !lrs.IsDeleted &&
-                lrs.LearningResource.IsActive &&
-                (int)lrs.FromLevel <= (int)(currentLevel ?? ProficiencyLevel.None) &&
-                (int)lrs.ToLevel >= (int)targetLevel)
-            .OrderBy(lrs => lrs.LearningResource.Difficulty)
-            .ThenBy(lrs => lrs.LearningResource.EstimatedHours)
-            .ToListAsync();
+        // Use AI to generate personalized learning path with Coursera courses
+        AiLearningPathResponse? aiPath = null;
+        bool useAiPath = request.UseAiGeneration ?? true; // Default to using AI
 
-        // Create learning path
+        if (useAiPath)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Generating AI-powered learning path for employee {EmployeeId}, skill {SkillName}",
+                    employeeId, skill.Name);
+
+                var aiRequest = new AiLearningPathRequest
+                {
+                    EmployeeId = employee.Id,
+                    EmployeeName = employee.FullName,
+                    SkillId = skill.Id,
+                    SkillName = skill.Name,
+                    SkillCode = skill.Code,
+                    SkillDescription = skill.Description,
+                    CurrentLevel = (int)(currentLevel ?? ProficiencyLevel.None),
+                    TargetLevel = (int)targetLevel,
+                    TimeConstraintMonths = request.TimeConstraintMonths ?? 6,
+                    Language = "vi"
+                };
+
+                aiPath = await _aiLearningPathService.GenerateLearningPathAsync(aiRequest);
+
+                _logger.LogInformation(
+                    "AI learning path generated successfully with {ItemCount} items",
+                    aiPath.LearningItems.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to generate AI learning path, falling back to manual mode");
+                // Fall back to manual mode if AI fails
+                aiPath = null;
+            }
+        }
+
+        // Create learning path entity
         var learningPath = new EmployeeLearningPath
         {
             EmployeeId = employeeId,
             SkillGapId = request.SkillGapId,
             TargetSkillId = targetSkillId,
-            Title = $"Learning Path: {skill.Name} to Level {(int)targetLevel}",
+            Title = aiPath?.PathTitle ?? $"Learning Path: {skill.Name} to Level {(int)targetLevel}",
+            Description = aiPath?.PathDescription,
             CurrentLevel = currentLevel,
             TargetLevel = targetLevel,
             Status = LearningPathStatus.Suggested,
             TargetCompletionDate = request.TargetCompletionDate,
-            IsAiGenerated = false,
+            IsAiGenerated = aiPath != null,
+            AiRationale = aiPath?.AiRationale,
             ProgressPercentage = 0
         };
 
@@ -453,40 +597,79 @@ public class EmployeeProfileService : IEmployeeProfileService
 
         // Create learning path items
         var items = new List<LearningPathItem>();
-        int order = 1;
         int totalHours = 0;
 
-        if (matchedResources.Any())
+        if (aiPath != null && aiPath.LearningItems.Any())
         {
-            // Use matched resources
-            foreach (var lrs in matchedResources)
+            // Use AI-generated items with Coursera courses
+            foreach (var aiItem in aiPath.LearningItems)
             {
                 var item = new LearningPathItem
                 {
                     LearningPathId = learningPath.Id,
-                    LearningResourceId = lrs.LearningResourceId,
-                    Title = lrs.LearningResource.Title,
-                    Description = lrs.LearningResource.Description,
-                    ItemType = lrs.LearningResource.Type,
-                    DisplayOrder = order++,
-                    EstimatedHours = lrs.LearningResource.EstimatedHours,
+                    LearningResourceId = null, // Coursera courses are external
+                    Title = aiItem.Title,
+                    Description = aiItem.Description,
+                    ItemType = MapItemType(aiItem.ItemType),
+                    DisplayOrder = aiItem.Order,
+                    EstimatedHours = aiItem.EstimatedHours,
+                    TargetLevelAfter = (ProficiencyLevel)aiItem.TargetLevelAfter,
+                    SuccessCriteria = aiItem.SuccessCriteria,
+                    ExternalUrl = aiItem.CourseUrl,
                     Status = LearningItemStatus.NotStarted
                 };
                 items.Add(item);
-                totalHours += lrs.LearningResource.EstimatedHours ?? 0;
+                totalHours += aiItem.EstimatedHours;
             }
+
+            totalHours = aiPath.EstimatedTotalHours;
         }
         else
         {
-            // Generate mock items when no resources found
-            items.Add(CreateMockItem(learningPath.Id, order++, $"Learn {skill.Name} Fundamentals", LearningResourceType.Course, 10));
-            items.Add(CreateMockItem(learningPath.Id, order++, $"Practice {skill.Name} Exercises", LearningResourceType.Project, 15));
-            items.Add(CreateMockItem(learningPath.Id, order++, $"Advanced {skill.Name} Techniques", LearningResourceType.Course, 15));
-            totalHours = 40;
+            // Fallback: Try to find matching learning resources from DB
+            var matchedResources = await _context.LearningResourceSkills
+                .Include(lrs => lrs.LearningResource)
+                .Where(lrs =>
+                    lrs.SkillId == targetSkillId &&
+                    !lrs.IsDeleted &&
+                    lrs.LearningResource.IsActive &&
+                    (int)lrs.FromLevel <= (int)(currentLevel ?? ProficiencyLevel.None) &&
+                    (int)lrs.ToLevel >= (int)targetLevel)
+                .OrderBy(lrs => lrs.LearningResource.Difficulty)
+                .ThenBy(lrs => lrs.LearningResource.EstimatedHours)
+                .ToListAsync();
+
+            int order = 1;
+            if (matchedResources.Any())
+            {
+                foreach (var lrs in matchedResources)
+                {
+                    var item = new LearningPathItem
+                    {
+                        LearningPathId = learningPath.Id,
+                        LearningResourceId = lrs.LearningResourceId,
+                        Title = lrs.LearningResource.Title,
+                        Description = lrs.LearningResource.Description,
+                        ItemType = lrs.LearningResource.Type,
+                        DisplayOrder = order++,
+                        EstimatedHours = lrs.LearningResource.EstimatedHours,
+                        Status = LearningItemStatus.NotStarted
+                    };
+                    items.Add(item);
+                    totalHours += lrs.LearningResource.EstimatedHours ?? 0;
+                }
+            }
+            else
+            {
+                // Generate mock items when no resources found
+                items.Add(CreateMockItem(learningPath.Id, order++, $"Learn {skill.Name} Fundamentals", LearningResourceType.Course, 10));
+                items.Add(CreateMockItem(learningPath.Id, order++, $"Practice {skill.Name} Exercises", LearningResourceType.Project, 15));
+                items.Add(CreateMockItem(learningPath.Id, order++, $"Advanced {skill.Name} Techniques", LearningResourceType.Course, 15));
+                totalHours = 40;
+            }
         }
 
         _context.LearningPathItems.AddRange(items);
-
         learningPath.EstimatedTotalHours = totalHours;
 
         // Mark gap as addressed if applicable
@@ -503,6 +686,7 @@ public class EmployeeProfileService : IEmployeeProfileService
             Id = learningPath.Id,
             Status = learningPath.Status.ToString(),
             Title = learningPath.Title,
+            Description = learningPath.Description,
             TargetSkill = new SkillBasicDto
             {
                 Id = skill.Id,
@@ -514,7 +698,12 @@ public class EmployeeProfileService : IEmployeeProfileService
             TargetLevel = (int)targetLevel,
             TargetLevelName = targetLevel.ToString(),
             EstimatedTotalHours = totalHours,
+            EstimatedDurationWeeks = aiPath?.EstimatedDurationWeeks,
             TargetCompletionDate = request.TargetCompletionDate,
+            IsAiGenerated = aiPath != null,
+            AiRationale = aiPath?.AiRationale,
+            KeySuccessFactors = aiPath?.KeySuccessFactors,
+            PotentialChallenges = aiPath?.PotentialChallenges,
             Items = items.Select(i => new LearningPathItemDto
             {
                 Id = i.Id,
@@ -523,13 +712,95 @@ public class EmployeeProfileService : IEmployeeProfileService
                 Description = i.Description,
                 ItemType = i.ItemType.ToString(),
                 ResourceId = i.LearningResourceId,
+                ExternalUrl = i.ExternalUrl,
                 EstimatedHours = i.EstimatedHours,
+                TargetLevelAfter = i.TargetLevelAfter.HasValue ? (int?)i.TargetLevelAfter.Value : null,
+                SuccessCriteria = i.SuccessCriteria,
                 Status = i.Status.ToString()
             }).ToList(),
-            Message = matchedResources.Any()
-                ? "Learning path created with matched resources"
-                : "Learning path created with suggested activities (no specific resources found)"
+            Milestones = aiPath?.Milestones.Select(m => new LearningPathMilestoneDto
+            {
+                AfterItem = m.AfterItem,
+                Description = m.Description,
+                ExpectedLevel = m.ExpectedLevel
+            }).ToList(),
+            Message = aiPath != null
+                ? "AI-powered learning path created with Coursera courses"
+                : items.Any(i => i.LearningResourceId.HasValue)
+                    ? "Learning path created with matched resources"
+                    : "Learning path created with suggested activities"
         };
+    }
+
+    public async Task<List<LearningPathDto>> GetLearningPathsAsync(Guid employeeId)
+    {
+        var employee = await _context.Employees
+            .FirstOrDefaultAsync(e => e.Id == employeeId && !e.IsDeleted);
+
+        if (employee == null)
+        {
+            return new List<LearningPathDto>();
+        }
+
+        var learningPaths = await _context.EmployeeLearningPaths
+            .Include(lp => lp.TargetSkill)
+            .Include(lp => lp.Items.OrderBy(i => i.DisplayOrder))
+            .Where(lp => lp.EmployeeId == employeeId && !lp.IsDeleted)
+            .OrderByDescending(lp => lp.CreatedAt)
+            .ToListAsync();
+
+        var result = new List<LearningPathDto>();
+
+        foreach (var lp in learningPaths)
+        {
+            // Get current level for this skill
+            var empSkill = await _context.EmployeeSkills
+                .FirstOrDefaultAsync(es => es.EmployeeId == employeeId && es.SkillId == lp.TargetSkillId && !es.IsDeleted);
+
+            var totalHours = lp.Items.Sum(i => i.EstimatedHours ?? 0);
+
+            result.Add(new LearningPathDto
+            {
+                Id = lp.Id,
+                Status = lp.Status.ToString(),
+                Title = lp.Title,
+                Description = lp.Description,
+                TargetSkill = new SkillBasicDto
+                {
+                    Id = lp.TargetSkill.Id,
+                    Name = lp.TargetSkill.Name,
+                    Code = lp.TargetSkill.Code
+                },
+                CurrentLevel = empSkill?.CurrentLevel != null ? (int?)empSkill.CurrentLevel : null,
+                CurrentLevelName = empSkill?.CurrentLevel.ToString(),
+                TargetLevel = (int)lp.TargetLevel,
+                TargetLevelName = lp.TargetLevel.ToString(),
+                EstimatedTotalHours = totalHours,
+                EstimatedDurationWeeks = null, // Not stored in database
+                TargetCompletionDate = lp.TargetCompletionDate,
+                IsAiGenerated = lp.IsAiGenerated,
+                AiRationale = lp.AiRationale,
+                KeySuccessFactors = null, // Not stored in database
+                PotentialChallenges = null, // Not stored in database
+                Items = lp.Items.Select(i => new LearningPathItemDto
+                {
+                    Id = i.Id,
+                    DisplayOrder = i.DisplayOrder,
+                    Title = i.Title,
+                    Description = i.Description,
+                    ItemType = i.ItemType.ToString(),
+                    ResourceId = i.LearningResourceId,
+                    ExternalUrl = i.ExternalUrl,
+                    EstimatedHours = i.EstimatedHours,
+                    TargetLevelAfter = i.TargetLevelAfter.HasValue ? (int?)i.TargetLevelAfter.Value : null,
+                    SuccessCriteria = i.SuccessCriteria,
+                    Status = i.Status.ToString()
+                }).ToList(),
+                Milestones = null // Not stored in database
+            });
+        }
+
+        return result;
     }
 
     #region Helper Methods
@@ -581,6 +852,150 @@ public class EmployeeProfileService : IEmployeeProfileService
             EstimatedHours = hours,
             Status = LearningItemStatus.NotStarted
         };
+    }
+
+    private static LearningResourceType MapItemType(string itemType)
+    {
+        return itemType.ToLower() switch
+        {
+            "course" => LearningResourceType.Course,
+            "book" => LearningResourceType.Book,
+            "video" => LearningResourceType.Video,
+            "project" => LearningResourceType.Project,
+            "workshop" => LearningResourceType.Workshop,
+            "certification" => LearningResourceType.Certification,
+            "mentorship" => LearningResourceType.Mentorship,
+            _ => LearningResourceType.Course
+        };
+    }
+
+    /// <summary>
+    /// Call AI service to analyze gaps and save recommendations to database
+    /// </summary>
+    private async Task CallAiAnalysisForGapsAsync(Guid employeeId, Guid roleId)
+    {
+        // Get employee and role info
+        var employee = await _context.Employees
+            .Include(e => e.JobRole)
+            .FirstOrDefaultAsync(e => e.Id == employeeId && !e.IsDeleted);
+
+        if (employee == null)
+            return;
+
+        // Get employee's current skills with gaps
+        var gaps = await _context.SkillGaps
+            .Include(g => g.Skill)
+            .Where(g => g.EmployeeId == employeeId && g.JobRoleId == roleId && !g.IsDeleted && g.ResolvedAt == null)
+            .ToListAsync();
+
+        if (!gaps.Any())
+            return; // No gaps to analyze
+
+        // Prepare AI request
+        var request = new DTOs.Assessment.AiAnalyzeSkillGapRequest
+        {
+            EmployeeId = employeeId,
+            EmployeeName = employee.FullName,
+            JobRoleId = roleId,
+            JobRoleName = employee.JobRole?.Name ?? "Unknown Role",
+            CurrentSkills = gaps.Select(g => new DTOs.Assessment.EmployeeSkillSnapshot
+            {
+                SkillId = g.SkillId,
+                SkillName = g.Skill.Name,
+                SkillCode = g.Skill.Code,
+                CurrentLevel = g.CurrentLevel,
+                RequiredLevel = g.RequiredLevel
+            }).ToList()
+        };
+
+        // Call AI analyzer
+        var aiResult = await _aiSkillAnalyzer.AnalyzeSkillGapsAsync(request);
+
+        if (!aiResult.Success || !aiResult.Gaps.Any())
+            return;
+
+        // Update skill gaps with AI analysis
+        foreach (var aiGap in aiResult.Gaps)
+        {
+            var gap = gaps.FirstOrDefault(g => g.SkillId == aiGap.SkillId);
+            if (gap != null)
+            {
+                gap.AiAnalysis = aiGap.Analysis;
+                gap.AiRecommendation = aiGap.Recommendation;
+                gap.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        // Delete old recommendations for these gaps
+        var existingRecommendations = await _context.LearningRecommendations
+            .Where(lr => gaps.Select(g => g.Id).Contains(lr.SkillGapId) && !lr.IsDeleted)
+            .ToListAsync();
+
+        foreach (var old in existingRecommendations)
+        {
+            old.IsDeleted = true;
+            old.DeletedAt = DateTime.UtcNow;
+        }
+
+        // Generate Coursera learning paths for each gap
+        int totalRecommendations = 0;
+        foreach (var gap in gaps)
+        {
+            try
+            {
+                _logger.LogInformation("Generating learning path for skill {SkillName}", gap.Skill.Name);
+
+                var learningPathRequest = new AiLearningPathRequest
+                {
+                    EmployeeId = employeeId,
+                    EmployeeName = employee.FullName,
+                    SkillId = gap.SkillId,
+                    SkillName = gap.Skill.Name,
+                    SkillCode = gap.Skill.Code,
+                    SkillDescription = gap.Skill.Description,
+                    CurrentLevel = (int)gap.CurrentLevel,
+                    TargetLevel = (int)gap.RequiredLevel,
+                    TimeConstraintMonths = 6,
+                    Language = "vn"
+                };
+
+                var learningPath = await _aiLearningPathService.GenerateLearningPathAsync(learningPathRequest);
+
+                if (learningPath.LearningItems != null && learningPath.LearningItems.Any())
+                {
+                    int displayOrder = 0;
+                    foreach (var item in learningPath.LearningItems.Take(3)) // Top 3 courses per skill
+                    {
+                        var recommendation = new LearningRecommendation
+                        {
+                            SkillGapId = gap.Id,
+                            SkillId = gap.SkillId,
+                            SkillName = gap.Skill.Name,
+                            RecommendationType = item.ItemType ?? "Course",
+                            Title = item.Title,
+                            Description = item.Description,
+                            Url = item.CourseUrl,
+                            EstimatedHours = item.EstimatedHours,
+                            Rationale = item.SuccessCriteria ?? learningPath.AiRationale ?? "AI-generated recommendation",
+                            DisplayOrder = displayOrder++,
+                            AiProvider = "Learning Path AI",
+                            GeneratedAt = DateTime.UtcNow
+                        };
+                        _context.LearningRecommendations.Add(recommendation);
+                        totalRecommendations++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to generate learning path for skill {SkillName}", gap.Skill.Name);
+                // Continue with next gap
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Generated {Count} Coursera recommendations for employee {EmployeeId}",
+            totalRecommendations, employeeId);
     }
 
     #endregion
